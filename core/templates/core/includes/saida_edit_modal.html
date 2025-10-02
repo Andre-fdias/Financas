@@ -1,0 +1,368 @@
+{% load custom_filters %}
+
+<div class="form-container-modal w-full p-8">
+    <div class="flex justify-between items-center mb-8">
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200">Editar Despesa</h2>
+        <button type="button" id="closeEditSaidaModalBtn" class="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <form method="post" id="editSaidaFormModal" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="saida_id" value="{{ saida.id }}">
+        <input type="hidden" id="aplicar_todas" name="aplicar_todas" value="false">
+        <input type="hidden" id="tipo_edicao" name="tipo_edicao" value="parcela">
+        
+        <!-- Opção de Escolha do Tipo de Edição -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+            <h3 class="text-lg font-medium text-gray-800 mb-3">Tipo de Edição</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="flex items-center">
+                    <input type="radio" id="edit_tipo_parcela" name="edit_tipo" value="parcela" 
+                           class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" checked
+                           onchange="toggleCamposEdicao('parcela')">
+                    <label for="edit_tipo_parcela" class="ml-2 block text-sm font-medium text-gray-700">
+                        Editar apenas esta parcela
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <input type="radio" id="edit_tipo_todas" name="edit_tipo" value="todas" 
+                           class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                           onchange="toggleCamposEdicao('todas')">
+                    <label for="edit_tipo_todas" class="ml-2 block text-sm font-medium text-gray-700">
+                        Editar todas as parcelas
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aviso para aplicar em todas as parcelas (quando for edição de parcela individual) -->
+        {% if saida.tipo_pagamento_detalhe == 'parcelado' and saida.quantidade_parcelas > 1 %}
+        <div id="edit_aviso_parcelas" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div class="flex items-center">
+                <input type="checkbox" id="edit_option_todas" name="edit_option" value="todas" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <label for="edit_option_todas" class="ml-2 block text-sm font-medium text-blue-800">
+                    Aplicar alterações para todas as parcelas
+                </label>
+            </div>
+            <p class="text-xs text-blue-600 mt-1">
+                Marque para atualizar local, categoria, observações e forma de pagamento em todas as parcelas.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Coluna 1 -->
+            <div class="space-y-6">
+                <!-- Conta Bancária -->
+                <div class="input-group">
+                    <label for="edit_id_conta_bancaria" class="form-label flex items-center">
+                        <i class="fas fa-piggy-bank mr-2 text-blue-500"></i> Conta Bancária <span class="text-red-500">*</span>
+                    </label>
+                    <select name="conta_bancaria" id="edit_id_conta_bancaria" class="form-input" required>
+                        <option value="">Selecione uma conta</option>
+                        {% for conta in contas_bancarias %}
+                            <option value="{{ conta.id }}" {% if saida.conta_bancaria.id == conta.id %}selected{% endif %}>
+                                {{ conta.get_nome_banco_display }} - {{ conta.get_tipo_display }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <p class="form-error" id="edit_conta_bancaria_error"></p>
+                </div>
+
+                <!-- Nome/Descrição (visível apenas na edição completa) -->
+                <div class="input-group" id="edit_nome_group">
+                    <label for="edit_id_nome" class="form-label flex items-center">
+                        <i class="fas fa-file-alt mr-2 text-blue-500"></i> Descrição <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" name="nome" id="edit_id_nome" class="form-input" value="{{ saida.nome }}" placeholder="Nome da despesa" required>
+                    <p class="form-error" id="edit_nome_error"></p>
+                </div>
+
+                <!-- Local (visível apenas na edição completa) -->
+                <div class="input-group" id="edit_local_group">
+                    <label for="edit_id_local" class="form-label flex items-center">
+                        <i class="fas fa-map-marker-alt mr-2 text-red-500"></i> Local
+                    </label>
+                    <input type="text" name="local" id="edit_id_local" class="form-input" value="{{ saida.local|default:'' }}" placeholder="Ex: Shopping, Loja de Roupas">
+                    <p class="form-error" id="edit_local_error"></p>
+                </div>
+
+                <!-- Categoria e Subcategoria (visíveis apenas na edição completa) -->
+                <div class="input-group" id="edit_categoria_group">
+                    <label for="edit_id_categoria" class="form-label flex items-center">
+                        <i class="fas fa-tag mr-2 text-green-500"></i> Categoria
+                    </label>
+                    <select name="categoria" id="edit_id_categoria" class="form-input" onchange="carregarSubcategoriasEdicao(this.value)">
+                        <option value="">Selecione uma categoria</option>
+                        {% for code, name in categorias_choices %}
+                            <option value="{{ code }}" {% if saida.categoria == code %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="form-error" id="edit_categoria_error"></p>
+                </div>
+
+                <div class="input-group" id="edit_subcategoria_group">
+                    <label for="edit_id_subcategoria" class="form-label flex items-center">
+                        <i class="fas fa-tags mr-2 text-green-400"></i> Subcategoria
+                    </label>
+                    <select name="subcategoria" id="edit_id_subcategoria" class="form-input">
+                        <option value="">Selecione uma subcategoria</option>
+                        {% for code, name in subcategorias_choices %}
+                            {% with categoria_da_subcategoria=subcategoria_mapping|get_item:code %}
+                                {% if categoria_da_subcategoria == saida.categoria %}
+                                    <option value="{{ code }}" {% if saida.subcategoria == code %}selected{% endif %}>{{ name }}</option>
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    </select>
+                    <p class="form-error" id="edit_subcategoria_error"></p>
+                </div>
+
+                <!-- Observações (visível apenas na edição completa) -->
+                <div class="input-group" id="edit_observacao_group">
+                    <label for="edit_id_observacao" class="form-label flex items-center">
+                        <i class="fas fa-comment-alt mr-2 text-gray-500"></i> Observações
+                    </label>
+                    <textarea name="observacao" id="edit_id_observacao" class="form-input" rows="3" placeholder="Observações adicionais">{{ saida.observacao|default:'' }}</textarea>
+                    <p class="form-error" id="edit_observacao_error"></p>
+                </div>
+            </div>
+
+            <!-- Coluna 2 -->
+            <div class="space-y-6">
+                <!-- Valor (comportamento diferente conforme o tipo de edição) -->
+                <div class="input-group">
+                    <label for="edit_id_valor" class="form-label flex items-center">
+                        <i class="fas fa-dollar-sign mr-2 text-green-600"></i> 
+                        <span id="edit_valor_label">
+                            {% if saida.e_parcela or saida.parcela_atual > 1 %}
+                                Valor da Parcela
+                            {% else %}
+                                Valor Total
+                            {% endif %}
+                        </span>
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <span class="text-gray-500 sm:text-sm">R$</span>
+                        </div>
+                        <input type="text" name="valor" id="edit_id_valor" class="form-input pl-10" placeholder="0,00" required
+                            value="{% if saida.e_parcela or saida.parcela_atual > 1 %}{{ saida.valor|floatformat:2 }}{% else %}{{ saida.valor_total|floatformat:2 }}{% endif %}" 
+                            oninput="formatarMoeda(this)" onblur="validarMoeda(this)">
+                    </div>
+                    <p class="form-error" id="edit_valor_error"></p>
+                </div>
+
+                <!-- Datas -->
+                <div class="input-group">
+                    <label for="edit_id_data_lancamento" class="form-label flex items-center">
+                        <i class="fas fa-calendar-alt mr-2 text-purple-500"></i> Data de Lançamento <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" name="data_lancamento" id="edit_id_data_lancamento" class="form-input" 
+                           value="{{ saida.data_lancamento|date:'Y-m-d' }}" required max="{{ today_date }}">
+                    <p class="form-error" id="edit_data_lancamento_error"></p>
+                </div>
+
+                <div class="input-group">
+                    <label for="edit_id_data_vencimento" class="form-label flex items-center">
+                        <i class="fas fa-calendar-check mr-2 text-teal-500"></i> Data de Vencimento <span class="text-red-500">*</span>
+                    </label>
+                    <input type="date" name="data_vencimento" id="edit_id_data_vencimento" class="form-input" 
+                           value="{{ saida.data_vencimento|date:'Y-m-d' }}" required>
+                    <p class="form-error" id="edit_data_vencimento_error"></p>
+                </div>
+
+                <!-- Forma de Pagamento -->
+                <div class="input-group">
+                    <label for="edit_id_forma_pagamento" class="form-label flex items-center">
+                        <i class="fas fa-credit-card mr-2 text-yellow-500"></i> Forma de Pagamento <span class="text-red-500">*</span>
+                    </label>
+                    <select name="forma_pagamento" id="edit_id_forma_pagamento" class="form-input" required onchange="validarParcelamentoEdicao()">
+                        <option value="">Selecione a forma de pagamento</option>
+                        <option value="dinheiro" {% if saida.forma_pagamento == 'dinheiro' %}selected{% endif %}>Dinheiro</option>
+                        <option value="cartao_credito" {% if saida.forma_pagamento == 'cartao_credito' %}selected{% endif %}>Cartão de Crédito</option>
+                        <option value="cartao_debito" {% if saida.forma_pagamento == 'cartao_debito' %}selected{% endif %}>Cartão de Débito</option>
+                        <option value="pix" {% if saida.forma_pagamento == 'pix' %}selected{% endif %}>PIX</option>
+                        <option value="transferencia" {% if saida.forma_pagamento == 'transferencia' %}selected{% endif %}>Transferência Bancária</option>
+                        <option value="boleto" {% if saida.forma_pagamento == 'boleto' %}selected{% endif %}>Boleto</option>
+                        <option value="debito_conta" {% if saida.forma_pagamento == 'debito_conta' %}selected{% endif %}>Débito em Conta</option>
+                    </select>
+                    <p class="form-error" id="edit_forma_pagamento_error"></p>
+                </div>
+
+                <!-- Tipo de Pagamento (visível apenas na edição completa) -->
+                <div class="input-group" id="edit_tipo_pagamento_group">
+                    <label for="edit_id_tipo_pagamento_detalhe" class="form-label flex items-center">
+                        <i class="fas fa-wallet mr-2 text-gray-500"></i> Tipo de Pagamento <span class="text-red-500">*</span>
+                    </label>
+                    <select name="tipo_pagamento_detalhe" id="edit_id_tipo_pagamento_detalhe" class="form-input" required onchange="toggleParcelamentoFieldsEdicao()">
+                        <option value="avista" {% if saida.tipo_pagamento_detalhe == 'avista' %}selected{% endif %}>À Vista</option>
+                        <option value="parcelado" {% if saida.tipo_pagamento_detalhe == 'parcelado' %}selected{% endif %}>Parcelado</option>
+                    </select>
+                    <p class="form-error" id="edit_tipo_pagamento_detalhe_error"></p>
+                </div>
+
+                <!-- Recorrência (visível apenas na edição completa) -->
+                <div class="input-group" id="edit_recorrente_group">
+                    <label for="edit_id_recorrente" class="form-label flex items-center">
+                        <i class="fas fa-redo mr-2 text-orange-500"></i> Recorrência
+                    </label>
+                    <select name="recorrente" id="edit_id_recorrente" class="form-input" onchange="validarRecorrenciaEdicao()">
+                        <option value="unica" {% if saida.recorrente == 'unica' %}selected{% endif %}>Única</option>
+                        <option value="mensal" {% if saida.recorrente == 'mensal' %}selected{% endif %}>Mensal</option>
+                        <option value="anual" {% if saida.recorrente == 'anual' %}selected{% endif %}>Anual</option>
+                    </select>
+                    <p class="form-error" id="edit_recorrente_error"></p>
+                </div>
+
+                <!-- Campos de Parcelamento (visíveis apenas na edição completa) -->
+                <div id="edit_parcelamento_fields" style="display: {% if saida.tipo_pagamento_detalhe == 'parcelado' %}block{% else %}none{% endif %};">
+                    <div class="parcelamento-section">
+                        <h3 class="parcelamento-header">
+                            <i class="fas fa-calculator"></i> Parcelamento
+                        </h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label for="edit_id_quantidade_parcelas" class="form-label">Quantidade de Parcelas</label>
+                                <input type="number" name="quantidade_parcelas" id="edit_id_quantidade_parcelas" 
+                                       class="form-input" min="2" value="{{ saida.quantidade_parcelas|default:2 }}" 
+                                       onchange="calcularParcelamentoEdicao()">
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="edit_id_valor_parcela" class="form-label">Valor da Parcela (R$)</label>
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 sm:text-sm">R$</span>
+                                    </div>
+                                    <input type="text" name="valor_parcela" id="edit_id_valor_parcela" 
+                                           class="form-input pl-10" placeholder="0,00" 
+                                           value="{{ saida.valor_parcela|default:saida.valor|floatformat:2 }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p class="text-sm text-blue-800">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Parcela atual: {{ saida.parcela_atual|default:1 }}/{{ saida.quantidade_parcelas|default:1 }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Situação -->
+        <div class="input-group">
+            <div class="flex items-center">
+                <input type="checkbox" id="edit_id_situacao_checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                       {% if saida.situacao == 'pago' %}checked{% endif %}>
+                <label for="edit_id_situacao_checkbox" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Marcar como Pago
+                </label>
+            </div>
+            <input type="hidden" name="situacao" id="edit_id_situacao" value="{{ saida.situacao }}">
+        </div>
+
+        <!-- Botões -->
+        <div class="flex justify-end space-x-4 mt-6">
+            <button type="button" id="cancelEditSaidaBtn" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                Cancelar
+            </button>
+            <button type="submit" class="px-6 py-2 rounded-lg text-white font-medium submit-btn transition-transform duration-200">
+                Atualizar Despesa
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleCamposEdicao(tipo) {
+    const aplicarTodas = document.getElementById('edit_option_todas')?.checked || false;
+    
+    // Campos que aparecem APENAS na edição de parcela individual SEM "aplicar todas"
+    const camposParcelaIndividual = [
+        'edit_nome_group', 'edit_local_group', 'edit_categoria_group', 
+        'edit_subcategoria_group', 'edit_observacao_group', 'edit_tipo_pagamento_group',
+        'edit_recorrente_group', 'edit_parcelamento_fields', 'edit_data_lancamento_group'
+    ];
+    
+    // Campos que aparecem SEMPRE exceto data_lancamento
+    const camposTodosExcetoDataLancamento = [
+        'edit_data_lancamento_group'
+    ];
+    
+    const isEdicaoParcelaIndividual = tipo === 'parcela' && !aplicarTodas;
+    const isEdicaoComAplicarTodas = tipo === 'parcela' && aplicarTodas;
+    const isEdicaoTodasParcelas = tipo === 'todas';
+    
+    // Lógica para edição de parcela individual
+    if (isEdicaoParcelaIndividual) {
+        camposParcelaIndividual.forEach(campoId => {
+            const elemento = document.getElementById(campoId);
+            if (elemento) elemento.style.display = 'none';
+        });
+    }
+    
+    // Lógica para "aplicar todas" ou "editar todas"
+    if (isEdicaoComAplicarTodas || isEdicaoTodasParcelas) {
+        camposTodosExcetoDataLancamento.forEach(campoId => {
+            const elemento = document.getElementById(campoId);
+            if (elemento) elemento.style.display = 'none';
+        });
+        
+        // Mostrar campos de parcelamento apenas na edição completa
+        const parcelamentoFields = document.getElementById('edit_parcelamento_fields');
+        if (parcelamentoFields) {
+            parcelamentoFields.style.display = isEdicaoTodasParcelas ? 'block' : 'none';
+        }
+    }
+    
+    // Atualizar label do valor
+    const valorLabel = document.getElementById('edit_valor_label');
+    if (valorLabel) {
+        if (isEdicaoParcelaIndividual) {
+            valorLabel.textContent = 'Valor da Parcela';
+            // Usar valor da parcela
+            document.getElementById('edit_id_valor').value = '{{ saida.valor|floatformat:2 }}';
+        } else {
+            valorLabel.textContent = 'Valor Total';
+            // Usar valor total
+            document.getElementById('edit_id_valor').value = '{{ valor_total|floatformat:2 }}';
+        }
+    }
+    
+    // Atualizar campo oculto
+    document.getElementById('tipo_edicao').value = tipo;
+    
+    // Mostrar/ocultar aviso de parcelas
+    const avisoParcelas = document.getElementById('edit_aviso_parcelas');
+    if (avisoParcelas) {
+        avisoParcelas.style.display = (tipo === 'parcela') ? 'block' : 'none';
+    }
+}
+
+// Adicionar evento para checkbox "aplicar todas"
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxAplicarTodas = document.getElementById('edit_option_todas');
+    if (checkboxAplicarTodas) {
+        checkboxAplicarTodas.addEventListener('change', function() {
+            const tipoSelecionado = document.querySelector('input[name="edit_tipo"]:checked').value;
+            toggleCamposEdicao(tipoSelecionado);
+        });
+    }
+    
+    // Inicializar estado
+    const isParcela = {{ saida.e_parcela|yesno:"true,false" }} || {{ saida.parcela_atual|default:1 }} > 1;
+    const tipoInicial = isParcela ? 'parcela' : 'todas';
+    document.getElementById(`edit_tipo_${tipoInicial}`).checked = true;
+    toggleCamposEdicao(tipoInicial);
+});
+</script>

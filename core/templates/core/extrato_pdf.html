@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Extrato Bancário - Sistema Finanças</title>
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 12px;
+            color: #000;
+            line-height: 1.4;
+        }
+        
+        .header {
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .logo h1 {
+            font-size: 20px;
+            margin: 0;
+            font-weight: bold;
+        }
+        
+        .user-info {
+            background: #f0f0f0;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+        }
+        
+        .conta-section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        
+        .conta-header {
+            background: #333;
+            color: white;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 10px;
+        }
+        
+        th {
+            background: #555;
+            color: white;
+            padding: 6px;
+            text-align: left;
+            font-weight: bold;
+            border: 1px solid #ccc;
+        }
+        
+        td {
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        .valor-positivo {
+            color: #006400;
+            font-weight: bold;
+        }
+        
+        .valor-negativo {
+            color: #8B0000;
+            font-weight: bold;
+        }
+        
+        .saldo-section {
+            background: #f0f0f0;
+            padding: 8px;
+            margin-top: 10px;
+            border: 1px solid #ccc;
+        }
+        
+        .resumo-geral {
+            background: #e0e0e0;
+            padding: 10px;
+            margin: 20px 0;
+            border: 1px solid #ccc;
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 9px;
+            color: #666;
+            margin-top: 30px;
+            border-top: 1px solid #ccc;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <h1>EXTRATO BANCÁRIO</h1>
+        </div>
+        
+        <div class="user-info">
+            <strong>Cliente:</strong> {{ usuario.get_full_name|default:usuario.username }}<br>
+            <strong>Data do Extrato:</strong> {{ data_geracao|date:"d/m/Y H:i" }}<br>
+            <strong>Período:</strong> {{ filtros.periodo }}
+        </div>
+    </div>
+    
+    <div class="resumo-geral">
+        <h3>RESUMO GERAL</h3>
+        <p><strong>Saldo Inicial Total:</strong> R$ {{ saldo_inicial_total|floatformat:2 }}</p>
+        <p><strong>Total de Entradas:</strong> R$ {{ total_entradas_geral|floatformat:2 }}</p>
+        <p><strong>Total de Saídas:</strong> R$ {{ total_saidas_geral|floatformat:2 }}</p>
+        <p><strong>Saldo Final Total:</strong> R$ {{ saldo_final_total|floatformat:2 }}</p>
+    </div>
+    
+    {% for conta in extrato_por_conta %}
+    <div class="conta-section">
+        <div class="conta-header">
+            <h3>CONTA: {{ conta.nome }} - {{ conta.banco }}</h3>
+            <p>Agência: {{ conta.agencia }} | Número: {{ conta.numero }}</p>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th width="60">DATA</th>
+                    <th width="150">DESCRIÇÃO</th>
+                    <th width="80">CATEGORIA</th>
+                    <th width="60">ENTRADA (R$)</th>
+                    <th width="60">SAÍDA (R$)</th>
+                    <th width="60">SALDO (R$)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ conta.primeira_data|date:"d/m/Y" }}</td>
+                    <td>SALDO ANTERIOR</td>
+                    <td>-</td>
+                    <td style="text-align: right;">-</td>
+                    <td style="text-align: right;">-</td>
+                    <td style="text-align: right; font-weight: bold;">R$ {{ conta.saldo_inicial|floatformat:2 }}</td>
+                </tr>
+                
+                {% for transacao in conta.transacoes %}
+                <tr>
+                    <td>{{ transacao.data|date:"d/m/Y" }}</td>
+                    <td>{{ transacao.nome }}</td>
+                    <td>{{ transacao.categoria }}</td>
+                    <td style="text-align: right;">
+                        {% if transacao.tipo == 'Entrada' %}
+                            <span class="valor-positivo">{{ transacao.valor|floatformat:2 }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if transacao.tipo == 'Saida' %}
+                            <span class="valor-negativo">{{ transacao.valor|floatformat:2 }}</span>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; font-weight: bold;">R$ {{ transacao.saldo_acumulado|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="saldo-section">
+            <p><strong>Saldo Inicial:</strong> R$ {{ conta.saldo_inicial|floatformat:2 }}</p>
+            <p><strong>Total de Entradas:</strong> R$ {{ conta.total_entradas|floatformat:2 }}</p>
+            <p><strong>Total de Saídas:</strong> R$ {{ conta.total_saidas|floatformat:2 }}</p>
+            <p><strong>Saldo Final:</strong> R$ {{ conta.saldo_final|floatformat:2 }}</p>
+        </div>
+    </div>
+    
+    {% if not forloop.last %}
+    <div style="page-break-after: always;"></div>
+    {% endif %}
+    {% endfor %}
+    
+    <div class="footer">
+        Sistema Finanças | Documento gerado automaticamente em {{ data_geracao|date:"d/m/Y à\s H:i" }}
+    </div>
+</body>
+</html>
