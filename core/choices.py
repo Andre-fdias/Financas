@@ -379,6 +379,12 @@ FORMA_RECEBIMENTO_CHOICES = [
     ('boleto', 'Boleto'),
     ('outros', 'Outros'),
 ]
+
+
+
+# ================================================================
+# CATEGORIAS PRINCIPAIS
+# ================================================================
 CATEGORIA_CHOICES = [
     ('moradia', 'Moradia'),
     ('alimentacao', 'Alimentação'),
@@ -394,84 +400,171 @@ CATEGORIA_CHOICES = [
     ('impostos', 'Impostos'),
 ]
 
+# ================================================================
+# SUBCATEGORIAS (Formato correto: (valor, label))
+# ================================================================
 SUBCATEGORIA_CHOICES = [
     # Moradia
-    ('moradia_aluguel', 'Aluguel', 'moradia'),
-    ('moradia_financiamento', 'Financiamento Imobiliário', 'moradia'),
-    ('moradia_condominio', 'Condomínio', 'moradia'),
-    ('moradia_iptu', 'IPTU', 'moradia'),
-    ('moradia_energia', 'Energia Elétrica', 'moradia'),
-    ('moradia_agua', 'Água e Esgoto', 'moradia'),
-    ('moradia_gas', 'Gás', 'moradia'),
-    ('moradia_internet', 'Internet', 'moradia'),
-    ('moradia_manutencao', 'Manutenção/Reparos', 'moradia'),
-
+    ('moradia_aluguel', 'Aluguel'),
+    ('moradia_financiamento', 'Financiamento Imobiliário'),
+    ('moradia_condominio', 'Condomínio'),
+    ('moradia_iptu', 'IPTU'),
+    ('moradia_energia', 'Energia Elétrica'),
+    ('moradia_agua', 'Água e Esgoto'),
+    ('moradia_gas', 'Gás'),
+    ('moradia_internet', 'Internet'),
+    ('moradia_manutencao', 'Manutenção/Reparos'),
+    
     # Alimentação
-    ('alimentacao_supermercado', 'Supermercado', 'alimentacao'),
-    ('alimentacao_hortifruti', 'Hortifruti', 'alimentacao'),
-    ('alimentacao_padaria', 'Padaria', 'alimentacao'),
-    ('alimentacao_restaurante', 'Restaurante', 'alimentacao'),
-    ('alimentacao_lanches', 'Lanches', 'alimentacao'),
+    ('alimentacao_supermercado', 'Supermercado'),
+    ('alimentacao_hortifruti', 'Hortifruti'),
+    ('alimentacao_padaria', 'Padaria'),
+    ('alimentacao_restaurante', 'Restaurante'),
+    ('alimentacao_lanches', 'Lanches'),
     
     # Transporte
-    ('transporte_combustivel', 'Combustível', 'transporte'),
-    ('transporte_manutencao', 'Manutenção Veicular', 'transporte'),
-    ('transporte_seguro', 'Seguro Veicular', 'transporte'),
-    ('transporte_estacionamento', 'Estacionamento', 'transporte'),
-    ('transporte_publico', 'Transporte Público', 'transporte'),
-    ('transporte_app', 'Táxi/App de Transporte', 'transporte'),
+    ('transporte_combustivel', 'Combustível'),
+    ('transporte_manutencao', 'Manutenção Veicular'),
+    ('transporte_seguro', 'Seguro Veicular'),
+    ('transporte_estacionamento', 'Estacionamento'),
+    ('transporte_publico', 'Transporte Público'),
+    ('transporte_app', 'Táxi/App de Transporte'),
     
     # Saúde
-    ('saude_plano', 'Plano de Saúde', 'saude'),
-    ('saude_medicamentos', 'Medicamentos', 'saude'),
-    ('saude_consultas', 'Consultas Médicas', 'saude'),
-    ('saude_exames', 'Exames', 'saude'),
-    ('saude_odontologia', 'Odontologia', 'saude'),
+    ('saude_plano', 'Plano de Saúde'),
+    ('saude_medicamentos', 'Medicamentos'),
+    ('saude_consultas', 'Consultas Médicas'),
+    ('saude_exames', 'Exames'),
+    ('saude_odontologia', 'Odontologia'),
     
     # Educação
-    ('educacao_mensalidade', 'Mensalidade Escolar/Faculdade', 'educacao'),
-    ('educacao_cursos', 'Cursos/Treinamentos', 'educacao'),
-    ('educacao_materiais', 'Livros/Material Didático', 'educacao'),
+    ('educacao_mensalidade', 'Mensalidade Escolar/Faculdade'),
+    ('educacao_cursos', 'Cursos/Treinamentos'),
+    ('educacao_materiais', 'Livros/Material Didático'),
     
     # Lazer
-    ('lazer_cinema', 'Cinema/Teatro', 'lazer'),
-    ('lazer_shows', 'Shows/Eventos', 'lazer'),
-    ('lazer_viagens', 'Viagens', 'lazer'),
-    ('lazer_entretenimento', 'Salão de Jogos/Entretenimento', 'lazer'),
+    ('lazer_cinema', 'Cinema/Teatro'),
+    ('lazer_shows', 'Shows/Eventos'),
+    ('lazer_viagens', 'Viagens'),
+    ('lazer_entretenimento', 'Salão de Jogos/Entretenimento'),
 
     # Seguros
-    ('seguros_vida', 'Seguro de Vida', 'seguros'),
-    ('seguros_residencial', 'Seguro Residencial', 'seguros'),
-    ('seguros_viagem', 'Seguro Viagem', 'seguros'),
+    ('seguros_vida', 'Seguro de Vida'),
+    ('seguros_residencial', 'Seguro Residencial'),
+    ('seguros_viagem', 'Seguro Viagem'),
 
     # Despesas Pessoais
-    ('pessoais_academia', 'Academia/Atividade Física', 'pessoais'),
-    ('pessoais_estetica', 'Estética/Beleza', 'pessoais'),
-    ('pessoais_vestuario', 'Vestuário', 'pessoais'),
-    ('pessoais_calcados', 'Calçados', 'pessoais'),
-    ('pessoais_acessorios', 'Acessórios', 'pessoais'),
+    ('pessoais_academia', 'Academia/Atividade Física'),
+    ('pessoais_estetica', 'Estética/Beleza'),
+    ('pessoais_vestuario', 'Vestuário'),
+    ('pessoais_calcados', 'Calçados'),
+    ('pessoais_acessorios', 'Acessórios'),
 
     # Família
-    ('familia_mesada', 'Mesada para Filhos', 'familia'),
-    ('familia_presentes', 'Presentes', 'familia'),
-    ('familia_pets', 'Cuidados com Pets', 'familia'),
+    ('familia_mesada', 'Mesada para Filhos'),
+    ('familia_presentes', 'Presentes'),
+    ('familia_pets', 'Cuidados com Pets'),
 
     # Contas e Serviços
-    ('contas_telefone', 'Telefone', 'contas'),
-    ('contas_assinaturas', 'Assinaturas', 'contas'),
-    ('contas_tv', 'TV por Assinatura/Streaming', 'contas'),
+    ('contas_telefone', 'Telefone'),
+    ('contas_assinaturas', 'Assinaturas'),
+    ('contas_tv', 'TV por Assinatura/Streaming'),
 
     # Investimentos
-    ('investimentos_poupanca', 'Poupança', 'investimentos'),
-    ('investimentos_fundos', 'Fundos de Investimento', 'investimentos'),
-    ('investimentos_acoes', 'Ações', 'investimentos'),
-    ('investimentos_cripto', 'Criptomoedas', 'investimentos'),
+    ('investimentos_poupanca', 'Poupança'),
+    ('investimentos_fundos', 'Fundos de Investimento'),
+    ('investimentos_acoes', 'Ações'),
+    ('investimentos_cripto', 'Criptomoedas'),
 
     # Impostos
-    ('impostos_irpf', 'IRPF', 'impostos'),
-    ('impostos_inss', 'INSS', 'impostos'),
-    ('impostos_taxas', 'Taxas/Tributos', 'impostos'),
+    ('impostos_irpf', 'IRPF'),
+    ('impostos_inss', 'INSS'),
+    ('impostos_taxas', 'Taxas/Tributos'),
 ]
+
+# ================================================================
+# DICIONÁRIO PARA MAPEAR SUBCATEGORIAS → CATEGORIAS
+# (Para uso no JavaScript)
+# ================================================================
+SUBCATEGORIA_PARA_CATEGORIA = {
+    # Moradia
+    'moradia_aluguel': 'moradia',
+    'moradia_financiamento': 'moradia',
+    'moradia_condominio': 'moradia',
+    'moradia_iptu': 'moradia',
+    'moradia_energia': 'moradia',
+    'moradia_agua': 'moradia',
+    'moradia_gas': 'moradia',
+    'moradia_internet': 'moradia',
+    'moradia_manutencao': 'moradia',
+    
+    # Alimentação
+    'alimentacao_supermercado': 'alimentacao',
+    'alimentacao_hortifruti': 'alimentacao',
+    'alimentacao_padaria': 'alimentacao',
+    'alimentacao_restaurante': 'alimentacao',
+    'alimentacao_lanches': 'alimentacao',
+    
+    # Transporte
+    'transporte_combustivel': 'transporte',
+    'transporte_manutencao': 'transporte',
+    'transporte_seguro': 'transporte',
+    'transporte_estacionamento': 'transporte',
+    'transporte_publico': 'transporte',
+    'transporte_app': 'transporte',
+    
+    # Saúde
+    'saude_plano': 'saude',
+    'saude_medicamentos': 'saude',
+    'saude_consultas': 'saue',
+    'saude_exames': 'saude',
+    'saude_odontologia': 'saude',
+    
+    # Educação
+    'educacao_mensalidade': 'educacao',
+    'educacao_cursos': 'educacao',
+    'educacao_materiais': 'educacao',
+    
+    # Lazer
+    'lazer_cinema': 'lazer',
+    'lazer_shows': 'lazer',
+    'lazer_viagens': 'lazer',
+    'lazer_entretenimento': 'lazer',
+
+    # Seguros
+    'seguros_vida': 'seguros',
+    'seguros_residencial': 'seguros',
+    'seguros_viagem': 'seguros',
+
+    # Despesas Pessoais
+    'pessoais_academia': 'pessoais',
+    'pessoais_estetica': 'pessoais',
+    'pessoais_vestuario': 'pessoais',
+    'pessoais_calcados': 'pessoais',
+    'pessoais_acessorios': 'pessoais',
+
+    # Família
+    'familia_mesada': 'familia',
+    'familia_presentes': 'familia',
+    'familia_pets': 'familia',
+
+    # Contas e Serviços
+    'contas_telefone': 'contas',
+    'contas_assinaturas': 'contas',
+    'contas_tv': 'contas',
+
+    # Investimentos
+    'investimentos_poupanca': 'investimentos',
+    'investimentos_fundos': 'investimentos',
+    'investimentos_acoes': 'investimentos',
+    'investimentos_cripto': 'investimentos',
+
+    # Impostos
+    'impostos_irpf': 'impostos',
+    'impostos_inss': 'impostos',
+    'impostos_taxas': 'impostos',
+}
+
 
 FORMA_PAGAMENTO_CHOICES = [
     ('dinheiro', 'Dinheiro'),
@@ -516,3 +609,28 @@ TIPO_OPERACAO_CHOICES = [
         ('credito_rural', 'Crédito Rural'),
         ('outros', 'Outros'),
 ]
+
+
+
+# ================================================================
+# FUNÇÕES ÚTEIS
+# ================================================================
+
+def get_categoria_display(codigo):
+    """Retorna o nome da categoria baseado no código"""
+    return dict(CATEGORIA_CHOICES).get(codigo, 'Sem Categoria')
+
+def get_subcategoria_display(codigo):
+    """Retorna o nome da subcategoria baseado no código"""
+    return dict(SUBCATEGORIA_CHOICES).get(codigo, '')
+
+def get_subcategorias_por_categoria(categoria):
+    """Retorna todas as subcategorias de uma categoria específica"""
+    return [(codigo, nome) for codigo, nome in SUBCATEGORIA_CHOICES 
+            if SUBCATEGORIA_PARA_CATEGORIA.get(codigo) == categoria]
+
+def validar_categoria_subcategoria(categoria, subcategoria):
+    """Valida se a subcategoria pertence à categoria"""
+    if not categoria or not subcategoria:
+        return True
+    return SUBCATEGORIA_PARA_CATEGORIA.get(subcategoria) == categoria

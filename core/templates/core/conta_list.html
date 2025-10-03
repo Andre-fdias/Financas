@@ -1,5 +1,6 @@
 {% extends 'core/base.html' %}
 {% load currency_filters %}
+{% load calculos_filters %}  
 
 {% block title %}Minhas Contas Bancárias{% endblock %}
 
@@ -297,6 +298,7 @@
 {% endblock %}
 
 {% block content %}
+
 <div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
     <!-- Header Section -->
     <div class="glass-panel p-6 mb-8">
@@ -478,8 +480,17 @@
                     <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
                         <i class="fas fa-credit-card mr-2"></i>Tipo
                     </th>
+                    <!-- CORREÇÃO: Saldo Inicial -->
                     <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-money-bill-wave mr-2"></i>Saldo
+                        <i class="fas fa-history mr-2"></i>Saldo Inicial
+                    </th>
+                    <!-- CORREÇÃO: Saldo Atual -->
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                        <i class="fas fa-money-bill-wave mr-2"></i>Saldo Atual
+                    </th>
+                    <!-- CORREÇÃO: Variação -->
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                        <i class="fas fa-chart-line mr-2"></i>Variação
                     </th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
                         <i class="fas fa-circle mr-2"></i>Status
@@ -505,7 +516,7 @@
                         </div>
                     </td>
                     
-                    <!-- NOVA COLUNA: Titular -->
+                    <!-- Coluna Titular -->
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             {% if conta.nome_do_titular %}
@@ -567,17 +578,49 @@
                         </span>
                     </td>
                     
-                    <!-- Coluna Saldo -->
+                    <!-- CORREÇÃO: Coluna Saldo Inicial -->
                     <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="{% if conta.saldo_atual >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                            {{ conta.saldo_atual|br_currency }}
+                        <span class="{% if conta.saldo_inicial_calc >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                            {{ conta.saldo_inicial_calc|br_currency }}
                         </span>
-                        {% if conta.limite_cartao %}
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Limite: {{ conta.limite_cartao|br_currency }}
-                            </div>
-                        {% endif %}
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Data: {{ conta.data_criacao|date:"d/m/Y" }}
+                        </div>
                     </td>
+                    
+<!-- CORREÇÃO: Coluna Saldo Atual -->
+<td class="px-6 py-4 whitespace-nowrap">
+    <span class="{% if conta.saldo_calculado_calc >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+        {{ conta.saldo_calculado_calc|br_currency }}
+    </span>
+    {% if conta.limite_cartao %}
+        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Limite: {{ conta.limite_cartao|br_currency }}
+        </div>
+    {% endif %}
+</td>
+                    
+                <!-- CORREÇÃO: Coluna Variação -->
+                <td class="px-6 py-4 whitespace-nowrap">
+                    {% with saldo_inicial=conta.saldo_inicial|default:0 %}
+                    {% with saldo_calculado=conta.saldo_calculado|default:conta.saldo_atual|default:0 %}
+                    {% with variacao=saldo_calculado|sub:saldo_inicial %}
+                    <div class="flex flex-col items-start">
+                        <span class="{% if variacao >= 0 %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %} font-semibold">
+                            {% if variacao >= 0 %}+{% endif %}{{ variacao|br_currency }}
+                        </span>
+                        {% if saldo_inicial != 0 %}
+                        {% with percentual=variacao|div:saldo_inicial|mul:100 %}
+                        <span class="text-xs {% if percentual >= 0 %}text-green-500 dark:text-green-300{% else %}text-red-500 dark:text-red-300{% endif %}">
+                            ({{ percentual|floatformat:2 }}%)
+                        </span>
+                        {% endwith %}
+                        {% endif %}
+                    </div>
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
+                </td>
                     
                     <!-- Coluna Status -->
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -603,6 +646,7 @@
                                data-conta-agencia="{{ conta.agencia|default:'' }}"
                                data-conta-numero="{{ conta.numero_conta|default:'' }}"
                                data-conta-saldo="{{ conta.saldo_atual }}"
+                               data-conta-saldo-inicial="{{ conta.saldo_inicial }}"
                                data-conta-numero-cartao="{{ conta.numero_cartao|default:'' }}"
                                data-conta-limite="{{ conta.limite_cartao|default:'' }}"
                                data-conta-fechamento="{{ conta.dia_fechamento_fatura|default:'' }}"
@@ -613,7 +657,6 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                            
                             </a>
                             
                             <!-- Botão Excluir -->
@@ -625,14 +668,13 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
-                             
                             </button>
                         </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="px-6 py-12 text-center">
+                    <td colspan="9" class="px-6 py-12 text-center">
                         <div class="text-gray-400 dark:text-gray-500">
                             <i class="fas fa-inbox text-4xl mb-4"></i>
                             <p class="text-lg font-medium">Nenhuma conta encontrada</p>
@@ -678,9 +720,9 @@
                         Banco
                     </label>
                     <div class="relative">
-                        <select id="id_nome_banco" name="nome_banco" class="form-input">
+                        <select id="id_nome_banco" name="nome_banco" class="form-input" required>
                             <option value="">Selecione um banco</option>
-                            {% for code, name in banco_choices %} {# ITERA SOBRE AS OPÇÕES PASSADAS DA VIEW #}
+                            {% for code, name in banco_choices %}
                                 <option value="{{ code }}">{{ name }}</option>
                             {% endfor %}
                         </select>
@@ -1265,55 +1307,58 @@
         }
 
         // Função alternativa mais robusta para formatação monetária
-        function formatarMoedaMelhorada(input) {
-            if (!input) return;
-            
-            // Guarda a posição do cursor
-            const cursorPosition = input.selectionStart;
-            const originalLength = input.value.length;
-            
-            // Remove tudo que não é dígito
-            let value = input.value.replace(/\D/g, '');
-            
-            // Se estiver vazio, define como zero
-            if (value === '' || value === '0') {
-                input.value = '0,00';
-                input.setSelectionRange(4, 4); // Posiciona após "0,00"
-                return;
-            }
-            
-            // Remove zeros à esquerda
-            value = value.replace(/^0+/, '');
-            if (value === '') {
-                input.value = '0,00';
-                input.setSelectionRange(4, 4);
-                return;
-            }
-            
-            // Adiciona zeros à esquerda para ter pelo menos 3 dígitos
-            value = value.padStart(3, '0');
-            
-            // Separa reais e centavos
-            const reais = value.slice(0, -2);
-            const centavos = value.slice(-2);
-            
-            // Formata os reais com separadores de milhar
-            const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            
-            // Atualiza o valor do campo
-            input.value = formattedReais + ',' + centavos;
-            
-            // Tenta manter a posição do cursor de forma inteligente
-            const newLength = input.value.length;
-            const lengthDifference = newLength - originalLength;
-            
-            // Posiciona o cursor no final por enquanto (solução mais simples)
-            setTimeout(() => {
-                input.setSelectionRange(newLength, newLength);
-            }, 0);
-        }
+            function formatarMoedaMelhorada(input) {
+                    if (!input) return;
+                    
+                    // Guarda a posição do cursor
+                    const cursorPosition = input.selectionStart;
+                    const originalLength = input.value.length;
+                    
+                    // Remove tudo que não é dígito
+                    let value = input.value.replace(/\D/g, '');
+                    
+                    // Se estiver vazio, define como zero
+                    if (value === '' || value === '0') {
+                        input.value = '0,00';
+                        input.setSelectionRange(4, 4);
+                        return;
+                    }
+                    
+                    // Remove zeros à esquerda, mas mantém pelo menos um zero
+                    value = value.replace(/^0+/, '') || '0';
+                    
+                    // Garante que temos pelo menos 3 dígitos para centavos
+                    value = value.padStart(3, '0');
+                    
+                    // Separa reais e centavos (preenchimento da direita para esquerda)
+                    const reais = value.slice(0, -2);
+                    const centavos = value.slice(-2);
+                    
+                    // Formata os reais com separadores de milhar
+                    const formattedReais = reais === '0' ? '0' : 
+                        parseInt(reais).toLocaleString('pt-BR');
+                    
+                    // Atualiza o valor do campo
+                    input.value = formattedReais + ',' + centavos;
+                    
+                    // Tenta manter a posição do cursor
+                    const newLength = input.value.length;
+                    
+                    // Calcula nova posição do cursor baseada na mudança
+                    let newCursorPosition = cursorPosition;
+                    if (originalLength !== newLength) {
+                        const diff = newLength - originalLength;
+                        newCursorPosition = Math.max(0, Math.min(newLength, cursorPosition + diff));
+                    }
+                    
+                    // Reposiciona o cursor
+                    setTimeout(() => {
+                        input.setSelectionRange(newCursorPosition, newCursorPosition);
+                    }, 0);
+                }
 
-        // Função para converter formato brasileiro para decimal (para envio ao backend)
+            // Função para converter formato brasileiro para decimal (para envio ao backend)
+
             function converterParaDecimal(valor) {
                 if (typeof valor !== 'string') return valor;
                 
@@ -1541,6 +1586,14 @@
         if (contaFormModal) {
             contaFormModal.addEventListener('submit', function(e) {
                 e.preventDefault();
+
+        // Validação frontend
+        const nomeBanco = document.getElementById('id_nome_banco').value;
+        if (!nomeBanco) {
+            alert('Por favor, selecione um banco');
+            return;
+        }
+
                 const submitBtn = contaFormModal.querySelector('#saveBtn');
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Salvando...';

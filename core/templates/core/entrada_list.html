@@ -928,48 +928,57 @@ function hideModal(modalElement) {
 }
 
 // ================================================================
-// FUNÇÕES DE FORMATAÇÃO MONETÁRIA
+// FUNÇÕES DE FORMATAÇÃO MONETÁRIA CORRIGIDAS
 // ================================================================
 function formatarMoeda(input) {
     if (!input || !input.value) return;
     
-    const selectionStart = input.selectionStart;
+    const cursorPosition = input.selectionStart;
     const originalValue = input.value;
     
     // Remove tudo que não é dígito
     let value = input.value.replace(/\D/g, '');
     
     // Se estiver vazio, define como zero
-    if (value === '') {
+    if (value === '' || value === '0') {
         input.value = '0,00';
         input.setSelectionRange(4, 4);
         return;
     }
     
-    // Remove zeros à esquerda
-    value = value.replace(/^0+/, '');
-    if (value === '') {
-        input.value = '0,00';
-        input.setSelectionRange(4, 4);
-        return;
-    }
+    // Remove zeros à esquerda, mas mantém pelo menos um zero se necessário
+    value = value.replace(/^0+/, '') || '0';
     
-    // Adiciona zeros à esquerda para ter pelo menos 3 dígitos
+    // Garante que temos pelo menos 3 dígitos (para centavos)
     value = value.padStart(3, '0');
     
-    // Separa reais e centavos
+    // Separa reais e centavos (preenchimento da direita para esquerda)
     const reais = value.slice(0, -2);
     const centavos = value.slice(-2);
     
     // Formata os reais com separadores de milhar
-    const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const formattedReais = reais === '0' ? '0' : 
+        parseInt(reais).toLocaleString('pt-BR');
     
     // Atualiza o valor do campo
     input.value = formattedReais + ',' + centavos;
     
-    // Reposiciona o cursor
-    let newCursorPosition = Math.max(0, Math.min(selectionStart, input.value.length));
-    input.setSelectionRange(newCursorPosition, newCursorPosition);
+    // Tenta manter a posição do cursor de forma inteligente
+    const newLength = input.value.length;
+    let newCursorPosition = cursorPosition;
+    
+    // Se o usuário está digitando no final, mantém no final
+    if (cursorPosition >= originalValue.length - 2) {
+        newCursorPosition = newLength;
+    } else {
+        // Ajusta a posição baseada na mudança de comprimento
+        const diff = newLength - originalValue.length;
+        newCursorPosition = Math.max(0, Math.min(newLength, cursorPosition + diff));
+    }
+    
+    setTimeout(() => {
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+    }, 0);
 }
 
 function formatarMoedaBlur(input) {
@@ -982,18 +991,62 @@ function formatarMoedaBlur(input) {
         return;
     }
     
-    value = value.replace(/^0+/, '');
-    if (value === '') {
+    value = value.replace(/^0+/, '') || '0';
+    value = value.padStart(3, '0');
+    
+    const reais = value.slice(0, -2);
+    const centavos = value.slice(-2);
+    const formattedReais = reais === '0' ? '0' : 
+        parseInt(reais).toLocaleString('pt-BR');
+    
+    input.value = formattedReais + ',' + centavos;
+}
+
+// FUNÇÃO ALTERNATIVA MAIS ROBUSTA - RECOMENDADA
+function formatarMoedaDireitaEsquerda(input) {
+    if (!input) return;
+    
+    const cursorPosition = input.selectionStart;
+    let value = input.value.replace(/\D/g, '');
+    
+    // Se vazio ou só zero, define como 0,00
+    if (value === '' || parseInt(value) === 0) {
         input.value = '0,00';
+        input.setSelectionRange(4, 4);
         return;
     }
     
-    value = value.padStart(3, '0');
-    const reais = value.slice(0, -2);
-    const centavos = value.slice(-2);
-    const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    // Remove zeros à esquerda desnecessários
+    value = value.replace(/^0+/, '');
+    if (value === '') {
+        input.value = '0,00';
+        input.setSelectionRange(4, 4);
+        return;
+    }
     
-    input.value = formattedReais + ',' + centavos;
+    // Preenche com zeros à esquerda para garantir 3 dígitos
+    value = value.padStart(3, '0');
+    
+    // Pega os últimos 2 dígitos como centavos
+    const centavos = value.slice(-2);
+    // O restante são os reais
+    const reais = value.slice(0, -2);
+    
+    // Formata reais com separador de milhar
+    let reaisFormatados = '';
+    if (reais) {
+        reaisFormatados = parseInt(reais).toLocaleString('pt-BR');
+    } else {
+        reaisFormatados = '0';
+    }
+    
+    // Monta o valor final
+    input.value = reaisFormatados + ',' + centavos;
+    
+    // Posiciona cursor no final (solução mais simples e confiável)
+    setTimeout(() => {
+        input.setSelectionRange(input.value.length, input.value.length);
+    }, 0);
 }
 
 function converterParaDecimal(valor) {
@@ -1007,7 +1060,6 @@ function converterParaDecimal(valor) {
     
     return parseFloat(decimalValue).toFixed(2);
 }
-
 // ================================================================
 // FUNÇÕES DE CARREGAMENTO
 // ================================================================

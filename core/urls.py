@@ -53,13 +53,16 @@ urlpatterns = [
 
     # Saídas (Despesas)
     path('saidas/', views.saida_list, name='saida_list'),
-    path('saidas/nova/', views.saida_create, name='saida_create'),
-    path('saidas/<int:saida_id>/marcar-pago/', views.MarcarComoPagoView.as_view(), name='marcar_como_pago'),
-    path('saidas/<int:pk>/editar/', views.saida_update, name='saida_update'),
-    path('saidas/<int:pk>/excluir/', views.saida_delete, name='saida_delete'),
-
+    path('saidas/criar/', views.saida_create, name='saida_create'),
+    path('saidas/editar/<int:pk>/', views.saida_update, name='saida_update'),
+    path('saidas/<int:pk>/marcar_pago/', views.marcar_como_pago, name='marcar_como_pago'),
+    path('saidas/excluir/<int:pk>/', views.saida_delete, name='saida_delete'),
+    path('saidas/debug/<int:pk>/', views.debug_saida_update, name='debug_saida_update'),
+    
     # Relatórios e Extratos
     path('extrato/', views.extrato_completo, name='extrato_completo'),
+    path('extrato/modal-selecao/', views.modal_selecao_extrato, name='modal_selecao_extrato'),
+    path('extrato/gerar-pdf/', views.gerar_extrato_bancario_pdf, name='gerar_extrato_pdf'),
     path('saldo/', views.saldo_atual, name='saldo_atual'),
     # Nova rota para a API de insights
       path('api/insights/', views.financial_insights_api, name='financial_insights_api'),
@@ -79,10 +82,12 @@ urlpatterns = [
 
   # Lembretes
 # URLs para Lembretes
+
     path('lembretes/', views.lembrete_list, name='lembrete_list'),
     path('lembretes/criar/', views.lembrete_create, name='lembrete_create'),
     path('lembretes/editar/<int:pk>/', views.lembrete_update, name='lembrete_update'),
     path('lembretes/excluir/<int:pk>/', views.lembrete_delete, name='lembrete_delete'),
+    path('lembretes/toggle/<int:pk>/', views.lembrete_toggle, name='lembrete_toggle'),
     path('lembretes/alternar-status/', views.alternar_status_lembrete, name='alternar_status_lembrete'),
    
     # Operações de Saque
@@ -92,5 +97,12 @@ urlpatterns = [
     path('operacoes-saque/<int:pk>/excluir/', views.operacao_saque_delete, name='operacao_saque_delete'),
 
 
+    #Oraculo Financeiro
+   path('oraculo/', views.oraculo_financeiro, name='oraculo_financeiro'),    
 
+    # APIs para categorias/subcategorias
+    path('api/categorias/', views.api_categorias, name='api_categorias'),
+    path('api/categorias/criar/', views.api_criar_categoria, name='api_criar_categoria'),
+    path('api/subcategorias/<int:categoria_id>/', views.api_subcategorias_por_categoria, name='api_subcategorias'),
+    path('api/subcategorias/criar/', views.api_criar_subcategoria, name='api_criar_subcategoria'),
 ]

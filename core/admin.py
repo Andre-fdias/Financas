@@ -19,7 +19,7 @@ from .models import (
 class ContaBancariaInline(admin.TabularInline):
     model = ContaBancaria
     extra = 1
-    fields = ('nome_banco', 'tipo', 'saldo_atual', 'ativa')
+    fields = ('nome_banco', 'tipo', 'saldo_atual', 'ativa')  # ✅ Correto
     readonly_fields = ('saldo_atual',)
     can_delete = True
 
@@ -62,6 +62,7 @@ class CustomUserAdmin(UserAdmin):
 admin.site.unregister(User)
 admin.site.register(User, CustomUserAdmin)
 
+
 @admin.register(ContaBancaria)
 class ContaBancariaAdmin(admin.ModelAdmin):
     list_display = ('proprietario', 'nome_banco', 'tipo', 'saldo_atual', 'ativa', 'data_criacao')
@@ -74,7 +75,7 @@ class ContaBancariaAdmin(admin.ModelAdmin):
             'fields': ('proprietario', 'nome_banco', 'nome_do_titular', 'tipo', 'ativa')
         }),
         ('Detalhes da Conta', {
-            'fields': ('agencia', 'numero_conta', 'saldo_inicial', 'saldo_atual')
+            'fields': ('agencia', 'numero_conta', 'saldo_atual')  # ✅ CORRIGIDO: saldo_inicial -> saldo_atual
         }),
         ('Informações do Cartão de Crédito', {
             'fields': ('numero_cartao', 'limite_cartao', 'dia_fechamento_fatura', 'dia_vencimento_fatura'),
@@ -83,11 +84,6 @@ class ContaBancariaAdmin(admin.ModelAdmin):
     )
     raw_id_fields = ('proprietario',)
 
-    def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        if not request.user.is_superuser:
-            queryset = queryset.filter(proprietario=request.user)
-        return queryset
 
 @admin.register(Entrada)
 class EntradaAdmin(admin.ModelAdmin):
@@ -117,41 +113,33 @@ class EntradaAdmin(admin.ModelAdmin):
             queryset = queryset.filter(usuario=request.user)
         return queryset
 
-@admin.register(Saida)
+# No admin.py, atualize o list_filter
 class SaidaAdmin(admin.ModelAdmin):
-    list_display = ('usuario', 'valor', 'nome', 'data_vencimento', 'conta_bancaria', 'situacao', 'data_criacao')
-    list_filter = ('situacao', 'data_vencimento', 'conta_bancaria', 'forma_pagamento')
-    search_fields = ('usuario__username', 'nome', 'conta_bancaria__nome_banco')
+    list_display = ['nome', 'valor', 'data_vencimento', 'categoria', 'situacao']
+    list_filter = [
+        'categoria', 
+        'situacao', 
+        'data_vencimento',
+        'tipo_pagamento_detalhe',  # Use este campo em vez de forma_pagamento
+        'recorrente'
+    ]
+    search_fields = ['nome', 'local', 'observacao']
     date_hierarchy = 'data_vencimento'
-    readonly_fields = ('data_criacao', 'data_atualizacao')
-    raw_id_fields = ('usuario', 'conta_bancaria')
-    list_editable = ('situacao',)
     
-    fieldsets = (
-        (None, {
-            'fields': ('usuario', 'valor', 'nome')
-        }),
-        ('Detalhes da Saída', {
-            'fields': ('data_lancamento', 'data_vencimento', 'conta_bancaria', 'situacao', 'forma_pagamento')
-        }),
-        ('Categorização', {
-            'fields': ('categoria', 'subcategoria', 'local')
-        }),
-        ('Parcelamento', {
-            'fields': ('quantidade_parcelas', 'valor_parcela', 'tipo_pagamento_detalhe', 'recorrente'),
-            'classes': ('collapse',)
-        }),
-        ('Observações', {
-            'fields': ('observacao',),
-            'classes': ('collapse',)
-        }),
-    )
-
+    # Filtro por usuário
     def get_queryset(self, request):
-        queryset = super().get_queryset(request)
-        if not request.user.is_superuser:
-            queryset = queryset.filter(usuario=request.user)
-        return queryset
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(usuario=request.user)
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.usuario_id:
+            obj.usuario = request.user
+        super().save_model(request, obj, form, change)
+
+admin.site.register(Saida, SaidaAdmin)
+
 
 @admin.register(Transferencia)
 class TransferenciaAdmin(admin.ModelAdmin):
