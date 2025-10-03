@@ -148,6 +148,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Adicione no final do arquivo settings.py
+LOGIN_URL = 'core:login'
 LOGIN_REDIRECT_URL = 'core:dashboard'
 
 # Email settings
