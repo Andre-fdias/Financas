@@ -1,0 +1,1393 @@
+{% extends 'core/base.html' %}
+{% load currency_filters %}
+{% load widget_tweaks %}
+{% load custom_filters %}
+
+{% block title %}Operações de Saque{% endblock %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js CDN para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Estilos base do painel e outros elementos */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); /* Fundo mais suave */
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        @supports not (backdrop-filter: blur(12px)) {
+            .glass-panel {
+                background: rgba(255, 255, 255, 0.95);
+            }
+        }
+        
+        .valor-saida {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+        
+        .valor-entrada {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .dark .valor-saida {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        }
+        
+        .dark .valor-entrada {
+            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+        }
+
+        .table-row {
+            transition: all 0.2s ease;
+        }
+        
+        .table-row:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+        }
+
+        /* Estilos do Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Estilos do Formulário dentro do Modal */
+        .form-container-modal {
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .form-input {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            outline: none;
+            transform: translateY(-1px);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+        
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 6px;
+            padding-left: 4px;
+            display: none;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3), 0 2px 4px -1px rgba(99, 102, 241, 0.2);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4), 0 4px 6px -2px rgba(99, 102, 241, 0.3);
+        }
+        
+        .cancel-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-group {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        
+        .hidden-field {
+            display: none;
+        }
+        
+        .success-message {
+            display: none;
+            background-color: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+        }
+
+        .operacao-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .filter-pill {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .filter-pill:hover {
+            transform: scale(1.05);
+        }
+        
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .flex.justify-end.space-x-2 button {
+            transition: all 0.2s ease;
+        }
+
+        .flex.justify-end.space-x-2 button:hover {
+            transform: scale(1.1);
+        }
+
+        .flex.justify-end.space-x-2 button:active {
+            transform: scale(0.95);
+        }
+        
+        /* Estilos para Notificações */
+        .notification {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border-left: 4px solid;
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+            transform: translateX(100%);
+            opacity: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        
+        .notification.hide {
+            animation: slideOut 0.3s ease-in;
+        }
+        
+        .notification.success {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+        
+        .notification.error {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+        }
+        
+        .notification.warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+        }
+        
+        .notification.info {
+            border-left-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+        
+        .notification-icon {
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        
+        .notification.success .notification-icon {
+            color: #10b981;
+        }
+        
+        .notification.error .notification-icon {
+            color: #ef4444;
+        }
+        
+        .notification.warning .notification-icon {
+            color: #f59e0b;
+        }
+        
+        .notification.info .notification-icon {
+            color: #3b82f6;
+        }
+        
+        .notification-content {
+            flex: 1;
+        }
+        
+        .notification-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .notification-message {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .notification-close {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .notification-close:hover {
+            color: #6b7280;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Animações */
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        
+        /* Dark mode support */
+        .dark .notification {
+            background: #1f2937;
+        }
+        
+        .dark .notification.success {
+            background: linear-gradient(135deg, #052e16 0%, #064e3b 100%);
+        }
+        
+        .dark .notification.error {
+            background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+        }
+        
+        .dark .notification.warning {
+            background: linear-gradient(135deg, #431407 0%, #7c2d12 100%);
+        }
+        
+        .dark .notification.info {
+            background: linear-gradient(135deg, #172554 0%, #1e40af 100%);
+        }
+        
+        .dark .notification-message {
+            color: #d1d5db;
+        }
+        /* No seu CSS existente, adicione: */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-overlay:not(.hidden) .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Garantir que o modal fique acima de tudo */
+.modal-overlay {
+    z-index: 9999;
+}
+
+.modal-content {
+    z-index: 10000;
+}
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
+    <!-- Cabeçalho e Botão -->
+    <div class="glass-panel p-6 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    <i class="fas fa-hand-holding-dollar mr-3 text-purple-600"></i>
+                    Operações de Saque
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 font-semibold">
+                    Gerencie suas operações de saque e visualize seus ganhos
+                </p>
+            </div>
+            <button id="openOperacaoModalBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg inline-flex items-center shadow-md hover:shadow-lg transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                Nova Operação
+            </button>
+        </div>
+    </div>
+
+    <!-- Sistema de Notificações Personalizadas -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
+
+    <!-- Modal de Confirmação Personalizado -->
+    <div id="customConfirmModal" class="modal-overlay hidden">
+        <div class="modal-content max-w-md">
+            <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                        <i class="fas fa-question-circle text-blue-600 dark:text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mt-4 dark:text-white" id="confirmModalTitle">Confirmação</h3>
+                    <p class="text-sm text-gray-500 mt-2 dark:text-gray-400" id="confirmModalMessage"></p>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button type="button" id="confirmModalCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="button" id="confirmModalOk" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 stats-grid">
+        <!-- Card Total Saques -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-purple-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Total Saques</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ total_saques|br_currency }}</p>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900 dark:text-purple-200">
+                    <i class="fas fa-hand-holding-usd text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center">
+                <span class="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-1 rounded-full dark:bg-purple-900 dark:text-purple-200">
+                    {{ operacoes|length }} operações
+                </span>
+            </div>
+        </div>
+
+        <!-- Card Valor Médio Saque -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Valor Médio por Saque</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ valor_medio_saque|br_currency }}</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                    <i class="fas fa-chart-line text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full dark:bg-blue-900 dark:text-blue-200">
+                    Baseado em {{ operacoes|length }} operações
+                </span>
+            </div>
+        </div>
+
+        <!-- Card Valor Liberado Total -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Total Liberado</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ total_liberado|br_currency }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <i class="fas fa-money-bill-wave text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-green-100 text-green-800 px-2 py-1 rounded-full dark:bg-green-900 dark:text-green-200">
+                    {{ percentual_liberado }}% do valor total
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel de Filtros -->
+    <div class="glass-panel p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
+            <i class="fas fa-filter mr-3 text-indigo-600"></i>
+            Filtrar Operações
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Ano Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Ano
+                </label>
+                <select onchange="updateFilters()" id="anoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os anos</option>
+                    {% for ano in anos_disponiveis %}
+                    <option value="{{ ano }}" {% if ano_selecionado == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Mês Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Mês
+                </label>
+                <select onchange="updateFilters()" id="mesFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os meses</option>                    
+                    {% for mes_num, mes_nome in meses %}
+                    <option value="{{ mes_num|stringformat:'02d' }}" {% if mes_selecionado == mes_num|stringformat:'02d' %}selected{% endif %}>{{ mes_nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Tipo Operação Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-info-circle mr-2"></i>Tipo de Operação
+                </label>
+                <select onchange="updateFilters()" id="tipoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os tipos</option>
+                    {% for code, name in TIPO_OPERACAO_CHOICES %}
+                    <option value="{{ code }}" {% if tipo_selecionado == code %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Active Filters Badges -->
+        <div class="flex flex-wrap gap-2 mt-4">
+            {% if ano_selecionado and ano_selecionado != '' %}
+            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-yellow-900 dark:text-yellow-200 filter-pill">
+                Ano: {{ ano_selecionado }}
+                <button onclick="removeFilter('ano')" class="ml-2 text-yellow-600 hover:text-yellow-800">×</button>
+            </span>
+            {% endif %}
+            
+            {% if mes_selecionado and mes_selecionado != '' %}
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
+                Mês: {{ meses_display_map|get_item:mes_selecionado }}
+                <button onclick="removeFilter('mes')" class="ml-2 text-green-600 hover:text-green-800">×</button>
+            </span>
+            {% endif %}
+
+            {% if tipo_selecionado and tipo_selecionado != '' %}
+            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-purple-900 dark:text-purple-200 filter-pill">
+                Tipo: {{ tipo_display_map|get_item:tipo_selecionado }}
+                <button onclick="removeFilter('tipo')" class="ml-2 text-purple-600 hover:text-purple-800">×</button>
+            </span>
+            {% endif %}
+
+            {% if ano_selecionado or mes_selecionado or tipo_selecionado %}
+            <button onclick="clearFilters()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition-colors flex items-center">
+                <i class="fas fa-eraser mr-2"></i>Limpar Todos
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabela de Operações de Saque -->
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
+                Lista de Operações de Saque
+                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                    {{ operacoes|length }} registros
+                </span>
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto operacao-table-container">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-indigo-50 dark:bg-indigo-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Banco</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Tipo</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Data</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Valor do Saque</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Valor Liberado</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">IOF</th>
+                        <th scope="col" class="relative px-6 py-4 text-right text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {% for operacao in operacoes %}
+                    <tr class="table-row hover:bg-gray-50 transition-colors duration-150 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="font-medium text-gray-900 dark:text-white">{{ operacao.nome_banco }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ operacao.get_tipo_operacao_display }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ operacao.data_contratacao|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                            <span class="valor-saida">{{ operacao.valor_saque|br_currency }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                            <span class="valor-entrada">{{ operacao.valor_liberado_cliente|br_currency }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ operacao.valor_iof|br_currency }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="flex justify-end space-x-2">
+                                <button class="edit-operacao-btn text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
+                                        data-operacao-id="{{ operacao.pk }}"
+                                        title="Editar Operação">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                </button>
+                                
+                                <button class="delete-operacao-btn text-red-600 hover:text-red-800 transition-colors p-2 rounded-lg hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                                        data-operacao-id="{{ operacao.pk }}"
+                                        data-operacao-banco="{{ operacao.nome_banco }}"
+                                        title="Excluir Operação">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <div class="text-gray-400 dark:text-gray-500">
+                                <i class="fas fa-hand-holding-dollar text-4xl mb-4"></i>
+                                <p class="text-lg font-medium">Nenhuma operação de saque encontrada</p>
+                                <p class="text-sm">Tente ajustar os filtros ou adicione novas operações</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="loading-spinner hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p class="text-center mt-4 text-gray-600">Processando...</p>
+    </div>
+</div>
+
+<!-- No seu template, atualize a parte do modal -->
+<div id="operacaoModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="form-container-modal w-full p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200" id="modalTitle">Nova Operação de Saque</h2>
+                <button type="button" id="closeOperacaoModalBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form method="post" id="operacaoFormModal" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" id="operacao_id" name="operacao_id">
+
+                <!-- Estrutura principal com uma única grade de 2 colunas para todos os campos -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Coluna 1 -->
+                    <div class="space-y-6">
+                        <div class="input-group">
+                            <label for="id_nome_banco" class="form-label flex items-center">
+                                <i class="fas fa-university mr-2 text-blue-500"></i>
+                                Banco <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.nome_banco class="form-input" id="id_nome_banco" required="required" %}
+                            <p class="form-error" id="nome_banco_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_tipo_operacao" class="form-label flex items-center">
+                                <i class="fas fa-tags mr-2 text-orange-500"></i>
+                                Tipo de Operação <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                {% render_field form.tipo_operacao class="form-input" id="id_tipo_operacao" required="required" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="tipo_operacao_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_data_contratacao" class="form-label flex items-center">
+                                <i class="fas fa-calendar-alt mr-2 text-purple-500"></i>
+                                Data de Contratação <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.data_contratacao class="form-input" id="id_data_contratacao" required="required" %}
+                            <p class="form-error" id="data_contratacao_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_valor_saque" class="form-label flex items-center">
+                                <i class="fas fa-hand-holding-usd mr-2 text-red-500"></i>
+                                Valor do Saque <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.valor_saque class="form-input" id="id_valor_saque" placeholder="0,00" required="required" %}
+                            <p class="form-error" id="valor_saque_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_valor_liberado_cliente" class="form-label flex items-center">
+                                <i class="fas fa-money-check-alt mr-2 text-teal-500"></i>
+                                Valor Liberado ao Cliente <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.valor_liberado_cliente class="form-input" id="id_valor_liberado_cliente" placeholder="0,00" required="required" %}
+                            <p class="form-error" id="valor_liberado_cliente_error"></p>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2 -->
+                    <div class="space-y-6">
+                        <div class="input-group">
+                            <label for="id_valor_financiado" class="form-label flex items-center">
+                                <i class="fas fa-money-bill-alt mr-2 text-green-500"></i>
+                                Valor Financiado
+                            </label>
+                            {% render_field form.valor_financiado class="form-input" id="id_valor_financiado" placeholder="0,00" %}
+                            <p class="form-error" id="valor_financiado_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_valor_iof" class="form-label flex items-center">
+                                <i class="fas fa-file-invoice-dollar mr-2 text-yellow-500"></i>
+                                Valor do IOF
+                            </label>
+                            {% render_field form.valor_iof class="form-input" id="id_valor_iof" placeholder="0,00" %}
+                            <p class="form-error" id="valor_iof_error"></p>
+                        </div>
+                        <!-- Agrupamento de parcelas lado a lado dentro da segunda coluna -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label for="id_quantidade_parcelas" class="form-label flex items-center">
+                                    <i class="fas fa-list-ol mr-2 text-indigo-500"></i>
+                                    Quant. Parcelas
+                                </label>
+                                {% render_field form.quantidade_parcelas class="form-input" id="id_quantidade_parcelas" placeholder="Ex: 12" type="number" min="1" %}
+                                <p class="form-error" id="quantidade_parcelas_error"></p>
+                            </div>
+                            <div class="input-group">
+                                <label for="id_valor_parcela" class="form-label flex items-center">
+                                    <i class="fas fa-credit-card mr-2 text-pink-500"></i>
+                                    Valor Parcela
+                                </label>
+                                {% render_field form.valor_parcela class="form-input" id="id_valor_parcela" placeholder="0,00" %}
+                                <p class="form-error" id="valor_parcela_error"></p>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_data_inicio_parcelas" class="form-label flex items-center">
+                                <i class="fas fa-calendar-plus mr-2 text-blue-500"></i>
+                                Início Parcelas
+                            </label>
+                            {% render_field form.data_inicio_parcelas class="form-input" id="id_data_inicio_parcelas" %}
+                            <p class="form-error" id="data_inicio_parcelas_error"></p>
+                        </div>
+                        <div class="input-group">
+                            <label for="id_data_termino_parcelas" class="form-label flex items-center">
+                                <i class="fas fa-calendar-check mr-2 text-green-500"></i>
+                                Término Parcelas
+                            </label>
+                            {% render_field form.data_termino_parcelas class="form-input" id="id_data_termino_parcelas" %}
+                            <p class="form-error" id="data_termino_parcelas_error"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200 mt-8">
+                    <button type="button" id="cancelOperacaoBtn" class="cancel-btn px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Cancelar
+                    </button>
+                    <button type="submit" id="submitOperacaoBtn" class="submit-btn px-6 py-3 text-white rounded-lg font-medium">
+                        <i class="fas fa-save mr-2"></i>Salvar Operação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    console.log('JavaScript carregado - Operações de Saque');
+
+    // ========== FUNÇÕES PRINCIPAIS ==========
+    
+    // Constantes e variáveis globais
+    const CSRF_TOKEN = '{{ csrf_token }}';
+    const API_URLS = {
+        create: "{% url 'core:operacao_saque_create' %}",
+        detail: "{% url 'core:operacao_saque_detail' 0 %}",
+        delete: "{% url 'core:operacao_saque_delete' 0 %}",
+    };
+
+    // Elementos DOM
+    let modal, openModalBtn, closeModalBtn, cancelBtn, form, modalTitle, submitBtn;
+    let operacaoIdField, loadingSpinner, customConfirmModal, confirmModalTitle;
+    let confirmModalMessage, confirmModalCancel, confirmModalOk, notificationContainer;
+
+    // Função para inicializar elementos DOM
+    function initializeDOMElements() {
+        modal = document.getElementById('operacaoModal');
+        openModalBtn = document.getElementById('openOperacaoModalBtn');
+        closeModalBtn = document.getElementById('closeOperacaoModalBtn');
+        cancelBtn = document.getElementById('cancelOperacaoBtn');
+        form = document.getElementById('operacaoFormModal');
+        modalTitle = document.getElementById('modalTitle');
+        submitBtn = document.getElementById('submitOperacaoBtn');
+        operacaoIdField = document.getElementById('operacao_id');
+        loadingSpinner = document.getElementById('loadingSpinner');
+        customConfirmModal = document.getElementById('customConfirmModal');
+        confirmModalTitle = document.getElementById('confirmModalTitle');
+        confirmModalMessage = document.getElementById('confirmModalMessage');
+        confirmModalCancel = document.getElementById('confirmModalCancel');
+        confirmModalOk = document.getElementById('confirmModalOk');
+        notificationContainer = document.getElementById('notificationContainer');
+    }
+
+    // Função para formatar valores monetários
+    function formatCurrency(value) {
+        if (!value && value !== 0) return '';
+        
+        if (typeof value === 'string' && value.includes('R$')) {
+            return value;
+        }
+        
+        let numericValue;
+        if (typeof value === 'string') {
+            numericValue = parseCurrency(value);
+        } else {
+            numericValue = parseFloat(value);
+        }
+        
+        if (isNaN(numericValue)) return '';
+        
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(numericValue);
+    }
+
+    // Função para converter valor formatado para número
+    function parseCurrency(value) {
+        if (!value) return 0;
+        
+        if (typeof value === 'number') {
+            return value;
+        }
+        
+        const cleanValue = value
+            .replace('R$', '')
+            .replace(/\./g, '')
+            .replace(',', '.')
+            .replace(/\s/g, '')
+            .trim();
+            
+        const parsedValue = parseFloat(cleanValue);
+        return isNaN(parsedValue) ? 0 : parsedValue;
+    }
+
+    // Configurar máscaras de entrada para campos monetários
+    function setupCurrencyInputs() {
+        const currencyFields = [
+            'id_valor_saque',
+            'id_valor_financiado',
+            'id_valor_iof',
+            'id_valor_liberado_cliente',
+            'id_valor_parcela'
+        ];
+        
+        currencyFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                // Formatar valor inicial se existir
+                if (field.value && !isNaN(parseFloat(field.value))) {
+                    field.value = formatCurrency(field.value);
+                }
+                
+                // Adicionar evento de foco
+                field.addEventListener('focus', function() {
+                    const value = parseCurrency(this.value);
+                    this.value = value === 0 ? '' : value.toFixed(2).replace('.', ',');
+                });
+                
+                // Adicionar evento de desfoque
+                field.addEventListener('blur', function() {
+                    if (this.value) {
+                        const value = parseCurrency(this.value);
+                        this.value = formatCurrency(value);
+                    }
+                });
+                
+                // Adicionar validação em tempo real
+                field.addEventListener('input', function() {
+                    // Permite apenas números e vírgula
+                    this.value = this.value.replace(/[^\d,]/g, '');
+                    
+                    // Permite apenas uma vírgula
+                    const commaCount = (this.value.match(/,/g) || []).length;
+                    if (commaCount > 1) {
+                        this.value = this.value.replace(/,+$/, '');
+                    }
+                });
+            }
+        });
+    }
+
+    // Função para melhorar a experiência de digitação monetária
+    function enhanceCurrencyInputs() {
+        const currencyInputs = document.querySelectorAll('input[type="text"][id*="valor"]');
+        
+        currencyInputs.forEach(input => {
+            input.setAttribute('title', 'Digite o valor (ex: 1500,50)');
+        });
+    }
+
+    // Limpar formulário e erros
+    function clearFormAndErrors() {
+        if (form) form.reset();
+        if (operacaoIdField) operacaoIdField.value = '';
+        
+        // Limpar mensagens de erro
+        const errorElements = document.querySelectorAll('.form-error');
+        errorElements.forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
+        });
+        
+        // Limpar valores monetários explicitamente
+        const currencyFields = [
+            'id_valor_saque',
+            'id_valor_financiado', 
+            'id_valor_iof',
+            'id_valor_liberado_cliente',
+            'id_valor_parcela'
+        ];
+        
+        currencyFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.value = '';
+            }
+        });
+    }
+
+    // Função para mostrar notificações
+    function showNotification(type, title, message, duration = 3000) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        
+        let iconClass = '';
+        switch(type) {
+            case 'success': iconClass = 'fas fa-check-circle'; break;
+            case 'error': iconClass = 'fas fa-exclamation-circle'; break;
+            case 'warning': iconClass = 'fas fa-exclamation-triangle'; break;
+            case 'info': iconClass = 'fas fa-info-circle'; break;
+        }
+        
+        notification.innerHTML = `
+            <div class="notification-icon"><i class="${iconClass}"></i></div>
+            <div class="notification-content">
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close"><i class="fas fa-times"></i></button>
+        `;
+        
+        notificationContainer.appendChild(notification);
+        notification.offsetHeight;
+        notification.classList.add('show');
+        
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => {
+            notification.classList.remove('show');
+            notification.classList.add('hide');
+            setTimeout(() => {
+                if (notification.parentNode === notificationContainer) {
+                    notificationContainer.removeChild(notification);
+                }
+            }, 300);
+        });
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                if (notification.parentNode === notificationContainer) {
+                    notification.classList.remove('show');
+                    notification.classList.add('hide');
+                    setTimeout(() => {
+                        if (notification.parentNode === notificationContainer) {
+                            notificationContainer.removeChild(notification);
+                        }
+                    }, 300);
+                }
+            }, duration);
+        }
+        
+        return notification;
+    }
+
+    // Função para mostrar modal de confirmação personalizado
+    function showConfirmModal(title, message) {
+        return new Promise((resolve) => {
+            confirmModalTitle.textContent = title;
+            confirmModalMessage.textContent = message;
+            customConfirmModal.classList.remove('hidden');
+            
+            const handleConfirm = () => {
+                customConfirmModal.classList.add('hidden');
+                resolve(true);
+                cleanUpEvents();
+            };
+            
+            const handleCancel = () => {
+                customConfirmModal.classList.add('hidden');
+                resolve(false);
+                cleanUpEvents();
+            };
+            
+            const cleanUpEvents = () => {
+                confirmModalOk.removeEventListener('click', handleConfirm);
+                confirmModalCancel.removeEventListener('click', handleCancel);
+            };
+            
+            confirmModalOk.addEventListener('click', handleConfirm);
+            confirmModalCancel.addEventListener('click', handleCancel);
+        });
+    }
+
+    // Função para mostrar/ocultar loading
+    function toggleLoading(show) {
+        if (show) {
+            loadingSpinner.classList.remove('hidden');
+        } else {
+            loadingSpinner.classList.add('hidden');
+        }
+    }
+
+    // Exibir erros de formulário
+    function displayFormErrors(errors) {
+        const errorElements = document.querySelectorAll('.form-error');
+        errorElements.forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
+        });
+        
+        for (const field in errors) {
+            const errorElement = document.getElementById(`${field}_error`);
+            if (errorElement) {
+                errorElement.textContent = errors[field].join(', ');
+                errorElement.style.display = 'block';
+            }
+        }
+    }
+
+    // Abrir modal para adicionar/editar
+    function openOperacaoModal(operacaoId = null) {
+        clearFormAndErrors();
+        
+        if (operacaoId) {
+            modalTitle.textContent = 'Editar Operação de Saque';
+            submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Atualizar Operação';
+            operacaoIdField.value = operacaoId;
+            
+            toggleLoading(true);
+            fetch(API_URLS.detail.replace('0', operacaoId))
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('id_nome_banco').value = data.operacao.nome_banco;
+                        document.getElementById('id_tipo_operacao').value = data.operacao.tipo_operacao;
+                        document.getElementById('id_data_contratacao').value = data.operacao.data_contratacao;
+                        document.getElementById('id_valor_saque').value = formatCurrency(data.operacao.valor_saque);
+                        document.getElementById('id_valor_financiado').value = formatCurrency(data.operacao.valor_financiado || '');
+                        document.getElementById('id_valor_iof').value = formatCurrency(data.operacao.valor_iof || '');
+                        document.getElementById('id_valor_liberado_cliente').value = formatCurrency(data.operacao.valor_liberado_cliente);
+                        document.getElementById('id_quantidade_parcelas').value = data.operacao.quantidade_parcelas || '';
+                        document.getElementById('id_valor_parcela').value = formatCurrency(data.operacao.valor_parcela || '');
+                        document.getElementById('id_data_inicio_parcelas').value = data.operacao.data_inicio_parcelas || '';
+                        document.getElementById('id_data_termino_parcelas').value = data.operacao.data_termino_parcelas || '';
+                    } else {
+                        showNotification('error', 'Erro', 'Não foi possível carregar os dados da operação.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar operação:', error);
+                    showNotification('error', 'Erro', 'Ocorreu um erro ao carregar os dados da operação.');
+                })
+                .finally(() => {
+                    toggleLoading(false);
+                });
+        } else {
+            modalTitle.textContent = 'Nova Operação de Saque';
+            submitBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Salvar Operação';
+        }
+        
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Fechar modal
+    function closeOperacaoModal() {
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+        clearFormAndErrors();
+    }
+
+    // Enviar formulário
+    function submitOperacaoForm(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const operacaoId = operacaoIdField.value;
+        const url = operacaoId ? API_URLS.update.replace('0', operacaoId) : API_URLS.create;
+        
+        const currencyFields = ['valor_saque', 'valor_financiado', 'valor_iof', 'valor_liberado_cliente', 'valor_parcela'];
+        currencyFields.forEach(field => {
+            const value = formData.get(field);
+            if (value) {
+                formData.set(field, parseCurrency(value).toFixed(2));
+            }
+        });
+        
+        if (operacaoId) {
+            formData.append('operacao_id', operacaoId);
+        }
+        
+        toggleLoading(true);
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processando...';
+        
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('success', 'Sucesso', data.message || 'Operação salva com sucesso!');
+                closeOperacaoModal();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                displayFormErrors(data.errors);
+                showNotification('error', 'Erro', 'Por favor, corrija os erros no formulário.');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao salvar operação:', error);
+            showNotification('error', 'Erro', 'Ocorreu um erro ao salvar a operação. Tente novamente.');
+        })
+        .finally(() => {
+            toggleLoading(false);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = operacaoId ? 
+                '<i class="fas fa-save mr-2"></i>Atualizar Operação' : 
+                '<i class="fas fa-save mr-2"></i>Salvar Operação';
+        });
+    }
+
+    // Excluir operação
+    function deleteOperacao(operacaoId, operacaoBanco) {
+        showConfirmModal(
+            'Confirmar Exclusão', 
+            `Tem certeza que deseja excluir a operação do banco ${operacaoBanco}? Esta ação não pode ser desfeita.`
+        ).then(confirmed => {
+            if (confirmed) {
+                toggleLoading(true);
+                
+                fetch(API_URLS.delete.replace('0', operacaoId), {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': CSRF_TOKEN,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('success', 'Sucesso', data.message || 'Operação excluída com sucesso!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showNotification('error', 'Erro', data.message || 'Não foi possível excluir a operação.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao excluir operação:', error);
+                    showNotification('error', 'Erro', 'Ocorreu um erro ao excluir a operação. Tente novamente.');
+                })
+                .finally(() => {
+                    toggleLoading(false);
+                });
+            }
+        });
+    }
+
+    // Adicione esta função para calcular automaticamente o término das parcelas
+    function setupParcelasCalculation() {
+        const quantidadeInput = document.getElementById('id_quantidade_parcelas');
+        const inicioInput = document.getElementById('id_data_inicio_parcelas');
+        const terminoInput = document.getElementById('id_data_termino_parcelas');
+        
+        function calcularTermino() {
+            if (quantidadeInput && quantidadeInput.value && inicioInput && inicioInput.value) {
+                const quantidade = parseInt(quantidadeInput.value);
+                const inicioDate = new Date(inicioInput.value);
+                
+                if (!isNaN(quantidade) && !isNaN(inicioDate.getTime())) {
+                    const terminoDate = new Date(inicioDate);
+                    terminoDate.setMonth(terminoDate.getMonth() + quantidade);
+                    const terminoStr = terminoDate.toISOString().split('T')[0];
+                    if (terminoInput) terminoInput.value = terminoStr;
+                }
+            }
+        }
+        
+        if (quantidadeInput) quantidadeInput.addEventListener('change', calcularTermino);
+        if (inicioInput) inicioInput.addEventListener('change', calcularTermino);
+    }
+
+    // Funções para filtros
+    function updateFilters() {
+        const ano = document.getElementById('anoFilter')?.value || '';
+        const mes = document.getElementById('mesFilter')?.value || '';
+        const tipo = document.getElementById('tipoFilter')?.value || '';
+        
+        const params = new URLSearchParams();
+        if (ano) params.append('ano', ano);
+        if (mes) params.append('mes', mes);
+        if (tipo) params.append('tipo', tipo);
+        
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    }
+
+    function removeFilter(filterType) {
+        const params = new URLSearchParams(window.location.search);
+        params.delete(filterType);
+        window.location.href = `${window.location.pathname}?${params.toString()}`;
+    }
+
+    function clearFilters() {
+        window.location.href = window.location.pathname;
+    }
+
+    // ========== INICIALIZAÇÃO ==========
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM carregado - Inicializando operações de saque');
+        
+        // Inicializar elementos DOM
+        initializeDOMElements();
+        
+        // Configurar máscaras de entrada
+        setupCurrencyInputs();
+        enhanceCurrencyInputs();
+        setupParcelasCalculation();
+        
+        // Event Listeners
+        if (openModalBtn) {
+            openModalBtn.addEventListener('click', () => openOperacaoModal());
+        }
+        
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', closeOperacaoModal);
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', closeOperacaoModal);
+        }
+        
+        if (form) {
+            form.addEventListener('submit', submitOperacaoForm);
+        }
+        
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeOperacaoModal();
+                }
+            });
+        }
+        
+        // Event Listeners para botões de edição e exclusão
+        document.querySelectorAll('.edit-operacao-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const operacaoId = btn.getAttribute('data-operacao-id');
+                openOperacaoModal(operacaoId);
+            });
+        });
+        
+        document.querySelectorAll('.delete-operacao-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const operacaoId = btn.getAttribute('data-operacao-id');
+                const operacaoBanco = btn.getAttribute('data-operacao-banco');
+                deleteOperacao(operacaoId, operacaoBanco);
+            });
+        });
+        
+        // Fechar modal com a tecla ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+                closeOperacaoModal();
+            }
+        });
+        
+        console.log('Event listeners configurados');
+    });
+
+</script>
+{% endblock %}

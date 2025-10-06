@@ -1,0 +1,1100 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Lembretes{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <style>
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+
+    @supports not (backdrop-filter: blur(12px)) {
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+        }
+    }
+    
+    .stats-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .lembrete-card {
+        transition: all 0.3s ease;
+        border-left: 4px solid;
+    }
+    
+    .lembrete-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+    
+    .lembrete-urgente {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.1) 100%);
+    }
+    
+    .lembrete-proximo {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(245, 158, 11, 0.1) 100%);
+    }
+    
+    .lembrete-normal {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.1) 100%);
+    }
+    
+    .lembrete-concluido {
+        border-left-color: #6b7280;
+        background: linear-gradient(135deg, rgba(107, 114, 128, 0.05) 0%, rgba(107, 114, 128, 0.1) 100%);
+        opacity: 0.7;
+    }
+    
+    .badge-urgente {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .badge-proximo {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .badge-normal {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .badge-concluido {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+    }
+    
+    .add-btn {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        transition: all 0.3s ease;
+    }
+    
+    .add-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+    }
+    
+    .filter-pill {
+        transition: all 0.3s ease;
+    }
+    
+    .filter-pill:hover {
+        transform: scale(1.05);
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    
+    .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .modal-content {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+        transform: translateY(-20px);
+        opacity: 0;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        max-width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        width: 500px;
+    }
+    
+    .modal-overlay.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    
+    .form-container {
+        background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        backdrop-filter: blur(10px);
+        margin: 0 auto;
+    }
+    
+    .form-input {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        width: 100%;
+    }
+    
+    .form-input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        outline: none;
+        transform: translateY(-1px);
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        display: block;
+        font-size: 0.95rem;
+    }
+    
+    .form-error {
+        color: #ef4444;
+        font-size: 0.875rem;
+        margin-top: 6px;
+        padding-left: 4px;
+        display: none;
+    }
+    
+    .submit-btn {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3), 0 2px 4px -1px rgba(99, 102, 241, 0.2);
+    }
+    
+    .submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4), 0 4px 6px -2px rgba(99, 102, 241, 0.3);
+    }
+    
+    .cancel-btn {
+        transition: all 0.3s ease;
+    }
+    
+    .cancel-btn:hover {
+        background-color: #f8fafc;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    .input-group {
+        position: relative;
+        margin-bottom: 1.25rem;
+    }
+    
+    .checkbox-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0.5rem;
+        border-radius: 12px;
+        background-color: #f9fafb;
+        transition: all 0.3s ease;
+    }
+    
+    .checkbox-container:hover {
+        background-color: #f3f4f6;
+    }
+    
+    .checkbox-input {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 2px solid #d1d5db;
+        appearance: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+    }
+    
+    .checkbox-input:checked {
+        background-color: #6366f1;
+        border-color: #6366f1;
+    }
+    
+    .checkbox-input:checked::after {
+        content: "✓";
+        position: absolute;
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    
+    .success-message {
+        display: none;
+        background-color: #10b981;
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-top: 1rem;
+        text-align: center;
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1001;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #6b7280;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+    
+    .action-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .action-btn:hover {
+        transform: scale(1.1);
+    }
+    
+    .dark .glass-panel {
+        background: rgba(31, 41, 55, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .dark .form-container {
+        background: linear-gradient(145deg, #1f2937 0%, #111827 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .dark .form-input {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+    
+    .dark .form-input:focus {
+        border-color: #6366f1;
+    }
+    
+    .dark .form-label {
+        color: #d1d5db;
+    }
+    
+    .dark .checkbox-container {
+        background-color: #374151;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
+    <!-- Header Section -->
+    <div class="glass-panel p-6 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    <i class="fas fa-bell mr-3 text-indigo-600"></i>
+                    Meus Lembretes
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 font-semibold">
+                    Organize suas tarefas e compromissos importantes
+                </p>
+            </div>
+            
+            <div class="flex flex-wrap gap-3">
+                <button id="openLembreteModalBtn" class="add-btn px-6 py-3 text-white rounded-lg font-semibold flex items-center gap-2">
+                    <i class="fas fa-plus-circle"></i>
+                    Novo Lembrete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 stats-grid">
+        <!-- Total Card -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-list text-blue-500 mr-2"></i>
+                        Total de Lembretes
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {{ total_lembretes }}
+                    </p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                    <i class="fas fa-bell text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pendentes Card -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-yellow-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-clock text-yellow-500 mr-2"></i>
+                        Lembretes Pendentes
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {{ lembretes_pendentes }}
+                    </p>
+                    <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+                        {{ percentual_pendentes }}% do total
+                    </p>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-full text-yellow-600 dark:bg-yellow-900 dark:text-yellow-200">
+                    <i class="fas fa-clock text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Concluídos Card -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                        Lembretes Concluídos
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {{ lembretes_concluidos }}
+                    </p>
+                    <p class="text-sm text-green-600 dark:text-green-400 mt-2">
+                        {{ percentual_concluidos }}% do total
+                    </p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <i class="fas fa-check text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Urgentes Card -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-red-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                        Lembretes Urgentes
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {{ lembretes_urgentes }}
+                    </p>
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-2">
+                        {{ lembretes_urgentes }} próximos de vencer
+                    </p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-full text-red-600 dark:bg-red-900 dark:text-red-200">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="glass-panel p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
+            <i class="fas fa-filter mr-3 text-indigo-600"></i>
+            Filtrar Lembretes
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <!-- Status Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-circle mr-2"></i>Status
+                </label>
+                <select onchange="updateFilters()" id="statusFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os status</option>
+                    <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Pendentes</option>
+                    <option value="concluido" {% if status_filtro == 'concluido' %}selected{% endif %}>Concluídos</option>
+                </select>
+            </div>
+
+            <!-- Urgência Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-clock mr-2"></i>Urgência
+                </label>
+                <select onchange="updateFilters()" id="urgenciaFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todas as urgências</option>
+                    <option value="urgente" {% if urgencia_filtro == 'urgente' %}selected{% endif %}>Urgentes</option>
+                    <option value="proximo" {% if urgencia_filtro == 'proximo' %}selected{% endif %}>Próximos</option>
+                    <option value="normal" {% if urgencia_filtro == 'normal' %}selected{% endif %}>Normais</option>
+                </select>
+            </div>
+
+            <!-- Order Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-sort mr-2"></i>Ordenar por
+                </label>
+                <select onchange="updateFilters()" id="orderFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="data_limite" {% if order_filtro == 'data_limite' %}selected{% endif %}>Data Limite</option>
+                    <option value="-data_limite" {% if order_filtro == '-data_limite' %}selected{% endif %}>Data Limite (Decrescente)</option>
+                    <option value="titulo" {% if order_filtro == 'titulo' %}selected{% endif %}>Título</option>
+                    <option value="-data_criacao" {% if order_filtro == '-data_criacao' %}selected{% endif %}>Mais Recentes</option>
+                </select>
+            </div>
+
+            <!-- Quick Actions -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-bolt mr-2"></i>Ações Rápidas
+                </label>
+                <div class="flex gap-2">
+                    <button onclick="clearFilters()" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">
+                        Limpar
+                    </button>
+                    <button onclick="applyFilters()" class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors">
+                        Aplicar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Filters Badges -->
+        <div class="flex flex-wrap gap-2">
+            {% if status_filtro %}
+            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-blue-900 dark:text-blue-200 filter-pill">
+                Status: {{ status_filtro|title }}
+                <button onclick="removeFilter('status')" class="ml-2 text-blue-600 hover:text-blue-800">×</button>
+            </span>
+            {% endif %}
+            
+            {% if urgencia_filtro %}
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
+                Urgência: {{ urgencia_filtro|title }}
+                <button onclick="removeFilter('urgencia')" class="ml-2 text-green-600 hover:text-green-800">×</button>
+            </span>
+            {% endif %}
+            
+            {% if order_filtro %}
+            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-purple-900 dark:text-purple-200 filter-pill">
+                Ordenar: {% if order_filtro == 'data_limite' %}Data Limite{% elif order_filtro == '-data_limite' %}Data Limite (Decrescente){% elif order_filtro == 'titulo' %}Título{% else %}Mais Recentes{% endif %}
+                <button onclick="removeFilter('order')" class="ml-2 text-purple-600 hover:text-purple-800">×</button>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Lembretes List -->
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
+                Meus Lembretes
+                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                    {{ lembretes|length }} registros
+                </span>
+            </h2>
+        </div>
+
+        <div class="p-6">
+            {% if lembretes %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for lembrete in lembretes %}
+                {% with dias_restantes=lembrete.dias_para_vencer %}
+                <div class="lembrete-card p-6 rounded-xl {% if lembrete.concluido %}lembrete-concluido{% elif dias_restantes <= 2 %}lembrete-urgente{% elif dias_restantes <= 7 %}lembrete-proximo{% else %}lembrete-normal{% endif %}">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ lembrete.titulo }}</h3>
+                        <span class="text-xs px-2 py-1 rounded-full {% if lembrete.concluido %}badge-concluido{% elif dias_restantes <= 2 %}badge-urgente{% elif dias_restantes <= 7 %}badge-proximo{% else %}badge-normal{% endif %}">
+                            {% if lembrete.concluido %}
+                                Concluído
+                            {% elif dias_restantes <= 2 %}
+                                Urgente
+                            {% elif dias_restantes <= 7 %}
+                                Próximo
+                            {% else %}
+                                Normal
+                            {% endif %}
+                        </span>
+                    </div>
+                    
+                    {% if lembrete.descricao %}
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ lembrete.descricao }}</p>
+                    {% endif %}
+                    
+                    <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        <div class="flex items-center">
+                            <i class="fas fa-calendar-day mr-2"></i>
+                            <span>Vence em: {{ lembrete.data_limite|date:"d/m/Y" }}</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i class="fas fa-clock mr-2"></i>
+                            <span>
+                                {% if lembrete.concluido %}
+                                    Concluído
+                                {% else %}
+                                    {{ dias_restantes }} dia{{ dias_restantes|pluralize }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="concluido-{{ lembrete.id }}" class="checkbox-input toggle-concluido" 
+                                   data-lembrete-id="{{ lembrete.id }}" {% if lembrete.concluido %}checked{% endif %}>
+                            <label for="concluido-{{ lembrete.id }}" class="text-sm text-gray-700 dark:text-gray-300">Concluído</label>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <button class="text-blue-500 hover:text-blue-700 transition-colors action-btn edit-lembrete-btn"
+                                    data-lembrete-id="{{ lembrete.id }}"
+                                    data-lembrete-titulo="{{ lembrete.titulo }}"
+                                    data-lembrete-descricao="{{ lembrete.descricao|default:'' }}"
+                                    data-lembrete-data-limite="{{ lembrete.data_limite|date:'Y-m-d' }}"
+                                    data-lembrete-concluido="{{ lembrete.concluido|yesno:'true,false' }}"
+                                    title="Editar lembrete">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            
+                            <button class="text-red-500 hover:text-red-700 transition-colors action-btn delete-lembrete-btn"
+                                    data-lembrete-id="{{ lembrete.id }}"
+                                    data-lembrete-titulo="{{ lembrete.titulo }}"
+                                    title="Excluir lembrete">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endwith %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <h3 class="text-xl font-medium text-gray-500 mb-2">Nenhum lembrete encontrado</h3>
+                <p class="text-gray-400 mb-4">Tente ajustar os filtros ou adicione novos lembretes</p>
+                <button id="openLembreteModalBtnEmpty" class="add-btn px-4 py-2 text-white rounded-lg font-medium flex items-center gap-2 mx-auto">
+                    <i class="fas fa-plus-circle"></i>
+                    Adicionar Lembrete
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p class="text-center mt-4 text-gray-600">Processando...</p>
+    </div>
+</div>
+
+<!-- Modal Structure for Add/Edit Lembrete -->
+<div id="lembreteModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="form-container w-full max-w-md p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200" id="modalTitle">Adicionar Lembrete</h2>
+                <button type="button" id="closeLembreteModalBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <form method="post" id="lembreteFormModal" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" id="lembrete_id" name="lembrete_id">
+                
+                <!-- Título -->
+                <div class="input-group">
+                    <label for="id_titulo" class="form-label flex items-center">
+                        <i class="fas fa-heading mr-2 text-blue-500"></i>
+                        Título do Lembrete
+                    </label>
+                    <input type="text" id="id_titulo" name="titulo" class="form-input" placeholder="Ex: Pagar conta de luz" required>
+                    <p class="form-error" id="titulo_error"></p>
+                </div>
+                
+                <!-- Descrição -->
+                <div class="input-group">
+                    <label for="id_descricao" class="form-label flex items-center">
+                        <i class="fas fa-align-left mr-2 text-purple-500"></i>
+                        Descrição (Opcional)
+                    </label>
+                    <textarea id="id_descricao" name="descricao" class="form-input" rows="3" placeholder="Detalhes adicionais sobre este lembrete..."></textarea>
+                    <p class="form-error" id="descricao_error"></p>
+                </div>
+                
+                <!-- Data Limite -->
+                <div class="input-group">
+                    <label for="id_data_limite" class="form-label flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-green-500"></i>
+                        Data Limite
+                    </label>
+                    <input type="date" id="id_data_limite" name="data_limite" class="form-input" required>
+                    <p class="form-error" id="data_limite_error"></p>
+                </div>
+                
+                <!-- Status (Concluído) -->
+                <div class="input-group">
+                    <label class="form-label">Status do Lembrete</label>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="id_concluido" name="concluido" class="checkbox-input">
+                        <label for="id_concluido" class="text-gray-700 dark:text-gray-300">Marcar como concluído</label>
+                    </div>
+                    <p class="form-error" id="concluido_error"></p>
+                </div>
+    
+                <div class="flex justify-end space-x-4">
+                    <button type="button" id="cancelBtn" class="cancel-btn px-6 py-3 border border-gray-300 rounded-xl text-gray-700 dark:text-gray-300 flex items-center transition-all hover:shadow-md">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" id="saveBtn" class="submit-btn text-white font-medium py-2 px-4 rounded-lg inline-flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        Salvar Lembrete
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Exclusão -->
+<div id="deleteLembreteModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+            <div class="text-center mb-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900">
+                    <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mt-4" id="deleteModalTitle">Confirmar Exclusão</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2" id="deleteModalMessage">Tem certeza de que deseja excluir este lembrete?</p>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button type="button" id="cancelDeleteBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                    Cancelar
+                </button>
+                <form id="deleteLembreteForm" method="post">
+                    {% csrf_token %}
+                    <input type="hidden" id="delete_lembrete_id" name="lembrete_id">
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                        Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="success-message" id="successMessage">
+    <i class="fas fa-check-circle mr-2"></i>
+    <span id="successMessageText">Operação realizada com sucesso!</span>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtenha os elementos do DOM
+        const openLembreteModalBtn = document.getElementById('openLembreteModalBtn');
+        const openLembreteModalBtnEmpty = document.getElementById('openLembreteModalBtnEmpty');
+        const lembreteModal = document.getElementById('lembreteModal');
+        const closeLembreteModalBtn = document.getElementById('closeLembreteModalBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const lembreteFormModal = document.getElementById('lembreteFormModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const lembreteIdInput = document.getElementById('lembrete_id');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const successMessage = document.getElementById('successMessage');
+        const successMessageText = document.getElementById('successMessageText');
+        const deleteLembreteModal = document.getElementById('deleteLembreteModal');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+        const deleteLembreteForm = document.getElementById('deleteLembreteForm');
+        const deleteLembreteIdInput = document.getElementById('delete_lembrete_id');
+        
+        // Função para mostrar o modal
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+        }
+        
+        // Função para esconder o modal
+        function hideModal(modal) {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+        
+        // Função para mostrar mensagem de sucesso
+        function showSuccessMessage(message) {
+            successMessageText.textContent = message;
+            successMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Função para mostrar o spinner de carregamento
+        function showLoading() {
+            loadingSpinner.classList.remove('hidden');
+        }
+        
+        // Função para esconder o spinner de carregamento
+        function hideLoading() {
+            loadingSpinner.classList.add('hidden');
+        }
+        
+        // Função para limpar o formulário
+        function clearForm() {
+            lembreteFormModal.reset();
+            lembreteIdInput.value = '';
+            modalTitle.textContent = 'Adicionar Lembrete';
+            
+            // Limpar mensagens de erro
+            document.querySelectorAll('.form-error').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+        
+        // Função para preencher o formulário com dados do lembrete
+        function fillForm(lembreteData) {
+            document.getElementById('id_titulo').value = lembreteData.titulo;
+            document.getElementById('id_descricao').value = lembreteData.descricao || '';
+            document.getElementById('id_data_limite').value = lembreteData.data_limite;
+            document.getElementById('id_concluido').checked = lembreteData.concluido === 'true';
+            lembreteIdInput.value = lembreteData.id;
+            modalTitle.textContent = 'Editar Lembrete';
+        }
+        
+        // Event Listeners
+        openLembreteModalBtn.addEventListener('click', function() {
+            clearForm();
+            showModal(lembreteModal);
+        });
+        
+        openLembreteModalBtnEmpty.addEventListener('click', function() {
+            clearForm();
+            showModal(lembreteModal);
+        });
+        
+        closeLembreteModalBtn.addEventListener('click', function() {
+            hideModal(lembreteModal);
+        });
+        
+        cancelBtn.addEventListener('click', function() {
+            hideModal(lembreteModal);
+        });
+        
+        cancelDeleteBtn.addEventListener('click', function() {
+            hideModal(deleteLembreteModal);
+        });
+        
+        // Fechar modal clicando fora dele
+        lembreteModal.addEventListener('click', function(e) {
+            if (e.target === lembreteModal) {
+                hideModal(lembreteModal);
+            }
+        });
+        
+        deleteLembreteModal.addEventListener('click', function(e) {
+            if (e.target === deleteLembreteModal) {
+                hideModal(deleteLembreteModal);
+            }
+        });
+        
+        // Event listeners para os botões de editar
+        document.querySelectorAll('.edit-lembrete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const lembreteData = {
+                    id: this.dataset.lembreteId,
+                    titulo: this.dataset.lembreteTitulo,
+                    descricao: this.dataset.lembreteDescricao,
+                    data_limite: this.dataset.lembreteDataLimite,
+                    concluido: this.dataset.lembreteConcluido
+                };
+                
+                fillForm(lembreteData);
+                showModal(lembreteModal);
+            });
+        });
+        
+        // Event listeners para os botões de excluir
+        document.querySelectorAll('.delete-lembrete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const lembreteId = this.dataset.lembreteId;
+                const lembreteTitulo = this.dataset.lembreteTitulo;
+                
+                document.getElementById('deleteModalTitle').textContent = `Excluir "${lembreteTitulo}"?`;
+                document.getElementById('deleteModalMessage').textContent = `Tem certeza de que deseja excluir o lembrete "${lembreteTitulo}"? Esta ação não pode ser desfeita.`;
+                deleteLembreteIdInput.value = lembreteId;
+                
+                showModal(deleteLembreteModal);
+            });
+        });
+        
+        // Event listener para os checkboxes de concluído
+        document.querySelectorAll('.toggle-concluido').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const lembreteId = this.dataset.lembreteId;
+                const isConcluido = this.checked;
+                
+                showLoading();
+                
+                // Enviar requisição AJAX para atualizar o status
+                fetch('{% url "core:alternar_status_lembrete" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        lembrete_id: lembreteId,
+                        concluido: isConcluido
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    if (data.success) {
+                        showSuccessMessage('Status atualizado com sucesso!');
+                        // Recarregar a página após um breve delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else {
+                        alert('Erro ao atualizar status: ' + data.message);
+                        // Reverter a mudança no checkbox
+                        this.checked = !isConcluido;
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Erro:', error);
+                    alert('Erro ao atualizar status. Tente novamente.');
+                    // Reverter a mudança no checkbox
+                    this.checked = !isConcluido;
+                });
+            });
+        });
+        
+        // Envio do formulário de lembrete
+        lembreteFormModal.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validação básica
+            const titulo = document.getElementById('id_titulo').value.trim();
+            const dataLimite = document.getElementById('id_data_limite').value;
+            
+            let isValid = true;
+            
+            // Validar título
+            if (!titulo) {
+                document.getElementById('titulo_error').textContent = 'Por favor, insira um título para o lembrete.';
+                document.getElementById('titulo_error').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('titulo_error').style.display = 'none';
+            }
+            
+            // Validar data limite
+            if (!dataLimite) {
+                document.getElementById('data_limite_error').textContent = 'Por favor, selecione uma data limite.';
+                document.getElementById('data_limite_error').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('data_limite_error').style.display = 'none';
+            }
+            
+            if (!isValid) return;
+            
+            showLoading();
+            
+            // Preparar dados para envio
+            const formData = new FormData();
+            formData.append('titulo', titulo);
+            formData.append('descricao', document.getElementById('id_descricao').value);
+            formData.append('data_limite', dataLimite);
+            formData.append('concluido', document.getElementById('id_concluido').checked ? 'true' : 'false');
+            
+            // Determinar a URL correta (criação ou edição)
+            let url = '{% url "core:lembrete_create" %}';
+            if (lembreteIdInput.value) {
+                url = '{% url "core:lembrete_update" pk=0 %}'.replace('0', lembreteIdInput.value);
+                formData.append('lembrete_id', lembreteIdInput.value);
+            }
+            
+            // Enviar requisição
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    showSuccessMessage(data.message);
+                    hideModal(lembreteModal);
+                    
+                    // Recarregar a página após um breve delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    // Exibir erros de validação
+                    if (data.errors) {
+                        for (const [field, message] of Object.entries(data.errors)) {
+                            const errorElement = document.getElementById(`${field}_error`);
+                            if (errorElement) {
+                                errorElement.textContent = message;
+                                errorElement.style.display = 'block';
+                            }
+                        }
+                    } else {
+                        alert('Erro ao salvar lembrete: ' + data.message);
+                    }
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Erro:', error);
+                alert('Erro ao salvar lembrete. Tente novamente.');
+            });
+        });
+        
+        // Envio do formulário de exclusão
+        deleteLembreteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            showLoading();
+            
+            // Enviar requisição
+            fetch('{% url "core:lembrete_delete" pk=0 %}'.replace('0', deleteLembreteIdInput.value), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    showSuccessMessage(data.message);
+                    hideModal(deleteLembreteModal);
+                    
+                    // Recarregar a página após um breve delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    alert('Erro ao excluir lembrete: ' + data.message);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Erro:', error);
+                alert('Erro ao excluir lembrete. Tente novamente.');
+            });
+        });
+    });
+    
+    // Funções para filtros
+    function updateFilters() {
+        const statusFilter = document.getElementById('statusFilter').value;
+        const urgenciaFilter = document.getElementById('urgenciaFilter').value;
+        const orderFilter = document.getElementById('orderFilter').value;
+        
+        // Construir URL com os filtros
+        let url = '{% url "core:lembrete_list" %}?';
+        
+        if (statusFilter) {
+            url += `status=${statusFilter}&`;
+        }
+        
+        if (urgenciaFilter) {
+            url += `urgencia=${urgenciaFilter}&`;
+        }
+        
+        if (orderFilter) {
+            url += `order=${orderFilter}&`;
+        }
+        
+        // Remover o último '&' se existir
+        if (url.endsWith('&')) {
+            url = url.slice(0, -1);
+        }
+        
+        // Redirecionar para a URL com os filtros
+        window.location.href = url;
+    }
+    
+    function applyFilters() {
+        updateFilters();
+    }
+    
+    function clearFilters() {
+        window.location.href = '{% url "core:lembrete_list" %}';
+    }
+    
+    function removeFilter(filterType) {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (filterType === 'status') {
+            urlParams.delete('status');
+        } else if (filterType === 'urgencia') {
+            urlParams.delete('urgencia');
+        } else if (filterType === 'order') {
+            urlParams.delete('order');
+        }
+        
+        const newUrl = '{% url "core:lembrete_list" %}' + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.location.href = newUrl;
+    }
+</script>
+
+
+{% endblock %}

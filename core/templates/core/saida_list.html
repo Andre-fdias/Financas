@@ -1,0 +1,1932 @@
+{% extends 'core/base.html' %}
+{% load currency_filters %}
+{% load widget_tweaks %}
+{% load custom_filters %} {# Certifique-se de que este filtro está carregado #}
+
+
+{% block title %}Minhas Despesas - {{ mes_atual_nome }} {{ ano_atual }}{% endblock %}
+
+{% block extra_head %}
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js CDN para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Estilos base do painel e outros elementos */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); /* Fundo mais suave */
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        @supports not (backdrop-filter: blur(12px)) {
+            .glass-panel {
+                background: rgba(255, 255, 255, 0.95);
+            }
+        }
+        
+        .valor-positivo {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        .valor-negativo {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .dark .valor-positivo {
+            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+        }
+        
+        .dark .valor-negativo {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        }
+
+        .table-row {
+            transition: all 0.2s ease;
+        }
+        
+        .table-row:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+        }
+
+        /* Estilos do Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Estilos do Formulário dentro do Modal */
+        .form-container-modal {
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            max-width: 700px; /* Mais largo para acomodar bem os campos */
+            margin: 0 auto;
+        }
+        
+        .form-input {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            outline: none;
+            transform: translateY(-1px);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+        
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 6px;
+            padding-left: 4px;
+            display: none;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3), 0 2px 4px -1px rgba(99, 102, 241, 0.2);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4), 0 4px 6px -2px rgba(99, 102, 241, 0.3);
+        }
+        
+        .cancel-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-group {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        
+        .hidden-field {
+            display: none;
+        }
+        
+        .success-message {
+            display: none;
+            background-color: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+        }
+
+        .saida-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .filter-pill {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .filter-pill:hover {
+            transform: scale(1.05);
+        }
+        
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        /* Estilos para os campos de parcelamento */
+        .parcelamento-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark .parcelamento-section {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+
+        .parcelamento-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .dark .parcelamento-header {
+            color: #e5e7eb;
+        }
+
+        .parcelamento-header i {
+            margin-right: 0.5rem;
+            color: #3b82f6;
+        }
+
+        .metodo-radio-group {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metodo-radio-label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dark .metodo-radio-label {
+            background: #374151;
+            border-color: #4a5568;
+        }
+
+        .metodo-radio-label input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+
+        .metodo-radio-label:hover {
+            border-color: #3b82f6;
+        }
+
+        .metodo-radio-label.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .dark .metodo-radio-label.selected {
+            background: #1e40af;
+            border-color: #3b82f6;
+        }
+
+        .parcelamento-campos {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .valor-total-calc {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .dark .valor-total-calc {
+            background: #052e16;
+            border-color: #059669;
+            color: #bbf7d0;
+        }
+        .flex.justify-end.space-x-2 button {
+                transition: all 0.2s ease;
+            }
+
+            .flex.justify-end.space-x-2 button:hover {
+                transform: scale(1.1);
+            }
+
+            .flex.justify-end.space-x-2 button:active {
+                transform: scale(0.95);
+            }
+            /* Estilos para Notificações */
+    .notification {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-left: 4px solid;
+        animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+        transform: translateX(100%);
+        opacity: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .notification.show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    
+    .notification.hide {
+        animation: slideOut 0.3s ease-in;
+    }
+    
+    .notification.success {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    }
+    
+    .notification.error {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    }
+    
+    .notification.warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    }
+    
+    .notification.info {
+        border-left-color: #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    }
+    
+    .notification-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    
+    .notification.success .notification-icon {
+        color: #10b981;
+    }
+    
+    .notification.error .notification-icon {
+        color: #ef4444;
+    }
+    
+    .notification.warning .notification-icon {
+        color: #f59e0b;
+    }
+    
+    .notification.info .notification-icon {
+        color: #3b82f6;
+    }
+    
+    .notification-content {
+        flex: 1;
+    }
+    
+    .notification-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notification-message {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .notification-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .notification-close:hover {
+        color: #6b7280;
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Animações */
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
+    
+    /* Dark mode support */
+    .dark .notification {
+        background: #1f2937;
+    }
+    
+    .dark .notification.success {
+        background: linear-gradient(135deg, #052e16 0%, #064e3b 100%);
+    }
+    
+    .dark .notification.error {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+    }
+    
+    .dark .notification.warning {
+        background: linear-gradient(135deg, #431407 0%, #7c2d12 100%);
+    }
+    
+    .dark .notification.info {
+        background: linear-gradient(135deg, #172554 0%, #1e40af 100%);
+    }
+    
+    .dark .notification-message {
+        color: #d1d5db;
+    }
+    </style>
+{% endblock %}
+
+
+{% block content %}
+<div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
+    <!-- Cabeçalho e Botão -->
+    <div class="glass-panel p-6 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    <i class="fas fa-receipt mr-3 text-red-600"></i>
+                    Minhas Despesas
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 font-semibold">
+                    Gerencie suas despesas e visualize seus gastos
+                </p>
+            </div>
+            <button id="openSaidaModalBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg inline-flex items-center shadow-md hover:shadow-lg transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                Nova Despesa
+            </button>
+        </div>
+    </div>
+
+        
+    <!-- Sistema de Notificações Personalizadas -->
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
+
+    <!-- Modal de Confirmação Personalizado -->
+    <div id="customConfirmModal" class="modal-overlay hidden">
+        <div class="modal-content max-w-md">
+            <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                        <i class="fas fa-question-circle text-blue-600 dark:text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mt-4 dark:text-white" id="confirmModalTitle">Confirmação</h3>
+                    <p class="text-sm text-gray-500 mt-2 dark:text-gray-400" id="confirmModalMessage"></p>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button type="button" id="confirmModalCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="button" id="confirmModalOk" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 stats-grid">
+        <!-- Card Total Despesas -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Total Despesas (Mês)</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ total_despesas|br_currency }}</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0-2.08-.402-2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center">
+                <span class="text-xs font-medium {% if variacao_mensal >= 0 %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %} px-2 py-1 rounded-full">
+                    {{ variacao_mensal_abs }}% {{ variacao_mensal|direction_arrow }} vs mês anterior
+                </span>
+            </div>
+        </div>
+
+        <!-- Card Pagas -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Despesas Pagas</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ despesas_pagas|br_currency }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-green-100 text-green-800 px-2 py-1 rounded-full dark:bg-green-900 dark:text-green-200">
+                    {{ percentual_pago }}% do total
+                </span>
+            </div>
+        </div>
+
+        <!-- Card Pendentes -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-orange-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Despesas Pendentes</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ despesas_pendentes|br_currency}}</p>
+                </div>
+                <div class="bg-orange-100 p-3 rounded-full text-orange-600 dark:bg-orange-900 dark:text-orange-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded-full dark:bg-orange-900 dark:text-orange-200">
+                    {{ percentual_pendente }}% do total
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Painel de Filtros -->
+    <div class="glass-panel p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
+            <i class="fas fa-filter mr-3 text-indigo-600"></i>
+            Filtrar Despesas
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Ano Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Ano
+                </label>
+                <select onchange="updateFilters()" id="anoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os anos</option>
+                    {% for ano in anos_disponiveis %}
+                    <option value="{{ ano }}" {% if ano_selecionado == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Mês Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Mês
+                </label>
+                <select onchange="updateFilters()" id="mesFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os meses</option>                    
+                    {% for mes_num, mes_nome in meses %}
+                    <option value="{{ mes_num|stringformat:'02d' }}" {% if mes_selecionado == mes_num|stringformat:'02d' %}selected{% endif %}>{{ mes_nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-info-circle mr-2"></i>Status
+                </label>
+                <select onchange="updateFilters()" id="statusFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os status</option>
+                    {% for code, name in STATUS_CHOICES %}
+                    <option value="{{ code }}" {% if status_selecionado == code %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Active Filters Badges -->
+        <div class="flex flex-wrap gap-2 mt-4">
+            {% if ano_selecionado and ano_selecionado != '' %}
+            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-yellow-900 dark:text-yellow-200 filter-pill">
+                Ano: {{ ano_selecionado }}
+                <button onclick="removeFilter('ano')" class="ml-2 text-yellow-600 hover:text-yellow-800">×</button>
+            </span>
+            {% endif %}
+            
+            {% if mes_selecionado and mes_selecionado != '' %}
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
+                Mês: {{ meses_display_map|get_item:mes_selecionado }}
+                <button onclick="removeFilter('mes')" class="ml-2 text-green-600 hover:text-green-800">×</button>
+            </span>
+            {% endif %}
+
+            {% if status_selecionado and status_selecionado != '' %}
+            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-purple-900 dark:text-purple-200 filter-pill">
+                Status: {{ status_display_map|get_item:status_selecionado }}
+                <button onclick="removeFilter('status')" class="ml-2 text-purple-600 hover:text-purple-800">×</button>
+            </span>
+            {% endif %}
+
+            {% if ano_selecionado or mes_selecionado or status_selecionado %}
+            <button onclick="clearFilters()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition-colors flex items-center">
+                <i class="fas fa-eraser mr-2"></i>Limpar Todos
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- Tabela de Saídas -->
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
+                Lista de Despesas
+                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                    {{ saidas|length }} registros
+                </span>
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto saida-table-container">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-indigo-50 dark:bg-indigo-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Descrição</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Categoria</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Vencimento</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Status</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Valor Total</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Parcelas</th>
+                        <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {% for saida in saidas %}
+                    <tr class="table-row hover:bg-gray-50 transition-colors duration-150 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="font-medium text-gray-900 dark:text-white">{{ saida.nome }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ saida.local|default:"Local não informado" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ saida.get_categoria_display }}
+                            {% if saida.subcategoria %}<br><span class="text-xs text-gray-500 dark:text-gray-400">{{ saida.get_subcategoria_display }}</span>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ saida.data_vencimento|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if saida.situacao == 'pago' %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Pago
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Pendente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                             <span class="valor-negativo">{{ saida.valor|br_currency }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {% if saida.tipo_pagamento_detalhe == 'parcelado' %}
+                                {{ saida.quantidade_parcelas }}x de {{ saida.valor_parcela|br_currency }}
+                            {% else %}
+                                Única
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+    <div class="flex justify-end space-x-2">
+        {% if saida.situacao == 'pendente' %}
+        <button class="mark-as-paid-btn text-green-600 hover:text-green-800 transition-colors p-2 rounded-lg hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
+                data-saida-id="{{ saida.pk }}"
+                data-saida-nome="{{ saida.nome }}"
+                title="Marcar como Pago">
+            <i class="fas fa-check-circle text-lg"></i>
+        </button>
+        {% endif %}
+        
+        <button class="edit-saida-btn text-blue-600 hover:text-blue-800 transition-colors p-2 rounded-lg hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
+                data-saida-id="{{ saida.pk }}"
+                title="Editar Despesa">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+        </button>
+        
+        <button class="delete-saida-btn text-red-600 hover:text-red-800 transition-colors p-2 rounded-lg hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                data-saida-id="{{ saida.pk }}"
+                data-saida-nome="{{ saida.nome }}"
+                title="Excluir Despesa">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+        </button>
+    </div>
+</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            <div class="text-gray-400 dark:text-gray-500">
+                                <i class="fas fa-receipt text-4xl mb-4"></i>
+                                <p class="text-lg font-medium">Nenhuma despesa encontrada</p>
+                                <p class="text-sm">Tente ajustar os filtros ou adicione novas despesas</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Spinner -->
+<div id="loadingSpinner" class="loading-spinner hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p class="text-center mt-4 text-gray-600">Processando...</p>
+    </div>
+</div>
+
+<!-- Modal para Adicionar/Editar Saída -->
+<div id="saidaModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="form-container-modal w-full p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200" id="modalTitle">Nova Despesa</h2>
+                <button type="button" id="closeSaidaModalBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form method="post" id="saidaFormModal" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" id="saida_id" name="saida_id">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Coluna 1 -->
+                    <div class="space-y-6">
+                        <div class="input-group">
+                            <label for="id_nome" class="form-label flex items-center">
+                                <i class="fas fa-file-alt mr-2 text-blue-500"></i>
+                                Descrição <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.nome class="form-input" id="id_nome" placeholder="Nome da despesa" required="required" %}
+                            <p class="form-error" id="nome_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_local" class="form-label flex items-center">
+                                <i class="fas fa-map-marker-alt mr-2 text-red-500"></i>
+                                Local
+                            </label>
+                            {% render_field form.local class="form-input" id="id_local" placeholder="Local da despesa" %}
+                            <p class="form-error" id="local_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_categoria" class="form-label flex items-center">
+                                <i class="fas fa-tags mr-2 text-orange-500"></i>
+                                Categoria <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                {% render_field form.categoria class="form-input" id="id_categoria" required="required" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="categoria_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_subcategoria" class="form-label flex items-center">
+                                <i class="fas fa-sitemap mr-2 text-gray-500"></i>
+                                Subcategoria
+                            </label>
+                            <div class="relative">
+                                {% render_field form.subcategoria class="form-input" id="id_subcategoria" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="subcategoria_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_conta_bancaria" class="form-label flex items-center">
+                                <i class="fas fa-university mr-2 text-indigo-500"></i>
+                                Conta Bancária <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                {% render_field form.conta_bancaria class="form-input" id="id_conta_bancaria" required="required" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="conta_bancaria_error"></p>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2 -->
+                    <div class="space-y-6">
+                        <div class="input-group">
+                            <label for="id_data_lancamento" class="form-label flex items-center">
+                                <i class="fas fa-calendar-alt mr-2 text-purple-500"></i>
+                                Data de Lançamento <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.data_lancamento class="form-input" id="id_data_lancamento" required="required" max=today_date %}
+                            <p class="form-error" id="data_lancamento_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_data_vencimento" class="form-label flex items-center">
+                                <i class="fas fa-calendar-check mr-2 text-teal-500"></i>
+                                Data de Vencimento <span class="text-red-500">*</span>
+                            </label>
+                            {% render_field form.data_vencimento class="form-input" id="id_data_vencimento" required="required" %}
+                            <p class="form-error" id="data_vencimento_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_forma_pagamento" class="form-label flex items-center">
+                                <i class="fas fa-credit-card mr-2 text-yellow-500"></i>
+                                Forma de Pagamento <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                {% render_field form.forma_pagamento class="form-input" id="id_forma_pagamento" required="required" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="forma_pagamento_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_tipo_pagamento_detalhe" class="form-label flex items-center">
+                                <i class="fas fa-wallet mr-2 text-gray-500"></i>
+                                Tipo de Pagamento <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                {% render_field form.tipo_pagamento_detalhe class="form-input" id="id_tipo_pagamento_detalhe" required="required" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="tipo_pagamento_detalhe_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_recorrente" class="form-label flex items-center">
+                                <i class="fas fa-redo-alt mr-2 text-gray-500"></i>
+                                Recorrência
+                            </label>
+                            <div class="relative">
+                                {% render_field form.recorrente class="form-input" id="id_recorrente" %}
+                                <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                            <p class="form-error" id="recorrente_error"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos de Valor e Parcelamento (condicionais) -->
+                <div id="valor_e_parcelamento_section" class="space-y-6">
+                    <!-- Valor à Vista (visível por padrão) -->
+                    <div class="input-group" id="avista_fields">
+                        <label for="id_valor" class="form-label flex items-center">
+                            <i class="fas fa-money-bill-wave mr-2 text-green-500"></i>
+                            Valor (R$) <span class="text-red-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">R$</span>
+                            </div>
+                            {% render_field form.valor class="form-input pl-10" id="id_valor" placeholder="0,00" %}
+                        </div>
+                        <p class="form-error" id="valor_error"></p>
+                    </div>
+
+                    <!-- Campos de Parcelamento (inicialmente ocultos) -->
+                    <div id="parcelamento_fields" class="parcelamento-section" style="display: none;">
+                        <div class="parcelamento-header">
+                            <i class="fas fa-calculator"></i>
+                            Configuração do Parcelamento
+                        </div>
+
+                        <div class="metodo-radio-group">
+                            <label class="metodo-radio-label selected" id="label_total">
+                                <input type="radio" name="metodo_parcelamento" value="total" checked />
+                                Valor total
+                            </label>
+                            <label class="metodo-radio-label" id="label_parcela">
+                                <input type="radio" name="metodo_parcelamento" value="parcela" />
+                                Valor da parcela
+                            </label>
+                        </div>
+
+                        <div class="parcelamento-campos">
+                            <div id="parcelamento_por_total">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="input-group">
+                                        <label for="parcelado_valor_total" class="form-label">
+                                            Valor total (R$)
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <span class="text-gray-500 sm:text-sm">R$</span>
+                                            </div>
+                                            <input type="text" id="parcelado_valor_total" class="form-input pl-10" placeholder="0,00" />
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="id_quantidade_parcelas" class="form-label">
+                                            Quantidade de Parcelas
+                                        </label>
+                                        {% render_field form.quantidade_parcelas class="form-input" id="id_quantidade_parcelas" min="1" %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="parcelamento_por_parcela" style="display:none;">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="input-group">
+                                        <label for="parcelado_valor_parcela_input" class="form-label">
+                                            Valor da parcela (R$)
+                                        </label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <span class="text-gray-500 sm:text-sm">R$</span>
+                                            </div>
+                                            <input type="text" id="parcelado_valor_parcela_input" class="form-input pl-10" placeholder="0,00" />
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="parcelado_num_parcelas" class="form-label">
+                                            Quantidade de Parcelas
+                                        </label>
+                                        <input type="number" id="parcelado_num_parcelas" class="form-input" min="1" value="1" />
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <label class="form-label">
+                                        Valor total calculado (R$)
+                                    </label>
+                                    <div class="valor-total-calc">
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <span class="text-gray-500 sm:text-sm">R$</span>
+                                            </div>
+                                            <input type="text" id="parcelado_total_calc" class="form-input pl-10 bg-transparent border-none" readonly />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="input-group mt-4">
+                            <label for="id_valor_parcela" class="form-label flex items-center">
+                                <i class="fas fa-hand-holding-usd mr-2 text-green-500"></i>
+                                Valor da Parcela Final (R$)
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm">R$</span>
+                                </div>
+                                {% render_field form.valor_parcela class="form-input pl-10" id="id_valor_parcela" readonly="readonly" %}
+                            </div>
+                            <p class="form-error" id="valor_parcela_error"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Situação -->
+                <div class="input-group">
+                    <label class="form-label flex items-center">
+                        <i class="fas fa-info-circle mr-2 text-blue-400"></i>
+                        Situação
+                    </label>
+                    <div id="situacao-container" class="flex items-center p-3 border border-gray-300 rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                        {% render_field form.situacao_checkbox class="mr-2" id="id_situacao_checkbox" %}
+                        <label for="id_situacao_checkbox" class="text-sm text-gray-700 dark:text-gray-300">Marcar como Pago</label>
+                    </div>
+                    <p class="form-error" id="situacao_error"></p>
+                    <input type="hidden" id="id_situacao" name="situacao" value="pendente">
+                </div>
+
+                <!-- Observações -->
+                <div class="input-group">
+                    <label for="id_observacao" class="form-label flex items-center">
+                        <i class="fas fa-sticky-note mr-2 text-gray-500"></i>
+                        Observações
+                    </label>
+                    {% render_field form.observacao class="form-input" id="id_observacao" rows="3" placeholder="Observações adicionais" %}
+                    <p class="form-error" id="observacao_error"></p>
+                </div>
+
+                <div class="flex justify-end space-x-4 mt-8">
+                    <button type="button" id="cancelSaidaBtn" class="cancel-btn px-6 py-3 border border-gray-300 rounded-xl text-gray-700 flex items-center transition-all hover:shadow-md">
+                        <i class="fas fa-times mr-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" id="saveSaidaBtn" class="submit-btn text-white font-medium py-2 px-4 rounded-lg inline-flex items-center">
+                        <i class="fas fa-save mr-2"></i>
+                        Salvar Despesa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Excluir Saída -->
+<div id="deleteSaidaModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+            <div class="text-center mb-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                    <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mt-4 dark:text-white" id="deleteSaidaModalTitle">Confirmar Exclusão</h3>
+                <p class="text-sm text-gray-500 mt-2 dark:text-gray-400" id="deleteSaidaModalMessage">Tem certeza de que deseja excluir esta despesa?</p>
+            </div>
+
+            <div class="flex justify-center space-x-4">
+                <button type="button" id="cancelDeleteSaidaBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-300">
+                    Cancelar
+                </button>
+                <form id="deleteSaidaForm" method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                        Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="success-message" id="successMessage">
+    <i class="fas fa-check-circle mr-2"></i>
+    Operação realizada com sucesso!
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    
+    // ====== VARIÁVEIS GLOBAIS ======
+    let anoFilter, mesFilter, statusFilter;
+    const CSRF_TOKEN = getCookie('csrftoken');
+
+    // ====== FUNÇÕES UTILITÁRIAS ======
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showLoading() {
+        document.getElementById('loadingSpinner').classList.remove('hidden');
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingSpinner').classList.add('hidden');
+    }
+
+    function showModal(modalElement) {
+        modalElement.classList.remove('hidden');
+        setTimeout(() => modalElement.classList.add('show'), 10);
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function hideModal(modalElement) {
+        modalElement.classList.remove('show');
+        setTimeout(() => {
+            modalElement.classList.add('hidden');
+            document.body.style.overflow = '';
+        }, 300);
+    }
+
+    // ====== SISTEMA DE NOTIFICAÇÕES ======
+    function showNotification(type, title, message, duration = 3000) {
+        const container = document.getElementById('notificationContainer');
+        const notification = document.createElement('div');
+        
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-circle',
+            warning: 'fas fa-exclamation-triangle',
+            info: 'fas fa-info-circle'
+        };
+        
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="notification-icon ${icons[type]}"></i>
+            <div class="notification-content">
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        container.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10);
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.classList.add('hide');
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, duration);
+        }
+        
+        return notification;
+    }
+
+    function showConfirm(title, message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('customConfirmModal');
+            const titleElement = document.getElementById('confirmModalTitle');
+            const messageElement = document.getElementById('confirmModalMessage');
+            
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Clone e substitui os botões para evitar múltiplos event listeners
+            const okBtn = document.getElementById('confirmModalOk');
+            const cancelBtn = document.getElementById('confirmModalCancel');
+            
+            const newOkBtn = okBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            
+            function cleanup() {
+                newOkBtn.removeEventListener('click', onOk);
+                newCancelBtn.removeEventListener('click', onCancel);
+                hideModal(modal);
+            }
+            
+            function onOk() {
+                cleanup();
+                resolve(true);
+            }
+            
+            function onCancel() {
+                cleanup();
+                resolve(false);
+            }
+            
+            newOkBtn.addEventListener('click', onOk);
+            newCancelBtn.addEventListener('click', onCancel);
+            
+            showModal(modal);
+        });
+    }
+
+    // ====== FUNÇÕES DE FORMATAÇÃO ======
+    function formatarMoeda(input) {
+        if (!input) return;
+        
+        const selectionStart = input.selectionStart;
+        const originalValue = input.value;
+        
+        let value = input.value.replace(/\D/g, '');
+        
+        if (value === '') {
+            input.value = '0,00';
+            input.setSelectionRange(4, 4);
+            return;
+        }
+        
+        value = value.replace(/^0+/, '');
+        if (value === '') {
+            input.value = '0,00';
+            input.setSelectionRange(4, 4);
+            return;
+        }
+        
+        value = value.padStart(3, '0');
+        const reais = value.slice(0, -2);
+        const centavos = value.slice(-2);
+        const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        input.value = formattedReais + ',' + centavos;
+        
+        let newCursorPosition = selectionStart;
+        if (input.value.length > originalValue.length) {
+            const diff = input.value.length - originalValue.length;
+            let pointsAdded = 0;
+            for (let i = 0; i < selectionStart + diff; i++) {
+                if (input.value[i] === '.' && (originalValue[i] !== '.' || i >= originalValue.length)) {
+                    pointsAdded++;
+                }
+            }
+            newCursorPosition = selectionStart + pointsAdded;
+        } else if (input.value.length < originalValue.length) {
+            const diff = originalValue.length - input.value.length;
+            let pointsRemoved = 0;
+            for (let i = 0; i < selectionStart; i++) {
+                if (originalValue[i] === '.' && (input.value[i] !== '.' || i >= input.value.length)) {
+                    pointsRemoved++;
+                }
+            }
+            newCursorPosition = selectionStart - pointsRemoved;
+        }
+        
+        newCursorPosition = Math.max(0, Math.min(newCursorPosition, input.value.length));
+        input.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+
+    function formatarMoedaBlur(input) {
+        if (!input) return;
+        
+        let value = input.value.replace(/\D/g, '');
+        
+        if (value === '' || value === '0') {
+            input.value = '0,00';
+            return;
+        }
+        
+        value = value.replace(/^0+/, '');
+        if (value === '') {
+            input.value = '0,00';
+            return;
+        }
+        
+        value = value.padStart(3, '0');
+        const reais = value.slice(0, -2);
+        const centavos = value.slice(-2);
+        const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        
+        input.value = formattedReais + ',' + centavos;
+    }
+
+    function converterParaDecimal(valor) {
+        if (typeof valor !== 'string') return valor;
+        
+        let decimalValue = valor.replace(/\./g, '').replace(',', '.');
+        
+        if (decimalValue === '' || isNaN(parseFloat(decimalValue))) {
+            return '0.00';
+        }
+        
+        return parseFloat(decimalValue).toFixed(2);
+    }
+
+    // ====== FUNÇÕES DE FILTRO ======
+    function updateFilters() {
+        showLoading();
+        const urlParams = new URLSearchParams(window.location.search);
+
+        if (anoFilter.value) urlParams.set('ano', anoFilter.value);
+        else urlParams.delete('ano');
+
+        if (mesFilter.value) urlParams.set('mes', mesFilter.value);
+        else urlParams.delete('mes');
+
+        if (statusFilter.value) urlParams.set('status', statusFilter.value);
+        else urlParams.delete('status');
+        
+        window.location.href = window.location.pathname + '?' + urlParams.toString();
+    }
+
+    function removeFilter(filterType) {
+        showLoading();
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.delete(filterType);
+        window.location.href = window.location.pathname + '?' + urlParams.toString();
+    }
+
+    function clearFilters() {
+        showLoading();
+        window.location.href = window.location.pathname;
+    }
+
+    // ====== LÓGICA DE PARCELAMENTO ======
+    function toggleParcelamentoFields() {
+        const tipoPagamentoDetalheSelect = document.getElementById('id_tipo_pagamento_detalhe');
+        const avistaFields = document.getElementById('avista_fields');
+        const parcelamentoFields = document.getElementById('parcelamento_fields');
+        
+        if (tipoPagamentoDetalheSelect.value === 'parcelado') {
+            avistaFields.style.display = 'none';
+            parcelamentoFields.style.display = 'block';
+            if (!document.querySelector('input[name="metodo_parcelamento"]:checked')) {
+                document.querySelector('input[name="metodo_parcelamento"][value="total"]').checked = true;
+                chooseMetodoParcelado('total');
+            }
+            calcularParcelamento();
+        } else {
+            avistaFields.style.display = 'block';
+            parcelamentoFields.style.display = 'none';
+        }
+    }
+
+    function chooseMetodoParcelado(metodo) {
+        const parcelamentoPorTotalDiv = document.getElementById('parcelamento_por_total');
+        const parcelamentoPorParcelaDiv = document.getElementById('parcelamento_por_parcela');
+        const labelTotal = document.getElementById('label_total');
+        const labelParcela = document.getElementById('label_parcela');
+        
+        if (metodo === 'total') {
+            parcelamentoPorTotalDiv.style.display = 'block';
+            parcelamentoPorParcelaDiv.style.display = 'none';
+            document.getElementById('parcelado_valor_parcela_input').value = '0,00';
+            document.getElementById('parcelado_num_parcelas').value = '1';
+            document.getElementById('parcelado_total_calc').value = '0,00';
+            labelTotal.classList.add('selected');
+            labelParcela.classList.remove('selected');
+        } else {
+            parcelamentoPorTotalDiv.style.display = 'none';
+            parcelamentoPorParcelaDiv.style.display = 'block';
+            document.getElementById('parcelado_valor_total').value = '0,00';
+            document.getElementById('id_quantidade_parcelas').value = '1';
+            labelTotal.classList.remove('selected');
+            labelParcela.classList.add('selected');
+        }
+        calcularParcelamento();
+    }
+
+    function calcularParcelamento() {
+        const metodoSelecionado = document.querySelector('input[name="metodo_parcelamento"]:checked').value;
+        const idValorAvistaInput = document.getElementById('id_valor');
+        const idValorParcelaHiddenInput = document.getElementById('id_valor_parcela');
+        
+        let valorFinalParcela = 0;
+        let valorTotalSaida = 0;
+        let numParcelas = 1;
+
+        if (metodoSelecionado === 'total') {
+            valorTotalSaida = parseFloat(converterParaDecimal(document.getElementById('parcelado_valor_total').value));
+            numParcelas = parseInt(document.getElementById('id_quantidade_parcelas').value) || 1;
+            
+            if (numParcelas > 0) {
+                valorFinalParcela = valorTotalSaida / numParcelas;
+            } else {
+                valorFinalParcela = valorTotalSaida;
+            }
+
+            if (idValorAvistaInput) {
+                idValorAvistaInput.value = valorTotalSaida.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            }
+
+        } else {
+            valorFinalParcela = parseFloat(converterParaDecimal(document.getElementById('parcelado_valor_parcela_input').value));
+            numParcelas = parseInt(document.getElementById('parcelado_num_parcelas').value) || 1;
+            valorTotalSaida = valorFinalParcela * numParcelas;
+
+            document.getElementById('parcelado_total_calc').value = valorTotalSaida.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            
+            if (idValorAvistaInput) {
+                idValorAvistaInput.value = valorTotalSaida.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            }
+        }
+
+        if (idValorParcelaHiddenInput) {
+            idValorParcelaHiddenInput.value = valorFinalParcela.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        }
+        
+        const idQuantidadeParcelasInput = document.getElementById('id_quantidade_parcelas');
+        const parceladoNumParcelasInput = document.getElementById('parcelado_num_parcelas');
+        
+        if (idQuantidadeParcelasInput) idQuantidadeParcelasInput.value = numParcelas;
+        if (parceladoNumParcelasInput) parceladoNumParcelasInput.value = numParcelas;
+    }
+
+    // ====== LÓGICA DE SUBCATEGORIAS ======
+    function updateSubcategories() {
+        const categoriaSelect = document.getElementById('id_categoria');
+        const subcategoriaSelect = document.getElementById('id_subcategoria');
+        const allSubcategories = Array.from(subcategoriaSelect.options).filter(option => option.value !== '');
+        
+        const selectedCategoria = categoriaSelect.value;
+        subcategoriaSelect.innerHTML = '<option value="">Selecione a subcategoria</option>';
+
+        allSubcategories.forEach(option => {
+            if (option.getAttribute('data-categoria') === selectedCategoria) {
+                subcategoriaSelect.appendChild(option.cloneNode(true));
+            }
+        });
+
+        if (subcategoriaSelect.options.length > 1 && !Array.from(subcategoriaSelect.options).some(opt => opt.value === subcategoriaSelect.value)) {
+            subcategoriaSelect.value = '';
+        }
+    }
+
+    // ====== LÓGICA DE SITUAÇÃO ======
+    function updateSituacaoInput() {
+        const situacaoCheckbox = document.getElementById('id_situacao_checkbox');
+        const situacaoHiddenInput = document.getElementById('id_situacao');
+        const situacaoContainer = document.getElementById('situacao-container');
+        
+        if (situacaoCheckbox.checked) {
+            situacaoHiddenInput.value = 'pago';
+            situacaoContainer.classList.add('checked');
+        } else {
+            situacaoHiddenInput.value = 'pendente';
+            situacaoContainer.classList.remove('checked');
+        }
+    }
+
+    // ====== FUNÇÕES DE FORMULÁRIO ======
+    function displayFormErrors(formElement, errors) {
+        formElement.querySelectorAll('.form-error').forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
+            const inputField = formElement.querySelector(`#id_${el.id.replace('_error', '')}`);
+            if (inputField) {
+                inputField.classList.remove('border-red-500');
+            }
+        });
+        
+        const nonFieldErrorsContainer = formElement.querySelector('.non-field-errors-container');
+        if (nonFieldErrorsContainer) nonFieldErrorsContainer.remove();
+
+        for (const field in errors) {
+            if (field === '__all__') {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'non-field-errors-container bg-red-50 border-l-4 border-red-500 p-4 dark:bg-red-900/20 dark:border-red-700 mb-4';
+                errorDiv.innerHTML = `
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-red-700 dark:text-red-300">${errors[field][0].message || errors[field][0]}</p>
+                        </div>
+                    </div>
+                `;
+                formElement.prepend(errorDiv);
+            } else {
+                const errorElement = formElement.querySelector(`#${field}_error`);
+                if (errorElement) {
+                    errorElement.textContent = errors[field][0].message || errors[field][0];
+                    errorElement.style.display = 'block';
+                    
+                    const inputField = formElement.querySelector(`[name="${field}"]`);
+                    if (inputField) {
+                        inputField.classList.add('border-red-500');
+                    }
+                }
+            }
+        }
+    }
+
+// ====== FUNÇÃO PRINCIPAL - MARCAR COMO PAGO ======
+async function marcarComoPago(saidaId, saidaNome) {
+    // MOSTRAR APENAS O MODAL DE CONFIRMAÇÃO PRIMEIRO
+    const confirmed = await showConfirm(
+        'Confirmar Pagamento',
+        `Tem certeza de que deseja marcar a despesa "${saidaNome}" como PAGA?`
+    );
+    
+    // Se o usuário cancelar, não fazer nada
+    if (!confirmed) {
+        return;
+    }
+    
+    // Agora que o usuário confirmou, MOSTRAR O SPINNER de carregamento
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/${saidaId}/marcar-pago/`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification('success', 'Pagamento Confirmado', `Despesa "${saidaNome}" marcada como paga!`);
+            
+            // Atualiza a interface
+            const button = document.querySelector(`.mark-as-paid-btn[data-saida-id="${saidaId}"]`);
+            if (button) {
+                const row = button.closest('tr');
+                button.remove();
+                
+                const statusCell = row.querySelector('td:nth-child(4)');
+                if (statusCell) {
+                    statusCell.innerHTML = `
+                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            Pago
+                        </span>
+                    `;
+                }
+            }
+        } else {
+            showNotification('error', 'Erro', data.message || 'Erro ao marcar como pago.');
+        }
+    } catch (error) {
+        console.error('Erro ao marcar como pago:', error);
+        showNotification('error', 'Erro', 'Erro ao processar a requisição.');
+    } finally {
+        // SEMPRE esconder o spinner quando terminar
+        hideLoading();
+    }
+}
+
+    // ====== INICIALIZAÇÃO ======
+    document.addEventListener('DOMContentLoaded', function() {
+        hideLoading();
+
+        // Inicializar filtros
+        anoFilter = document.getElementById('anoFilter');
+        mesFilter = document.getElementById('mesFilter');
+        statusFilter = document.getElementById('statusFilter');
+
+        // Elementos modais
+        const saidaModal = document.getElementById('saidaModal');
+        const deleteSaidaModal = document.getElementById('deleteSaidaModal');
+        const openSaidaModalBtn = document.getElementById('openSaidaModalBtn');
+        const closeSaidaModalBtn = document.getElementById('closeSaidaModalBtn');
+        const cancelSaidaBtn = document.getElementById('cancelSaidaBtn');
+        const saidaFormModal = document.getElementById('saidaFormModal');
+        const cancelDeleteSaidaBtn = document.getElementById('cancelDeleteSaidaBtn');
+        const deleteSaidaForm = document.getElementById('deleteSaidaForm');
+
+        // Event Listeners para modais
+        if (openSaidaModalBtn) {
+            openSaidaModalBtn.addEventListener('click', () => {
+                saidaFormModal.reset();
+                document.getElementById('saida_id').value = '';
+                document.getElementById('modalTitle').textContent = 'Nova Despesa';
+                
+                saidaFormModal.querySelectorAll('.form-error').forEach(el => el.style.display = 'none');
+                saidaFormModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+
+                document.querySelector('input[name="metodo_parcelamento"][value="total"]').checked = true;
+                chooseMetodoParcelado('total');
+                document.getElementById('id_tipo_pagamento_detalhe').value = '';
+                document.getElementById('id_quantidade_parcelas').value = '1';
+                document.getElementById('parcelado_valor_total').value = '0,00';
+                document.getElementById('id_valor').value = '0,00';
+                document.getElementById('id_valor_parcela').value = '0,00';
+
+                document.getElementById('id_situacao_checkbox').checked = false;
+                updateSituacaoInput();
+                toggleParcelamentoFields();
+                updateSubcategories();
+
+                showModal(saidaModal);
+            });
+        }
+
+        if (closeSaidaModalBtn) closeSaidaModalBtn.addEventListener('click', () => hideModal(saidaModal));
+        if (cancelSaidaBtn) cancelSaidaBtn.addEventListener('click', () => hideModal(saidaModal));
+        if (saidaModal) saidaModal.addEventListener('click', (e) => e.target === saidaModal && hideModal(saidaModal));
+
+        if (cancelDeleteSaidaBtn) cancelDeleteSaidaBtn.addEventListener('click', () => hideModal(deleteSaidaModal));
+        if (deleteSaidaModal) deleteSaidaModal.addEventListener('click', (e) => e.target === deleteSaidaModal && hideModal(deleteSaidaModal));
+
+        // Formatação monetária
+        const moneyInputs = [
+            document.getElementById('id_valor'),
+            document.getElementById('parcelado_valor_total'),
+            document.getElementById('parcelado_valor_parcela_input')
+        ];
+        
+        moneyInputs.forEach(input => {
+            if (input) {
+                input.addEventListener('input', () => formatarMoeda(input));
+                input.addEventListener('blur', () => formatarMoedaBlur(input));
+                input.addEventListener('focus', () => input.select());
+            }
+        });
+
+        // Parcelamento
+        const tipoPagamentoDetalheSelect = document.getElementById('id_tipo_pagamento_detalhe');
+        if (tipoPagamentoDetalheSelect) tipoPagamentoDetalheSelect.addEventListener('change', toggleParcelamentoFields);
+        
+        document.querySelectorAll('input[name="metodo_parcelamento"]').forEach(radio => {
+            radio.addEventListener('change', (e) => chooseMetodoParcelado(e.target.value));
+        });
+
+        const parcelamentoInputs = [
+            document.getElementById('parcelado_valor_total'),
+            document.getElementById('id_quantidade_parcelas'),
+            document.getElementById('parcelado_valor_parcela_input'),
+            document.getElementById('parcelado_num_parcelas')
+        ];
+        
+        parcelamentoInputs.forEach(input => {
+            if (input) input.addEventListener('input', calcularParcelamento);
+        });
+
+        // Subcategorias
+        const categoriaSelect = document.getElementById('id_categoria');
+        if (categoriaSelect) categoriaSelect.addEventListener('change', updateSubcategories);
+
+        // Situação
+        const situacaoCheckbox = document.getElementById('id_situacao_checkbox');
+        if (situacaoCheckbox) situacaoCheckbox.addEventListener('change', updateSituacaoInput);
+
+        // Botão Marcar como Pago
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.mark-as-paid-btn')) {
+                const button = e.target.closest('.mark-as-paid-btn');
+                const saidaId = button.getAttribute('data-saida-id');
+                const saidaNome = button.getAttribute('data-saida-nome');
+                marcarComoPago(saidaId, saidaNome);
+            }
+        });
+
+        // Botões de edição
+        document.querySelectorAll('.edit-saida-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                showLoading();
+                const saidaId = this.getAttribute('data-saida-id');
+                try {
+                    const response = await fetch(`/saidas/${saidaId}/editar/`);
+                    if (!response.ok) throw new Error('Erro ao carregar dados');
+                    
+                    const data = await response.json();
+                    if (data.success) {
+                        for (const [key, value] of Object.entries(data)) {
+                            const field = document.getElementById(`id_${key}`);
+                            if (field) {
+                                if (key.startsWith('data_') && value) {
+                                    field.value = new Date(value).toISOString().split('T')[0];
+                                } else {
+                                    field.value = value || '';
+                                }
+                            }
+                        }
+                        
+                        document.getElementById('saida_id').value = saidaId;
+                        document.getElementById('modalTitle').textContent = 'Editar Despesa';
+
+                        saidaFormModal.querySelectorAll('.form-error').forEach(el => el.style.display = 'none');
+                        saidaFormModal.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+
+                        document.getElementById('id_situacao_checkbox').checked = (data.situacao === 'pago');
+                        updateSituacaoInput();
+
+                        document.getElementById('id_tipo_pagamento_detalhe').value = data.tipo_pagamento_detalhe;
+                        toggleParcelamentoFields();
+
+                        if (data.tipo_pagamento_detalhe === 'parcelado') {
+                            document.querySelector('input[name="metodo_parcelamento"][value="total"]').checked = true;
+                            chooseMetodoParcelado('total');
+                            document.getElementById('parcelado_valor_total').value = parseFloat(data.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            document.getElementById('id_quantidade_parcelas').value = data.quantidade_parcelas || 1;
+                            document.getElementById('id_valor_parcela').value = parseFloat(data.valor_parcela).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                            calcularParcelamento();
+                        } else {
+                            document.getElementById('id_valor').value = parseFloat(data.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+                        }
+                        
+                        updateSubcategories();
+                        showModal(saidaModal);
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    showNotification('error', 'Erro', 'Erro ao carregar dados da despesa.');
+                } finally {
+                    hideLoading();
+                }
+            });
+        });
+
+        // Botões de exclusão
+        document.querySelectorAll('.delete-saida-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const saidaId = this.getAttribute('data-saida-id');
+                const saidaNome = this.getAttribute('data-saida-nome');
+                document.getElementById('deleteSaidaModalMessage').textContent = `Tem certeza de que deseja excluir a despesa "${saidaNome}"?`;
+                document.getElementById('deleteSaidaForm').action = `/saidas/${saidaId}/excluir/`;
+                showModal(deleteSaidaModal);
+            });
+        });
+
+        // Submit do formulário de exclusão
+        if (deleteSaidaForm) {
+            deleteSaidaForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                showLoading();
+                
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Excluindo...';
+                
+                fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': CSRF_TOKEN,
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        hideModal(deleteSaidaModal);
+                        showNotification('success', 'Sucesso', 'Despesa excluída com sucesso!');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        showNotification('error', 'Erro', data.message || 'Erro ao excluir despesa.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showNotification('error', 'Erro', 'Erro ao excluir despesa.');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    hideLoading();
+                });
+            });
+        }
+
+        // Submit do formulário principal
+        if (saidaFormModal) {
+            saidaFormModal.addEventListener('submit', function(e) {
+                e.preventDefault();
+                showLoading();
+                
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processando...';
+                
+                const formData = new FormData(this);
+                const tipoPagamentoDetalhe = document.getElementById('id_tipo_pagamento_detalhe').value;
+
+                if (tipoPagamentoDetalhe === 'parcelado') {
+                    const metodoSelecionado = document.querySelector('input[name="metodo_parcelamento"]:checked').value;
+                    if (metodoSelecionado === 'total') {
+                        formData.set('valor', converterParaDecimal(document.getElementById('parcelado_valor_total').value));
+                        formData.set('valor_parcela', converterParaDecimal(document.getElementById('id_valor_parcela').value));
+                    } else {
+                        const valorParcela = parseFloat(converterParaDecimal(document.getElementById('parcelado_valor_parcela_input').value));
+                        const numParcelas = parseInt(document.getElementById('parcelado_num_parcelas').value) || 1;
+                        formData.set('valor', (valorParcela * numParcelas).toFixed(2));
+                        formData.set('valor_parcela', valorParcela.toFixed(2));
+                        formData.set('quantidade_parcelas', numParcelas);
+                    }
+                } else {
+                    formData.set('valor', converterParaDecimal(document.getElementById('id_valor').value));
+                    formData.set('quantidade_parcelas', '1');
+                    formData.set('valor_parcela', converterParaDecimal(document.getElementById('id_valor').value));
+                }
+                
+                formData.set('situacao', document.getElementById('id_situacao').value);
+
+                const saidaId = document.getElementById('saida_id').value;
+                const actionUrl = saidaId ? `/saidas/${saidaId}/editar/` : "{% url 'core:saida_create' %}";
+
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': CSRF_TOKEN,
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        hideModal(saidaModal);
+                        showNotification('success', 'Sucesso', data.message);
+                                                setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        displayFormErrors(saidaFormModal, data.errors);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    showNotification('error', 'Erro', 'Erro ao processar o formulário.');
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                    hideLoading();
+                });
+            });
+        }
+
+        // Tecla ESC para fechar modais
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                if (saidaModal.classList.contains('show')) hideModal(saidaModal);
+                if (deleteSaidaModal.classList.contains('show')) hideModal(deleteSaidaModal);
+                if (document.getElementById('customConfirmModal').classList.contains('show')) {
+                    hideModal(document.getElementById('customConfirmModal'));
+                }
+            }
+        });
+
+        // Inicializar componentes
+        updateSubcategories();
+        toggleParcelamentoFields();
+        updateSituacaoInput();
+
+        // Focar no primeiro campo ao abrir modal
+        if (saidaModal) {
+            saidaModal.addEventListener('shown', () => {
+                const firstInput = saidaModal.querySelector('input, select, textarea');
+                if (firstInput) firstInput.focus();
+            });
+        }
+
+    }); // Fim do DOMContentLoaded
+
+
+
+    // Substitua todo o event listener complexo por:
+function initModal() {
+    const openBtn = document.getElementById('openSaidaModalBtn');
+    const modal = document.getElementById('saidaModal');
+    
+    if (openBtn && modal) {
+        openBtn.addEventListener('click', function() {
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.add('show'), 10);
+        });
+    }
+}
+
+// Execute quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initModal);
+} else {
+    initModal();
+}
+</script>
+{% endblock %}

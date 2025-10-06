@@ -1,0 +1,48 @@
+site_name: Documentação - Sistema de Gestão Financeira
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+nav:
+  - Home: index.md
+  - Instalação e Configuração:
+    - Pré-requisitos: installation/prerequisites.md
+    - Guia de Instalação: installation/setup.md
+    - Variáveis de Ambiente: installation/env-variables.md
+  - Arquitetura do Sistema:
+    - Estrutura de Apps: architecture/django-apps.md
+    - Modelos de Dados: architecture/models.md
+    - Choices e Constantes: architecture/choices.md
+  - Funcionalidades Core:
+    - Autenticação e Perfis: features/users-and-profiles.md
+    - Contas Bancárias: features/bank-accounts.md
+    - Entradas e Saídas: features/transactions.md
+    - Transferências: features/transfers.md
+  - Módulos Avançados:
+    - Painéis Analíticos: advanced/dashboard.md
+    - Lembretes: advanced/reminders.md
+    - Operações de Saque: advanced/loan-operations.md
+  - Desenvolvimento:
+    - APIs e Integração AJAX: development/api-ajax.md
+    - Testes Automatizados: development/testing.md
+    - Padrões e Convenções: development/conventions.md
+  - Guias e Referências:
+    - FAQ e Troubleshooting: guides/faq.md
+    - Changelog: guides/changelog.md
