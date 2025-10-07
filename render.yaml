@@ -1,11 +1,8 @@
-services:
-  # Serviço do Banco de Dados PostgreSQL
-  - type: psql # CORRIGIDO: O tipo de serviço para PostgreSQL é 'psql'
-    name: financas-db
+databases:
+  - name: financas-db
     plan: starter # Plano gratuito, pode ser alterado depois
-    postgres:
-      version: "15"
 
+services:
   # Serviço da Aplicação Web Django
   - type: web
     name: financas-web
@@ -16,8 +13,7 @@ services:
       path: / # Render irá checar se a aplicação está respondendo nesta rota
     envVars:
       - key: DATABASE_URL
-        fromService:
-          type: psql # CORRIGIDO: Referência ao tipo de serviço correto
+        fromDatabase:
           name: financas-db
           property: connectionString
       - key: DJANGO_SETTINGS_MODULE
