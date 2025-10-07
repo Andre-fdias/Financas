@@ -1,13 +1,14 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Lembretes{% endblock %}
+{% block title %}Lembretes & Calendário Financeiro{% endblock %}
 
 {% block extra_head %}
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-   <style>
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <style>
     .glass-panel {
         background: rgba(255, 255, 255, 0.25);
         backdrop-filter: blur(12px);
@@ -25,6 +26,7 @@
     
     .stats-card {
         transition: all 0.3s ease;
+        border-left: 4px solid;
     }
     
     .stats-card:hover {
@@ -40,27 +42,6 @@
     .lembrete-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .lembrete-urgente {
-        border-left-color: #ef4444;
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.1) 100%);
-    }
-    
-    .lembrete-proximo {
-        border-left-color: #f59e0b;
-        background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, rgba(245, 158, 11, 0.1) 100%);
-    }
-    
-    .lembrete-normal {
-        border-left-color: #10b981;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.1) 100%);
-    }
-    
-    .lembrete-concluido {
-        border-left-color: #6b7280;
-        background: linear-gradient(135deg, rgba(107, 114, 128, 0.05) 0%, rgba(107, 114, 128, 0.1) 100%);
-        opacity: 0.7;
     }
     
     .badge-urgente {
@@ -313,21 +294,288 @@
     .dark .checkbox-container {
         background-color: #374151;
     }
-</style>
-{% endblock %}
+    
+    /* Estilos para o calendário */
+    .calendar-container {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .fc {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    
+    .fc-toolbar {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+        border-radius: 8px 8px 0 0;
+        padding: 1rem;
+    }
+    
+    .fc-toolbar-title {
+        color: white;
+        font-weight: bold;
+    }
+    
+    .fc-button {
+        background: white !important;
+        color: #6366f1 !important;
+        border: none !important;
+        border-radius: 6px !important;
+        font-weight: 600 !important;
+    }
+    
+    .fc-button:hover {
+        background: #f3f4f6 !important;
+    }
+    
+    .fc-day-today {
+        background-color: rgba(99, 102, 241, 0.1) !important;
+    }
+    
+    /* Estilos para os tipos de eventos do calendário */
+    .event-type-lembrete {
+        background-color: #3B82F6 !important;
+        border-color: #2563EB !important;
+    }
 
+    .event-type-entrada {
+        background-color: #10B981 !important;
+        border-color: #059669 !important;
+    }
+
+    .event-type-saida_pendente {
+        background-color: #EF4444 !important;
+        border-color: #DC2626 !important;
+    }
+
+    .event-type-saida_paga {
+        background-color: #8B5CF6 !important;
+        border-color: #7C3AED !important;
+    }
+
+    .event-type-lembrete .fc-event-title,
+    .event-type-entrada .fc-event-title,
+    .event-type-saida_pendente .fc-event-title,
+    .event-type-saida_paga .fc-event-title {
+        color: white !important;
+        font-weight: 500;
+        font-size: 0.8rem;
+    }
+
+    /* Estilo para eventos urgentes */
+    .fc-event-urgente {
+        border: 2px solid #F59E0B !important;
+        font-weight: bold !important;
+    }
+
+    /* Melhorar a aparência dos eventos no calendário */
+    .fc-event {
+        border: none !important;
+        padding: 2px 4px !important;
+        margin: 1px 0 !important;
+        border-radius: 4px !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        cursor: pointer;
+    }
+
+    .fc-event-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Ajustar altura das células para melhor visualização */
+    .fc-daygrid-day-frame {
+        min-height: 80px;
+    }
+
+    .fc-event:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Filtros avançados */
+    .filter-section {
+        transition: all 0.3s ease;
+    }
+    
+    .filter-toggle {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .filter-toggle:hover {
+        background-color: rgba(99, 102, 241, 0.1);
+    }
+    
+    .filter-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    .filter-content.open {
+        max-height: 500px;
+    }
+    
+    /* Badges de status */
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.375rem;
+        font-weight: 600;
+    }
+    
+    /* Cards de estatísticas */
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Loading animation */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .loading-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        display: block;
+        font-size: 0.95rem;
+    }
+
+    .filter-select {
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem;
+        width: 100%;
+        background: white;
+    }
+
+    .filter-select:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        outline: none;
+    }
+
+    .filter-btn {
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    /* Estilos para modo escuro */
+    .dark .filter-select {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: white;
+    }
+
+    .dark .filter-select:focus {
+        border-color: #6366f1;
+    }
+
+    .event-detail-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .event-detail-value.positive {
+        color: #10B981;
+    }
+
+    .event-detail-value.negative {
+        color: #EF4444;
+    }
+
+    .event-detail-value.neutral {
+        color: #6B7280;
+    }
+
+    /* Animações para o modal */
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-50px) scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .modal-content {
+        animation: modalSlideIn 0.3s ease-out;
+    }
+
+    /* Ajustes responsivos */
+    @media (max-width: 768px) {
+        .calendar-container {
+            padding: 1rem;
+        }
+        
+        .fc-toolbar {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .fc-toolbar-chunk {
+            margin-bottom: 0.5rem;
+        }
+        
+        #calendar {
+            min-height: 400px !important;
+        }
+        
+        .fc-event {
+            font-size: 0.7rem !important;
+            padding: 1px 2px !important;
+        }
+        
+        .fc-toolbar-title {
+            font-size: 1.2rem;
+        }
+    }
+    </style>
+{% endblock %}
 {% block content %}
-<div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
+<div class="glass-panel min-h-screen p-4 md:p-8 flex flex-col space-y-6">
     <!-- Header Section -->
-    <div class="glass-panel p-6 mb-8">
+    <div class="glass-panel p-6 mb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                    <i class="fas fa-bell mr-3 text-indigo-600"></i>
-                    Meus Lembretes
+                    <i class="fas fa-calendar-alt mr-3 text-indigo-600"></i>
+                    Calendário Financeiro
                 </h1>
-                <p class="text-xl text-gray-600 dark:text-gray-300 font-semibold">
-                    Organize suas tarefas e compromissos importantes
+                <p class="text-lg text-gray-600 dark:text-gray-300">
+                    Gerencie seus lembretes, entradas e saídas em um único lugar
                 </p>
             </div>
             
@@ -341,17 +589,20 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 stats-grid">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Total Card -->
-        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
+        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500 stat-card">
             <div class="flex justify-between items-start">
                 <div>
                     <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
-                        <i class="fas fa-list text-blue-500 mr-2"></i>
-                        Total de Lembretes
+                        <i class="fas fa-bell text-blue-500 mr-2"></i>
+                        Total Lembretes
                     </p>
                     <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
                         {{ total_lembretes }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        {{ lembretes_pendentes }} pendentes
                     </p>
                 </div>
                 <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
@@ -360,178 +611,267 @@
             </div>
         </div>
 
-        <!-- Pendentes Card -->
-        <div class="glass-panel p-6 stats-card border-l-4 border-yellow-500">
+        <!-- Entradas Card -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-green-500 stat-card">
             <div class="flex justify-between items-start">
                 <div>
                     <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
-                        <i class="fas fa-clock text-yellow-500 mr-2"></i>
-                        Lembretes Pendentes
+                        <i class="fas fa-arrow-down text-green-500 mr-2"></i>
+                        Total Entradas
                     </p>
                     <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                        {{ lembretes_pendentes }}
+                        {{ entradas_count }}
                     </p>
-                    <p class="text-sm text-yellow-600 dark:text-yellow-400 mt-2">
-                        {{ percentual_pendentes }}% do total
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Este mês
                     </p>
                 </div>
-                <div class="bg-yellow-100 p-3 rounded-full text-yellow-600 dark:bg-yellow-900 dark:text-yellow-200">
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <i class="fas fa-download text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saídas Card - FUNCIONANDO -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-red-500 stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-arrow-up text-red-500 mr-2"></i>
+                        Total Saídas
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
+                        {{ saidas_count }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        {{ saidas_pendentes_mes }} pendentes
+                    </p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-full text-red-600 dark:bg-red-900 dark:text-red-200">
+                    <i class="fas fa-upload text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Total de Contas a Vencer Card (substitui o Saldo Card) -->
+        <div class="glass-panel p-6 stats-card border-l-4 border-purple-500 stat-card">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
+                        <i class="fas fa-calendar-exclamation text-purple-500 mr-2"></i>
+                        Contas a Vencer
+                    </p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white {% if contas_a_vencer == 0 %}text-green-600{% else %}text-yellow-600{% endif %}">
+                        {{ contas_a_vencer }}
+                    </p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        {{ saidas_pagas_mes }} pagas este mês
+                    </p>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900 dark:text-purple-200">
                     <i class="fas fa-clock text-xl"></i>
                 </div>
             </div>
         </div>
-
-        <!-- Concluídos Card -->
-        <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
-                        <i class="fas fa-check-circle text-green-500 mr-2"></i>
-                        Lembretes Concluídos
-                    </p>
-                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                        {{ lembretes_concluidos }}
-                    </p>
-                    <p class="text-sm text-green-600 dark:text-green-400 mt-2">
-                        {{ percentual_concluidos }}% do total
-                    </p>
-                </div>
-                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
-                    <i class="fas fa-check text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <!-- Urgentes Card -->
-        <div class="glass-panel p-6 stats-card border-l-4 border-red-500">
-            <div class="flex justify-between items-start">
-                <div>
-                    <p class="text-sm font-medium text-gray-500 mb-2 dark:text-gray-300">
-                        <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                        Lembretes Urgentes
-                    </p>
-                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white">
-                        {{ lembretes_urgentes }}
-                    </p>
-                    <p class="text-sm text-red-600 dark:text-red-400 mt-2">
-                        {{ lembretes_urgentes }} próximos de vencer
-                    </p>
-                </div>
-                <div class="bg-red-100 p-3 rounded-full text-red-600 dark:bg-red-900 dark:text-red-200">
-                    <i class="fas fa-exclamation-triangle text-xl"></i>
-                </div>
-            </div>
-        </div>
     </div>
 
-    <!-- Filters Section -->
+    <!-- Filtros Section 
     <div class="glass-panel p-6 mb-8">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
-            <i class="fas fa-filter mr-3 text-indigo-600"></i>
-            Filtrar Lembretes
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center mb-4">
+            <i class="fas fa-sliders-h mr-3 text-indigo-600"></i>
+            Filtros
         </h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <!-- Status Filter -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">-->
+            <!-- Filtro de Status 
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                    <i class="fas fa-circle mr-2"></i>Status
+                    <i class="fas fa-filter mr-2"></i>Status
                 </label>
-                <select onchange="updateFilters()" id="statusFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <select id="statusFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     <option value="">Todos os status</option>
-                    <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Pendentes</option>
-                    <option value="concluido" {% if status_filtro == 'concluido' %}selected{% endif %}>Concluídos</option>
+                    <option value="pendente">Pendentes</option>
+                    <option value="concluido">Concluídos</option>
+                    <option value="urgente">Urgentes (≤ 2 dias)</option>
                 </select>
             </div>
 
-            <!-- Urgência Filter -->
-            <div>
+             Filtro de Tipo -->
+                  <!--  <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                    <i class="fas fa-clock mr-2"></i>Urgência
+                    <i class="fas fa-tag mr-2"></i>Tipo
                 </label>
-                <select onchange="updateFilters()" id="urgenciaFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="">Todas as urgências</option>
-                    <option value="urgente" {% if urgencia_filtro == 'urgente' %}selected{% endif %}>Urgentes</option>
-                    <option value="proximo" {% if urgencia_filtro == 'proximo' %}selected{% endif %}>Próximos</option>
-                    <option value="normal" {% if urgencia_filtro == 'normal' %}selected{% endif %}>Normais</option>
+                <select id="tipoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os tipos</option>
+                    <option value="lembrete">Lembretes</option>
+                    <option value="entrada">Entradas</option>
+                    <option value="saida">Saídas</option>
                 </select>
             </div>
 
-            <!-- Order Filter -->
-            <div>
+            Filtro de Período -->
+                   <!-- <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar mr-2"></i>Período
+                </label>
+                <select id="periodoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="90">Últimos 3 meses</option>
+                    <option value="365">Último ano</option>
+                    <option value="custom">Personalizado</option>
+                    <option value="todos">Todos os períodos</option>
+                </select>
+            </div>
+
+                   Filtro de Ordenação -->
+                  <!--  <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
                     <i class="fas fa-sort mr-2"></i>Ordenar por
                 </label>
-                <select onchange="updateFilters()" id="orderFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                    <option value="data_limite" {% if order_filtro == 'data_limite' %}selected{% endif %}>Data Limite</option>
-                    <option value="-data_limite" {% if order_filtro == '-data_limite' %}selected{% endif %}>Data Limite (Decrescente)</option>
-                    <option value="titulo" {% if order_filtro == 'titulo' %}selected{% endif %}>Título</option>
-                    <option value="-data_criacao" {% if order_filtro == '-data_criacao' %}selected{% endif %}>Mais Recentes</option>
+                <select id="orderFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="data_limite">Data Limite (Recente)</option>
+                    <option value="-data_limite">Data Limite (Antigo)</option>
+                    <option value="data_criacao">Data Criação (Recente)</option>
+                    <option value="-data_criacao">Data Criação (Antigo)</option>
+                    <option value="titulo">Nome (A-Z)</option>
+                    <option value="-titulo">Nome (Z-A)</option>
+                    <option value="concluido">Status (Concluído)</option>
+                    <option value="-concluido">Status (Pendente)</option>
                 </select>
             </div>
+        </div>
 
-            <!-- Quick Actions -->
+        Filtros Personalizados -->
+               <!-- <div id="customFilter" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
-                    <i class="fas fa-bolt mr-2"></i>Ações Rápidas
+                    Data Inicial
                 </label>
-                <div class="flex gap-2">
-                    <button onclick="clearFilters()" class="flex-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-colors">
-                        Limpar
+                <input type="date" id="dataInicial" class="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    Data Final
+                </label>
+                <input type="date" id="dataFinal" class="w-full p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            </div>
+        </div>
+
+        Ações dos Filtros -->
+            <!--    <div class="flex justify-end gap-3 mt-4">
+            <button onclick="limparFiltros()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                <i class="fas fa-times mr-2"></i>Limpar
+            </button>
+            <button onclick="aplicarFiltros()" class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-check mr-2"></i>Aplicar Filtros
+            </button>
+        </div>
+        
+        Filtros Ativos -->
+             <!--   <div id="filtros-ativos" class="mt-4 p-3 bg-blue-50 rounded-lg dark:bg-blue-900/20 hidden">
+            <h3 class="text-sm font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                <i class="fas fa-info-circle mr-1"></i>Filtros Ativos:
+            </h3>
+            <div class="flex flex-wrap gap-2" id="filtros-ativos-lista">
+               Os filtros ativos serão inseridos aqui via JavaScript -->
+                   <!-- </div>
+        </div>
+    </div> -->
+
+    <!-- Calendário Financeiro -->
+    <div class="calendar-container mt-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                <i class="fas fa-calendar mr-3 text-indigo-600"></i>
+                Calendário - {{ mes_atual }}
+            </h2>
+            
+            <!-- Filtros Rápidos do Calendário -->
+            <div class="flex flex-wrap gap-2 mt-4 md:mt-0">
+                <button onclick="filtrarCalendario('todos')" class="px-3 py-1 bg-indigo-600 text-white rounded-full text-sm hover:bg-indigo-700 transition-colors">
+                    Todos
+                </button>
+                <button onclick="filtrarCalendario('lembretes')" class="px-3 py-1 bg-blue-500 text-white rounded-full text-sm hover:bg-blue-600 transition-colors">
+                    Lembretes
+                </button>
+                <button onclick="filtrarCalendario('entradas')" class="px-3 py-1 bg-green-500 text-white rounded-full text-sm hover:bg-green-600 transition-colors">
+                    Entradas
+                </button>
+                <button onclick="filtrarCalendario('saidas')" class="px-3 py-1 bg-red-500 text-white rounded-full text-sm hover:bg-red-600 transition-colors">
+                    Saídas
+                </button>
+            </div>
+        </div>
+
+        <!-- Calendário -->
+        <div class="glass-panel p-4 mb-6">
+            <div id="calendar" style="min-height: 600px;"></div>
+        </div>
+
+        <!-- Legenda -->
+        <div class="glass-panel p-4">
+            <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                <i class="fas fa-info-circle mr-2 text-indigo-500"></i>
+                Legenda
+            </h3>
+            <div class="flex flex-wrap gap-4">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Lembretes</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Entradas</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-red-500 rounded mr-2"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Saídas Pendentes</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-purple-500 rounded mr-2"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Saídas Pagas</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 bg-yellow-500 rounded mr-2 border-2 border-yellow-600"></div>
+                    <span class="text-sm text-gray-600 dark:text-gray-300">Urgente (≤ 2 dias)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Lembretes -->
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                    <i class="fas fa-list mr-3 text-indigo-600"></i>
+                    Meus Lembretes
+                    <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                        {{ lembretes|length }} itens
+                    </span>
+                </h2>
+                <div class="flex items-center gap-2 mt-4 md:mt-0">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Visualização:</span>
+                    <button onclick="mudarVisualizacao('grid')" class="p-2 bg-indigo-100 text-indigo-600 rounded dark:bg-indigo-900 dark:text-indigo-200">
+                        <i class="fas fa-th"></i>
                     </button>
-                    <button onclick="applyFilters()" class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors">
-                        Aplicar
+                    <button onclick="mudarVisualizacao('list')" class="p-2 bg-gray-100 text-gray-600 rounded dark:bg-gray-700 dark:text-gray-300">
+                        <i class="fas fa-list"></i>
                     </button>
                 </div>
             </div>
         </div>
 
-        <!-- Active Filters Badges -->
-        <div class="flex flex-wrap gap-2">
-            {% if status_filtro %}
-            <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-blue-900 dark:text-blue-200 filter-pill">
-                Status: {{ status_filtro|title }}
-                <button onclick="removeFilter('status')" class="ml-2 text-blue-600 hover:text-blue-800">×</button>
-            </span>
-            {% endif %}
-            
-            {% if urgencia_filtro %}
-            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
-                Urgência: {{ urgencia_filtro|title }}
-                <button onclick="removeFilter('urgencia')" class="ml-2 text-green-600 hover:text-green-800">×</button>
-            </span>
-            {% endif %}
-            
-            {% if order_filtro %}
-            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-purple-900 dark:text-purple-200 filter-pill">
-                Ordenar: {% if order_filtro == 'data_limite' %}Data Limite{% elif order_filtro == '-data_limite' %}Data Limite (Decrescente){% elif order_filtro == 'titulo' %}Título{% else %}Mais Recentes{% endif %}
-                <button onclick="removeFilter('order')" class="ml-2 text-purple-600 hover:text-purple-800">×</button>
-            </span>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Lembretes List -->
-    <div class="glass-panel overflow-hidden">
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
-                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
-                Meus Lembretes
-                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
-                    {{ lembretes|length }} registros
-                </span>
-            </h2>
-        </div>
-
-        <div class="p-6">
+        <div class="p-6" id="lembretesContainer">
             {% if lembretes %}
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="lembretesGrid">
                 {% for lembrete in lembretes %}
                 {% with dias_restantes=lembrete.dias_para_vencer %}
-                <div class="lembrete-card p-6 rounded-xl {% if lembrete.concluido %}lembrete-concluido{% elif dias_restantes <= 2 %}lembrete-urgente{% elif dias_restantes <= 7 %}lembrete-proximo{% else %}lembrete-normal{% endif %}">
+                <div class="lembrete-card p-6 rounded-xl {% if lembrete.concluido %}bg-gray-100 dark:bg-gray-800 opacity-70{% elif dias_restantes <= 2 %}bg-red-50 dark:bg-red-900/20{% elif dias_restantes <= 7 %}bg-yellow-50 dark:bg-yellow-900/20{% else %}bg-green-50 dark:bg-green-900/20{% endif %}">
                     <div class="flex justify-between items-start mb-4">
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">{{ lembrete.titulo }}</h3>
-                        <span class="text-xs px-2 py-1 rounded-full {% if lembrete.concluido %}badge-concluido{% elif dias_restantes <= 2 %}badge-urgente{% elif dias_restantes <= 7 %}badge-proximo{% else %}badge-normal{% endif %}">
+                        <span class="status-badge {% if lembrete.concluido %}bg-gray-500 text-white{% elif dias_restantes <= 2 %}bg-red-500 text-white{% elif dias_restantes <= 7 %}bg-yellow-500 text-white{% else %}bg-green-500 text-white{% endif %}">
                             {% if lembrete.concluido %}
                                 Concluído
                             {% elif dias_restantes <= 2 %}
@@ -545,13 +885,13 @@
                     </div>
                     
                     {% if lembrete.descricao %}
-                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ lembrete.descricao }}</p>
+                    <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">{{ lembrete.descricao }}</p>
                     {% endif %}
                     
                     <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 mb-4">
                         <div class="flex items-center">
                             <i class="fas fa-calendar-day mr-2"></i>
-                            <span>Vence em: {{ lembrete.data_limite|date:"d/m/Y" }}</span>
+                            <span>{{ lembrete.data_limite|date:"d/m/Y" }}</span>
                         </div>
                         <div class="flex items-center">
                             <i class="fas fa-clock mr-2"></i>
@@ -597,10 +937,10 @@
             </div>
             {% else %}
             <div class="empty-state">
-                <i class="fas fa-bell-slash"></i>
+                <i class="fas fa-bell-slash text-4xl mb-4 text-gray-400"></i>
                 <h3 class="text-xl font-medium text-gray-500 mb-2">Nenhum lembrete encontrado</h3>
-                <p class="text-gray-400 mb-4">Tente ajustar os filtros ou adicione novos lembretes</p>
-                <button id="openLembreteModalBtnEmpty" class="add-btn px-4 py-2 text-white rounded-lg font-medium flex items-center gap-2 mx-auto">
+                <p class="text-gray-400 mb-4">Comece adicionando seu primeiro lembrete</p>
+                <button id="openLembreteModalBtnEmpty" class="add-btn px-6 py-3 text-white rounded-lg font-medium flex items-center gap-2 mx-auto">
                     <i class="fas fa-plus-circle"></i>
                     Adicionar Lembrete
                 </button>
@@ -612,110 +952,133 @@
 
 <!-- Loading Spinner -->
 <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-    <div class="bg-white p-6 rounded-lg shadow-xl">
+    <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-        <p class="text-center mt-4 text-gray-600">Processando...</p>
+        <p class="text-center mt-4 text-gray-600 dark:text-gray-300">Processando...</p>
     </div>
 </div>
 
-<!-- Modal Structure for Add/Edit Lembrete -->
+<!-- Modal para Adicionar/Editar Lembrete -->
 <div id="lembreteModal" class="modal-overlay hidden">
     <div class="modal-content">
-        <div class="form-container w-full max-w-md p-8">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200" id="modalTitle">Adicionar Lembrete</h2>
-                <button type="button" id="closeLembreteModalBtn" class="text-gray-500 hover:text-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white" id="modalTitle">Adicionar Lembrete</h2>
+        
+        <form id="lembreteForm" method="post" action="{% url 'core:lembrete_create' %}">
+            {% csrf_token %}
+            <input type="hidden" id="lembreteId" name="lembrete_id" value=""> 
+           
+            <div class="mb-4">
+                <label for="titulo" class="form-label">Título *</label>
+                <input type="text" id="titulo" name="titulo" class="form-input" required>
+                <div class="form-error" id="tituloError"></div>
             </div>
             
-            <form method="post" id="lembreteFormModal" class="space-y-6">
-                {% csrf_token %}
-                <input type="hidden" id="lembrete_id" name="lembrete_id">
-                
-                <!-- Título -->
-                <div class="input-group">
-                    <label for="id_titulo" class="form-label flex items-center">
-                        <i class="fas fa-heading mr-2 text-blue-500"></i>
-                        Título do Lembrete
-                    </label>
-                    <input type="text" id="id_titulo" name="titulo" class="form-input" placeholder="Ex: Pagar conta de luz" required>
-                    <p class="form-error" id="titulo_error"></p>
-                </div>
-                
-                <!-- Descrição -->
-                <div class="input-group">
-                    <label for="id_descricao" class="form-label flex items-center">
-                        <i class="fas fa-align-left mr-2 text-purple-500"></i>
-                        Descrição (Opcional)
-                    </label>
-                    <textarea id="id_descricao" name="descricao" class="form-input" rows="3" placeholder="Detalhes adicionais sobre este lembrete..."></textarea>
-                    <p class="form-error" id="descricao_error"></p>
-                </div>
-                
-                <!-- Data Limite -->
-                <div class="input-group">
-                    <label for="id_data_limite" class="form-label flex items-center">
-                        <i class="fas fa-calendar-day mr-2 text-green-500"></i>
-                        Data Limite
-                    </label>
-                    <input type="date" id="id_data_limite" name="data_limite" class="form-input" required>
-                    <p class="form-error" id="data_limite_error"></p>
-                </div>
-                
-                <!-- Status (Concluído) -->
-                <div class="input-group">
-                    <label class="form-label">Status do Lembrete</label>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="id_concluido" name="concluido" class="checkbox-input">
-                        <label for="id_concluido" class="text-gray-700 dark:text-gray-300">Marcar como concluído</label>
-                    </div>
-                    <p class="form-error" id="concluido_error"></p>
-                </div>
-    
-                <div class="flex justify-end space-x-4">
-                    <button type="button" id="cancelBtn" class="cancel-btn px-6 py-3 border border-gray-300 rounded-xl text-gray-700 dark:text-gray-300 flex items-center transition-all hover:shadow-md">
-                        <i class="fas fa-times mr-2"></i>
-                        Cancelar
-                    </button>
-                    <button type="submit" id="saveBtn" class="submit-btn text-white font-medium py-2 px-4 rounded-lg inline-flex items-center">
-                        <i class="fas fa-save mr-2"></i>
-                        Salvar Lembrete
-                    </button>
-                </div>
-            </form>
-        </div>
+            <div class="mb-4">
+                <label for="descricao" class="form-label">Descrição</label>
+                <textarea id="descricao" name="descricao" class="form-input" rows="3"></textarea>
+                <div class="form-error" id="descricaoError"></div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="data_limite" class="form-label">Data Limite *</label>
+                <input type="date" id="data_limite" name="data_limite" class="form-input" required>
+                <div class="form-error" id="data_limiteError"></div>
+            </div>
+            
+            <div class="checkbox-container mb-6">
+                <input type="checkbox" id="concluido" name="concluido" class="checkbox-input">
+                <label for="concluido" class="text-sm text-gray-700 dark:text-gray-300">Marcar como concluído</label>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button type="button" class="cancel-btn px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors" onclick="fecharModal()">
+                    Cancelar
+                </button>
+                <button type="submit" class="submit-btn px-6 py-2 text-white rounded-lg">
+                    Salvar Lembrete
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
 <!-- Modal para Exclusão -->
 <div id="deleteLembreteModal" class="modal-overlay hidden">
     <div class="modal-content max-w-md">
-        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
-            <div class="text-center mb-6">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900">
-                    <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white mt-4" id="deleteModalTitle">Confirmar Exclusão</h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mt-2" id="deleteModalMessage">Tem certeza de que deseja excluir este lembrete?</p>
-            </div>
-            
-            <div class="flex justify-center space-x-4">
-                <button type="button" id="cancelDeleteBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800 dark:text-white">Confirmar Exclusão</h2>
+        
+        <p class="text-gray-600 dark:text-gray-300 mb-6">
+            Tem certeza que deseja excluir o lembrete "<span id="deleteLembreteTitulo" class="font-semibold"></span>"?
+            Esta ação não pode ser desfeita.
+        </p>
+        
+        <form id="deleteLembreteForm" method="post" action="{% url 'core:lembrete_delete' 0 %}">
+            {% csrf_token %}
+            <input type="hidden" id="deleteLembreteId" name="lembrete_id" value="">
+        
+            <div class="flex justify-end gap-3">
+                <button type="button" class="cancel-btn px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors" onclick="fecharDeleteModal()">
                     Cancelar
                 </button>
-                <form id="deleteLembreteForm" method="post">
-                    {% csrf_token %}
-                    <input type="hidden" id="delete_lembrete_id" name="lembrete_id">
-                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
-                        Excluir
-                    </button>
-                </form>
+                <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Excluir
+                </button>
             </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal para Detalhes do Evento -->
+<div id="eventDetailModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-2xl">
+        <button type="button" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" onclick="fecharEventDetailModal()">
+            <i class="fas fa-times text-xl"></i>
+        </button>
+        
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-white" id="eventDetailTitle"></h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div class="flex items-center">
+                <i class="fas fa-calendar-day text-indigo-600 mr-3 text-lg"></i>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Data</p>
+                    <p class="font-medium text-gray-800 dark:text-white" id="eventDetailDate"></p>
+                </div>
+            </div>
+            
+            <div class="flex items-center">
+                <i class="fas fa-clock text-indigo-600 mr-3 text-lg"></i>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                    <p class="font-medium text-gray-800 dark:text-white" id="eventDetailStatus"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-4" id="eventDetailValueContainer">
+            <div class="flex items-center">
+                <i class="fas fa-money-bill-wave text-indigo-600 mr-3 text-lg"></i>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Valor</p>
+                    <p class="font-medium text-gray-800 dark:text-white" id="eventDetailValue"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-6" id="eventDetailDescriptionContainer">
+            <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-white">
+                <i class="fas fa-align-left text-indigo-600 mr-2"></i>
+                Descrição
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg" id="eventDetailDescription"></p>
+        </div>
+        
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-500 dark:text-gray-400" id="eventDetailType"></span>
+            <a href="#" id="eventDetailLink" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <i class="fas fa-external-link-alt mr-2"></i>
+                Ver Detalhes
+            </a>
         </div>
     </div>
 </div>
@@ -725,376 +1088,867 @@
     <span id="successMessageText">Operação realizada com sucesso!</span>
 </div>
 
+<!-- Passar dados do Django para JavaScript de forma segura -->
+<script>
+    window.eventosCalendario = {{ eventos_calendario|safe }};
+    window.hoje = "{{ hoje }}";
+</script>
 {% endblock %}
 
-{% block extra_js %}
 
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/pt-br.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Obtenha os elementos do DOM
-        const openLembreteModalBtn = document.getElementById('openLembreteModalBtn');
-        const openLembreteModalBtnEmpty = document.getElementById('openLembreteModalBtnEmpty');
-        const lembreteModal = document.getElementById('lembreteModal');
-        const closeLembreteModalBtn = document.getElementById('closeLembreteModalBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const lembreteFormModal = document.getElementById('lembreteFormModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const lembreteIdInput = document.getElementById('lembrete_id');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        const successMessage = document.getElementById('successMessage');
-        const successMessageText = document.getElementById('successMessageText');
-        const deleteLembreteModal = document.getElementById('deleteLembreteModal');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const deleteLembreteForm = document.getElementById('deleteLembreteForm');
-        const deleteLembreteIdInput = document.getElementById('delete_lembrete_id');
+// Variáveis globais
+let calendar;
+let currentView = 'grid';
+
+// Inicialização quando o DOM estiver carregado
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Iniciando configuração do calendário financeiro');
+    console.log('Eventos disponíveis:', window.eventosCalendario ? window.eventosCalendario.length : 0);
+    
+    inicializarCalendario();
+    inicializarEventListeners();
+    inicializarFiltros();
+    
+    // Verificar se há parâmetros de filtro na URL
+    aplicarFiltrosDaURL();
+});
+
+// Função para inicializar o calendário
+function inicializarCalendario() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) {
+        console.error('Elemento do calendário não encontrado');
+        return;
+    }
+    
+    try {
+        // Usar os eventos diretamente da variável global
+        const eventos = window.eventosCalendario || [];
+        console.log('Inicializando calendário com', eventos.length, 'eventos');
         
-        // Função para mostrar o modal
-        function showModal(modal) {
-            modal.classList.remove('hidden');
-            setTimeout(() => {
-                modal.classList.add('show');
-            }, 10);
-        }
-        
-        // Função para esconder o modal
-        function hideModal(modal) {
-            modal.classList.remove('show');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300);
-        }
-        
-        // Função para mostrar mensagem de sucesso
-        function showSuccessMessage(message) {
-            successMessageText.textContent = message;
-            successMessage.style.display = 'block';
-            
-            setTimeout(() => {
-                successMessage.style.display = 'none';
-            }, 3000);
-        }
-        
-        // Função para mostrar o spinner de carregamento
-        function showLoading() {
-            loadingSpinner.classList.remove('hidden');
-        }
-        
-        // Função para esconder o spinner de carregamento
-        function hideLoading() {
-            loadingSpinner.classList.add('hidden');
-        }
-        
-        // Função para limpar o formulário
-        function clearForm() {
-            lembreteFormModal.reset();
-            lembreteIdInput.value = '';
-            modalTitle.textContent = 'Adicionar Lembrete';
-            
-            // Limpar mensagens de erro
-            document.querySelectorAll('.form-error').forEach(el => {
-                el.style.display = 'none';
-            });
-        }
-        
-        // Função para preencher o formulário com dados do lembrete
-        function fillForm(lembreteData) {
-            document.getElementById('id_titulo').value = lembreteData.titulo;
-            document.getElementById('id_descricao').value = lembreteData.descricao || '';
-            document.getElementById('id_data_limite').value = lembreteData.data_limite;
-            document.getElementById('id_concluido').checked = lembreteData.concluido === 'true';
-            lembreteIdInput.value = lembreteData.id;
-            modalTitle.textContent = 'Editar Lembrete';
-        }
-        
-        // Event Listeners
-        openLembreteModalBtn.addEventListener('click', function() {
-            clearForm();
-            showModal(lembreteModal);
-        });
-        
-        openLembreteModalBtnEmpty.addEventListener('click', function() {
-            clearForm();
-            showModal(lembreteModal);
-        });
-        
-        closeLembreteModalBtn.addEventListener('click', function() {
-            hideModal(lembreteModal);
-        });
-        
-        cancelBtn.addEventListener('click', function() {
-            hideModal(lembreteModal);
-        });
-        
-        cancelDeleteBtn.addEventListener('click', function() {
-            hideModal(deleteLembreteModal);
-        });
-        
-        // Fechar modal clicando fora dele
-        lembreteModal.addEventListener('click', function(e) {
-            if (e.target === lembreteModal) {
-                hideModal(lembreteModal);
-            }
-        });
-        
-        deleteLembreteModal.addEventListener('click', function(e) {
-            if (e.target === deleteLembreteModal) {
-                hideModal(deleteLembreteModal);
-            }
-        });
-        
-        // Event listeners para os botões de editar
-        document.querySelectorAll('.edit-lembrete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const lembreteData = {
-                    id: this.dataset.lembreteId,
-                    titulo: this.dataset.lembreteTitulo,
-                    descricao: this.dataset.lembreteDescricao,
-                    data_limite: this.dataset.lembreteDataLimite,
-                    concluido: this.dataset.lembreteConcluido
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay,listMonth'
+            },
+            locale: 'pt-br', // DEFINIR LOCALE CORRETAMENTE
+            firstDay: 1, // Segunda-feira como primeiro dia
+            buttonText: {
+                today: 'Hoje',
+                month: 'Mês',
+                week: 'Semana',
+                day: 'Dia',
+                list: 'Lista'
+            },
+            allDayText: 'Dia inteiro',
+            events: eventos,
+            eventContent: function(info) {
+                // Renderização personalizada dos eventos
+                const title = info.event.extendedProps.fullTitle || info.event.title;
+                return {
+                    html: `<div class="fc-event-title" title="${title}">${info.event.title}</div>`
                 };
+            },
+            eventDidMount: function(info) {
+                const eventType = info.event.extendedProps.type;
+                info.el.classList.add(`event-type-${eventType}`);
                 
-                fillForm(lembreteData);
-                showModal(lembreteModal);
-            });
+                // Tooltip com título completo
+                const fullTitle = info.event.extendedProps.fullTitle || info.event.title;
+                info.el.setAttribute('title', fullTitle);
+                
+                // Destacar eventos urgentes
+                const diasRestantes = info.event.extendedProps.dias_restantes;
+                if (diasRestantes !== undefined && diasRestantes <= 2 && 
+                    !info.event.extendedProps.concluido &&
+                    info.event.extendedProps.situacao !== 'paga') {
+                    info.el.classList.add('fc-event-urgente');
+                    info.el.setAttribute('title', `${fullTitle} - URGENTE (${diasRestantes} dias)`);
+                }
+                
+                // Adicionar cursor pointer
+                info.el.style.cursor = 'pointer';
+            },
+            eventClick: function(info) {
+                info.jsEvent.preventDefault();
+                mostrarDetalhesEvento(info.event);
+            },
+            datesSet: function(info) {
+                console.log('Visualização do calendário alterada:', info.view.type);
+            }
         });
         
-        // Event listeners para os botões de excluir
-        document.querySelectorAll('.delete-lembrete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const lembreteId = this.dataset.lembreteId;
-                const lembreteTitulo = this.dataset.lembreteTitulo;
-                
-                document.getElementById('deleteModalTitle').textContent = `Excluir "${lembreteTitulo}"?`;
-                document.getElementById('deleteModalMessage').textContent = `Tem certeza de que deseja excluir o lembrete "${lembreteTitulo}"? Esta ação não pode ser desfeita.`;
-                deleteLembreteIdInput.value = lembreteId;
-                
-                showModal(deleteLembreteModal);
-            });
-        });
+        calendar.render();
+        console.log('Calendário inicializado com sucesso');
         
-        // Event listener para os checkboxes de concluído
-        document.querySelectorAll('.toggle-concluido').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const lembreteId = this.dataset.lembreteId;
-                const isConcluido = this.checked;
-                
-                showLoading();
-                
-                // Enviar requisição AJAX para atualizar o status
-                fetch('{% url "core:alternar_status_lembrete" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        lembrete_id: lembreteId,
-                        concluido: isConcluido
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    hideLoading();
-                    if (data.success) {
-                        showSuccessMessage('Status atualizado com sucesso!');
-                        // Recarregar a página após um breve delay
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        alert('Erro ao atualizar status: ' + data.message);
-                        // Reverter a mudança no checkbox
-                        this.checked = !isConcluido;
-                    }
-                })
-                .catch(error => {
-                    hideLoading();
-                    console.error('Erro:', error);
-                    alert('Erro ao atualizar status. Tente novamente.');
-                    // Reverter a mudança no checkbox
-                    this.checked = !isConcluido;
-                });
-            });
-        });
-        
-        // Envio do formulário de lembrete
-        lembreteFormModal.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Validação básica
-            const titulo = document.getElementById('id_titulo').value.trim();
-            const dataLimite = document.getElementById('id_data_limite').value;
-            
-            let isValid = true;
-            
-            // Validar título
-            if (!titulo) {
-                document.getElementById('titulo_error').textContent = 'Por favor, insira um título para o lembrete.';
-                document.getElementById('titulo_error').style.display = 'block';
-                isValid = false;
+    } catch (error) {
+        console.error('Erro ao inicializar calendário:', error);
+    }
+}
+
+// Nova função para mostrar detalhes do evento
+function mostrarDetalhesEvento(event) {
+    const extendedProps = event.extendedProps;
+    
+    // Preencher modal com detalhes
+    document.getElementById('eventDetailTitle').textContent = 
+        event.title.replace(/[💰📋💸]/g, '').trim();
+    
+    document.getElementById('eventDetailDate').textContent = 
+        event.start ? event.start.toLocaleDateString('pt-BR') : 'Data não disponível';
+    
+    // Configurar status
+    let statusText = '';
+    let statusColor = 'text-gray-600';
+    
+    if (extendedProps.type === 'lembrete') {
+        if (extendedProps.concluido) {
+            statusText = 'Concluído';
+            statusColor = 'text-green-600';
+        } else {
+            const diasRestantes = extendedProps.dias_restantes || 0;
+            if (diasRestantes <= 0) {
+                statusText = 'Vencido';
+                statusColor = 'text-red-600';
+            } else if (diasRestantes <= 2) {
+                statusText = `Urgente (${diasRestantes} dias)`;
+                statusColor = 'text-red-600';
+            } else if (diasRestantes <= 7) {
+                statusText = `Próximo (${diasRestantes} dias)`;
+                statusColor = 'text-yellow-600';
             } else {
-                document.getElementById('titulo_error').style.display = 'none';
+                statusText = `Em andamento (${diasRestantes} dias)`;
+                statusColor = 'text-blue-600';
             }
-            
-            // Validar data limite
-            if (!dataLimite) {
-                document.getElementById('data_limite_error').textContent = 'Por favor, selecione uma data limite.';
-                document.getElementById('data_limite_error').style.display = 'block';
-                isValid = false;
+        }
+    } else if (extendedProps.type === 'entrada') {
+        statusText = 'Entrada';
+        statusColor = 'text-green-600';
+    } else if (extendedProps.type === 'saida_pendente') {
+        statusText = 'Pendente';
+        statusColor = 'text-red-600';
+    } else if (extendedProps.type === 'saida_paga') {
+        statusText = 'Paga';
+        statusColor = 'text-purple-600';
+    }
+    
+    document.getElementById('eventDetailStatus').textContent = statusText;
+    document.getElementById('eventDetailStatus').className = `font-medium ${statusColor}`;
+    
+    // Valor (se aplicável)
+    const valueContainer = document.getElementById('eventDetailValueContainer');
+    if (extendedProps.valor) {
+        valueContainer.classList.remove('hidden');
+        document.getElementById('eventDetailValue').textContent = 
+            `R$ ${extendedProps.valor.toFixed(2)}`;
+    } else {
+        valueContainer.classList.add('hidden');
+    }
+    
+    // Descrição
+    const descContainer = document.getElementById('eventDetailDescriptionContainer');
+    if (extendedProps.descricao) {
+        descContainer.classList.remove('hidden');
+        document.getElementById('eventDetailDescription').textContent = extendedProps.descricao;
+    } else {
+        descContainer.classList.add('hidden');
+    }
+    
+    // Tipo e link
+    let typeText = '';
+    switch(extendedProps.type) {
+        case 'lembrete': typeText = '📋 Lembrete'; break;
+        case 'entrada': typeText = '💰 Entrada Financeira'; break;
+        case 'saida_pendente': typeText = '💸 Saída Pendente'; break;
+        case 'saida_paga': typeText = '💸 Saída Paga'; break;
+        default: typeText = extendedProps.type;
+    }
+    
+    document.getElementById('eventDetailType').textContent = typeText;
+    
+    const linkElement = document.getElementById('eventDetailLink');
+    if (extendedProps.url) {
+        linkElement.href = extendedProps.url;
+        linkElement.classList.remove('hidden');
+    } else {
+        linkElement.classList.add('hidden');
+    }
+    
+    abrirEventDetailModal();
+}
+
+// Função para inicializar event listeners
+function inicializarEventListeners() {
+    // Event listeners para os modais
+    const openModalBtn = document.getElementById('openLembreteModalBtn');
+    const openModalBtnEmpty = document.getElementById('openLembreteModalBtnEmpty');
+    
+    if (openModalBtn) openModalBtn.addEventListener('click', abrirModalLembrete);
+    if (openModalBtnEmpty) openModalBtnEmpty.addEventListener('click', abrirModalLembrete);
+    
+    // Event listeners para filtros
+    const periodoFilter = document.getElementById('periodoFilter');
+    if (periodoFilter) {
+        periodoFilter.addEventListener('change', function() {
+            if (this.value === 'custom') {
+                document.getElementById('customFilter').classList.remove('hidden');
             } else {
-                document.getElementById('data_limite_error').style.display = 'none';
+                document.getElementById('customFilter').classList.add('hidden');
             }
-            
-            if (!isValid) return;
-            
-            showLoading();
-            
-            // Preparar dados para envio
-            const formData = new FormData();
-            formData.append('titulo', titulo);
-            formData.append('descricao', document.getElementById('id_descricao').value);
-            formData.append('data_limite', dataLimite);
-            formData.append('concluido', document.getElementById('id_concluido').checked ? 'true' : 'false');
-            
-            // Determinar a URL correta (criação ou edição)
-            let url = '{% url "core:lembrete_create" %}';
-            if (lembreteIdInput.value) {
-                url = '{% url "core:lembrete_update" pk=0 %}'.replace('0', lembreteIdInput.value);
-                formData.append('lembrete_id', lembreteIdInput.value);
-            }
-            
-            // Enviar requisição
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    hideModal(lembreteModal);
-                    
-                    // Recarregar a página após um breve delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    // Exibir erros de validação
-                    if (data.errors) {
-                        for (const [field, message] of Object.entries(data.errors)) {
-                            const errorElement = document.getElementById(`${field}_error`);
-                            if (errorElement) {
-                                errorElement.textContent = message;
-                                errorElement.style.display = 'block';
-                            }
-                        }
-                    } else {
-                        alert('Erro ao salvar lembrete: ' + data.message);
-                    }
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error('Erro:', error);
-                alert('Erro ao salvar lembrete. Tente novamente.');
-            });
         });
-        
-        // Envio do formulário de exclusão
-        deleteLembreteForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            showLoading();
-            
-            // Enviar requisição
-            fetch('{% url "core:lembrete_delete" pk=0 %}'.replace('0', deleteLembreteIdInput.value), {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}'
+    }
+    
+    // Event listeners para checkboxes de conclusão
+    document.querySelectorAll('.toggle-concluido').forEach(checkbox => {
+        checkbox.addEventListener('change', alternarStatusLembrete);
+    });
+    
+    // Event listeners para botões de edição e exclusão
+    document.querySelectorAll('.edit-lembrete-btn').forEach(btn => {
+        btn.addEventListener('click', abrirEdicaoLembrete);
+    });
+    
+    document.querySelectorAll('.delete-lembrete-btn').forEach(btn => {
+        btn.addEventListener('click', abrirConfirmacaoExclusao);
+    });
+    
+    // Event listener para o formulário de lembrete
+    const lembreteForm = document.getElementById('lembreteForm');
+    if (lembreteForm) {
+        lembreteForm.addEventListener('submit', enviarFormularioLembrete);
+    }
+    
+    // Event listener para o formulário de exclusão
+    const deleteForm = document.getElementById('deleteLembreteForm');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', confirmarExclusaoLembrete);
+    }
+    
+    // Fechar modais ao clicar fora do conteúdo
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                if (this.id === 'eventDetailModal') {
+                    fecharEventDetailModal();
+                } else if (this.id === 'lembreteModal') {
+                    fecharModal();
+                } else if (this.id === 'deleteLembreteModal') {
+                    fecharDeleteModal();
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                hideLoading();
-                
-                if (data.success) {
-                    showSuccessMessage(data.message);
-                    hideModal(deleteLembreteModal);
-                    
-                    // Recarregar a página após um breve delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                } else {
-                    alert('Erro ao excluir lembrete: ' + data.message);
-                }
-            })
-            .catch(error => {
-                hideLoading();
-                console.error('Erro:', error);
-                alert('Erro ao excluir lembrete. Tente novamente.');
-            });
+            }
         });
     });
     
-    // Funções para filtros
-    function updateFilters() {
-        const statusFilter = document.getElementById('statusFilter').value;
-        const urgenciaFilter = document.getElementById('urgenciaFilter').value;
-        const orderFilter = document.getElementById('orderFilter').value;
-        
-        // Construir URL com os filtros
-        let url = '{% url "core:lembrete_list" %}?';
-        
-        if (statusFilter) {
-            url += `status=${statusFilter}&`;
+    // Fechar modais com a tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            fecharEventDetailModal();
+            fecharModal();
+            fecharDeleteModal();
         }
-        
-        if (urgenciaFilter) {
-            url += `urgencia=${urgenciaFilter}&`;
+    });
+}
+
+// Função para inicializar filtros
+function inicializarFiltros() {
+    // Restaurar estado dos filtros do localStorage
+    const filtrosSalvos = localStorage.getItem('filtrosLembretes');
+    if (filtrosSalvos) {
+        try {
+            const filtros = JSON.parse(filtrosSalvos);
+            document.getElementById('statusFilter').value = filtros.status || '';
+            document.getElementById('tipoFilter').value = filtros.tipo || '';
+            document.getElementById('periodoFilter').value = filtros.periodo || '30';
+            document.getElementById('orderFilter').value = filtros.order || 'data_limite';
+            
+            if (filtros.periodo === 'custom') {
+                document.getElementById('customFilter').classList.remove('hidden');
+                document.getElementById('dataInicial').value = filtros.dataInicial || '';
+                document.getElementById('dataFinal').value = filtros.dataFinal || '';
+            }
+        } catch (e) {
+            console.error('Erro ao carregar filtros salvos:', e);
         }
-        
-        if (orderFilter) {
-            url += `order=${orderFilter}&`;
-        }
-        
-        // Remover o último '&' se existir
-        if (url.endsWith('&')) {
-            url = url.slice(0, -1);
-        }
-        
-        // Redirecionar para a URL com os filtros
-        window.location.href = url;
     }
     
-    function applyFilters() {
-        updateFilters();
+    // Atualizar filtros ativos
+    mostrarFiltrosAtivos();
+}
+
+// Função para aplicar filtros da URL
+function aplicarFiltrosDaURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Obter valores da URL
+    const status = urlParams.get('status');
+    const tipo = urlParams.get('tipo');
+    const periodo = urlParams.get('periodo');
+    const order = urlParams.get('order');
+    const dataInicial = urlParams.get('data_inicial');
+    const dataFinal = urlParams.get('data_final');
+    
+    // Aplicar valores aos selects
+    if (status) document.getElementById('statusFilter').value = status;
+    if (tipo) document.getElementById('tipoFilter').value = tipo;
+    if (periodo) document.getElementById('periodoFilter').value = periodo;
+    if (order) document.getElementById('orderFilter').value = order;
+    
+    // Se houver datas personalizadas, mostrar o campo
+    if (dataInicial || dataFinal) {
+        document.getElementById('periodoFilter').value = 'custom';
+        document.getElementById('customFilter').classList.remove('hidden');
+        if (dataInicial) document.getElementById('dataInicial').value = dataInicial;
+        if (dataFinal) document.getElementById('dataFinal').value = dataFinal;
     }
     
-    function clearFilters() {
-        window.location.href = '{% url "core:lembrete_list" %}';
+    // Atualizar filtros ativos
+    mostrarFiltrosAtivos();
+}
+
+// Função para mostrar filtros ativos
+function mostrarFiltrosAtivos() {
+    const container = document.getElementById('filtros-ativos-lista');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const status = document.getElementById('statusFilter').value;
+    const tipo = document.getElementById('tipoFilter').value;
+    const periodo = document.getElementById('periodoFilter').value;
+    const order = document.getElementById('orderFilter').value;
+    const dataInicial = document.getElementById('dataInicial').value;
+    const dataFinal = document.getElementById('dataFinal').value;
+    
+    const filtros = [];
+    
+    if (status) {
+        const texto = status === 'pendente' ? 'Pendentes' : 
+                    status === 'concluido' ? 'Concluídos' : 'Urgentes';
+        filtros.push(`Status: ${texto}`);
     }
     
-    function removeFilter(filterType) {
-        const urlParams = new URLSearchParams(window.location.search);
+    if (tipo) {
+        filtros.push(`Tipo: ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`);
+    }
+    
+    if (periodo && periodo !== 'todos') {
+        let texto = '';
+        switch(periodo) {
+            case '7': texto = 'Últimos 7 dias'; break;
+            case '30': texto = 'Últimos 30 dias'; break;
+            case '90': texto = 'Últimos 3 meses'; break;
+            case '365': texto = 'Último ano'; break;
+            case 'custom': 
+                if (dataInicial && dataFinal) {
+                    texto = `Personalizado: ${formatarData(dataInicial)} - ${formatarData(dataFinal)}`;
+                }
+                break;
+            default: texto = `Últimos ${periodo} dias`;
+        }
+        if (texto) filtros.push(texto);
+    }
+    
+    if (order) {
+        const texto = order === 'data_limite' ? 'Data Limite (Recente)' :
+                    order === '-data_limite' ? 'Data Limite (Antigo)' :
+                    order === 'data_criacao' ? 'Data Criação (Recente)' :
+                    order === '-data_criacao' ? 'Data Criação (Antigo)' :
+                    order === 'titulo' ? 'Nome (A-Z)' :
+                    order === '-titulo' ? 'Nome (Z-A)' :
+                    order === 'concluido' ? 'Status (Concluído)' : 'Status (Pendente)';
+        filtros.push(`Ordenação: ${texto}`);
+    }
+    
+    if (filtros.length === 0) {
+        document.getElementById('filtros-ativos').classList.add('hidden');
+    } else {
+        document.getElementById('filtros-ativos').classList.remove('hidden');
+        filtros.forEach(filtro => {
+            const badge = document.createElement('span');
+            badge.className = 'bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-200';
+            badge.textContent = filtro;
+            container.appendChild(badge);
+        });
+    }
+}
+
+// Função auxiliar para formatar data
+function formatarData(dataStr) {
+    const data = new Date(dataStr);
+    return data.toLocaleDateString('pt-BR');
+}
+
+// Função para aplicar filtros
+function aplicarFiltros() {
+    const status = document.getElementById('statusFilter').value;
+    const tipo = document.getElementById('tipoFilter').value;
+    const periodo = document.getElementById('periodoFilter').value;
+    const order = document.getElementById('orderFilter').value;
+    
+    let dataInicial = '';
+    let dataFinal = '';
+    
+    if (periodo === 'custom') {
+        dataInicial = document.getElementById('dataInicial').value;
+        dataFinal = document.getElementById('dataFinal').value;
         
-        if (filterType === 'status') {
-            urlParams.delete('status');
-        } else if (filterType === 'urgencia') {
-            urlParams.delete('urgencia');
-        } else if (filterType === 'order') {
-            urlParams.delete('order');
+        if (!dataInicial || !dataFinal) {
+            alert('Por favor, selecione ambas as datas para o filtro personalizado.');
+            return;
         }
         
-        const newUrl = '{% url "core:lembrete_list" %}' + (urlParams.toString() ? '?' + urlParams.toString() : '');
-        window.location.href = newUrl;
+        if (new Date(dataInicial) > new Date(dataFinal)) {
+            alert('A data inicial não pode ser maior que a data final.');
+            return;
+        }
     }
+    
+    // Construir URL com filtros
+    let url = '{% url "core:lembrete_list" %}?';
+    if (status) url += `status=${encodeURIComponent(status)}&`;
+    if (tipo) url += `tipo=${encodeURIComponent(tipo)}&`;
+    if (periodo && periodo !== 'todos') url += `periodo=${encodeURIComponent(periodo)}&`;
+    if (order) url += `order=${encodeURIComponent(order)}&`;
+    if (dataInicial) url += `data_inicial=${encodeURIComponent(dataInicial)}&`;
+    if (dataFinal) url += `data_final=${encodeURIComponent(dataFinal)}&`;
+    
+    // Remover último &
+    if (url.endsWith('&')) url = url.slice(0, -1);
+    
+    // Salvar filtros no localStorage
+    const filtros = {
+        status: status,
+        tipo: tipo,
+        periodo: periodo,
+        order: order,
+        dataInicial: dataInicial,
+        dataFinal: dataFinal
+    };
+    localStorage.setItem('filtrosLembretes', JSON.stringify(filtros));
+    
+    // Redirecionar
+    window.location.href = url;
+}
+
+// Função para limpar filtros
+function limparFiltros() {
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('tipoFilter').value = '';
+    document.getElementById('periodoFilter').value = '30';
+    document.getElementById('orderFilter').value = 'data_limite';
+    document.getElementById('customFilter').classList.add('hidden');
+    document.getElementById('dataInicial').value = '';
+    document.getElementById('dataFinal').value = '';
+    
+    localStorage.removeItem('filtrosLembretes');
+    window.location.href = '{% url "core:lembrete_list" %}';
+}
+
+// Função para filtrar calendário
+function filtrarCalendario(tipo) {
+    if (!calendar) return;
+    
+    const events = calendar.getEvents();
+    events.forEach(event => {
+        const eventType = event.extendedProps.type;
+        let shouldShow = true;
+        
+        switch (tipo) {
+            case 'lembretes':
+                shouldShow = eventType === 'lembrete';
+                break;
+            case 'entradas':
+                shouldShow = eventType === 'entrada';
+                break;
+            case 'saidas':
+                shouldShow = eventType.startsWith('saida_');
+                break;
+            default:
+                shouldShow = true;
+        }
+        
+        event.setProp('display', shouldShow ? 'auto' : 'none');
+    });
+}
+
+// Função para mudar visualização da lista
+function mudarVisualizacao(tipo) {
+    const container = document.getElementById('lembretesContainer');
+    const grid = document.getElementById('lembretesGrid');
+    
+    if (!grid) return;
+    
+    if (tipo === 'list') {
+        grid.classList.remove('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3', 'gap-6');
+        grid.classList.add('grid-cols-1', 'gap-4');
+        currentView = 'list';
+    } else {
+        grid.classList.remove('grid-cols-1', 'gap-4');
+        grid.classList.add('grid-cols-1', 'md:grid-cols-2', 'lg:grid-cols-3', 'gap-6');
+        currentView = 'grid';
+    }
+    
+    // Salvar preferência
+    localStorage.setItem('visualizacaoLembretes', tipo);
+}
+
+// Funções para modais
+function abrirModalLembrete() {
+    document.getElementById('modalTitle').textContent = 'Adicionar Lembrete';
+    document.getElementById('lembreteId').value = '';
+    document.getElementById('titulo').value = '';
+    document.getElementById('descricao').value = '';
+    document.getElementById('data_limite').value = '';
+    document.getElementById('concluido').checked = false;
+    
+    // Limpar mensagens de erro
+    document.querySelectorAll('.form-error').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    document.getElementById('lembreteModal').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('lembreteModal').classList.add('show');
+    }, 10);
+}
+
+function fecharModal() {
+    document.getElementById('lembreteModal').classList.remove('show');
+    setTimeout(() => {
+        document.getElementById('lembreteModal').classList.add('hidden');
+    }, 300);
+}
+
+function abrirEdicaoLembrete(event) {
+    const lembreteId = event.currentTarget.getAttribute('data-lembrete-id');
+    const titulo = event.currentTarget.getAttribute('data-lembrete-titulo');
+    const descricao = event.currentTarget.getAttribute('data-lembrete-descricao');
+    const dataLimite = event.currentTarget.getAttribute('data-lembrete-data-limite');
+    const concluido = event.currentTarget.getAttribute('data-lembrete-concluido') === 'true';
+    
+    document.getElementById('modalTitle').textContent = 'Editar Lembrete';
+    document.getElementById('lembreteId').value = lembreteId;
+    document.getElementById('titulo').value = titulo;
+    document.getElementById('descricao').value = descricao;
+    document.getElementById('data_limite').value = dataLimite;
+    document.getElementById('concluido').checked = concluido;
+    
+    // Limpar mensagens de erro
+    document.querySelectorAll('.form-error').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    document.getElementById('lembreteModal').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('lembreteModal').classList.add('show');
+    }, 10);
+}
+
+function abrirConfirmacaoExclusao(event) {
+    const lembreteId = event.currentTarget.getAttribute('data-lembrete-id');
+    const titulo = event.currentTarget.getAttribute('data-lembrete-titulo');
+    
+    document.getElementById('deleteLembreteTitulo').textContent = titulo;
+    document.getElementById('deleteLembreteId').value = lembreteId;
+    
+    // Atualizar action do formulário
+    const form = document.getElementById('deleteLembreteForm');
+    form.action = form.action.replace('/0', `/${lembreteId}`);
+    
+    document.getElementById('deleteLembreteModal').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('deleteLembreteModal').classList.add('show');
+    }, 10);
+}
+
+function fecharDeleteModal() {
+    document.getElementById('deleteLembreteModal').classList.remove('show');
+    setTimeout(() => {
+        document.getElementById('deleteLembreteModal').classList.add('hidden');
+    }, 300);
+}
+
+// Função para abrir modal de detalhes do evento
+function abrirEventDetailModal() {
+    const modal = document.getElementById('eventDetailModal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.add('show');
+    }, 10);
+}
+
+// Função para fechar modal de detalhes do evento
+function fecharEventDetailModal() {
+    const modal = document.getElementById('eventDetailModal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+// Função para alternar status do lembrete
+function alternarStatusLembrete(event) {
+    const lembreteId = event.target.getAttribute('data-lembrete-id');
+    const concluido = event.target.checked;
+    
+    mostrarLoading();
+    
+    // Enviar requisição AJAX para atualizar o status
+    fetch(`/lembretes/${lembreteId}/toggle/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ concluido: concluido })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erro na requisição');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Status atualizado com sucesso!');
+            // Atualizar apenas o card em vez de recarregar a página toda
+            atualizarCardLembrete(lembreteId, concluido);
+        } else {
+            mostrarErro('Erro ao atualizar status.');
+            event.target.checked = !concluido;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao atualizar status.');
+        event.target.checked = !concluido;
+    })
+    .finally(() => {
+        esconderLoading();
+    });
+}
+
+// Função auxiliar para atualizar visual do card
+function atualizarCardLembrete(lembreteId, concluido) {
+    const card = document.querySelector(`.toggle-concluido[data-lembrete-id="${lembreteId}"]`).closest('.lembrete-card');
+    if (card) {
+        if (concluido) {
+            card.classList.add('bg-gray-100', 'dark:bg-gray-800', 'opacity-70');
+            card.classList.remove('bg-red-50', 'bg-yellow-50', 'bg-green-50', 'dark:bg-red-900/20', 'dark:bg-yellow-900/20', 'dark:bg-green-900/20');
+        } else {
+            card.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'opacity-70');
+            // Recalcular a cor baseada na data
+            const dataElement = card.querySelector('[data-data-limite]');
+            if (dataElement) {
+                const dataLimite = new Date(dataElement.dataset.dataLimite);
+                const hoje = new Date();
+                const diasRestantes = Math.ceil((dataLimite - hoje) / (1000 * 60 * 60 * 24));
+                
+                card.classList.remove('bg-red-50', 'bg-yellow-50', 'bg-green-50', 'dark:bg-red-900/20', 'dark:bg-yellow-900/20', 'dark:bg-green-900/20');
+                if (diasRestantes <= 2) {
+                    card.classList.add('bg-red-50', 'dark:bg-red-900/20');
+                } else if (diasRestantes <= 7) {
+                    card.classList.add('bg-yellow-50', 'dark:bg-yellow-900/20');
+                } else {
+                    card.classList.add('bg-green-50', 'dark:bg-green-900/20');
+                }
+            }
+        }
+    }
+}
+
+// Função para enviar formulário de lembrete
+function enviarFormularioLembrete(event) {
+    event.preventDefault();
+    
+    // Validação básica
+    const titulo = document.getElementById('titulo').value;
+    const dataLimite = document.getElementById('data_limite').value;
+    let isValid = true;
+    
+    // Limpar mensagens de erro anteriores
+    document.querySelectorAll('.form-error').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    if (!titulo.trim()) {
+        mostrarErroFormulario('titulo', 'Título é obrigatório');
+        isValid = false;
+    }
+    
+    if (!dataLimite) {
+        mostrarErroFormulario('data_limite', 'Data limite é obrigatória');
+        isValid = false;
+    }
+    
+    if (!isValid) return;
+    
+    mostrarLoading();
+    
+    const formData = new FormData(event.target);
+    const lembreteId = document.getElementById('lembreteId').value;
+    
+    // Determinar a URL e método corretos
+    let url, method;
+    if (lembreteId) {
+        url = `/lembretes/editar/${lembreteId}/`;
+        method = 'POST';
+    } else {
+        url = '{% url "core:lembrete_create" %}';
+        method = 'POST';
+    }
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erro na requisição');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso(lembreteId ? 'Lembrete atualizado com sucesso!' : 'Lembrete criado com sucesso!');
+            fecharModal();
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            if (data.errors) {
+                for (const field in data.errors) {
+                    mostrarErroFormulario(field, data.errors[field][0]);
+                }
+            } else {
+                mostrarErro('Erro ao salvar lembrete.');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao salvar lembrete. Verifique sua conexão.');
+    })
+    .finally(() => {
+        esconderLoading();
+    });
+}
+
+function confirmarExclusaoLembrete(event) {
+    event.preventDefault();
+    
+    mostrarLoading();
+    
+    const formData = new FormData(event.target);
+    const lembreteId = document.getElementById('deleteLembreteId').value;
+    
+    fetch(`/lembretes/${lembreteId}/excluir/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Erro na requisição');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Lembrete excluído com sucesso!');
+            fecharDeleteModal();
+            // Recarregar a página após um breve delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarErro('Erro ao excluir lembrete.');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao excluir lembrete.');
+    })
+    .finally(() => {
+        esconderLoading();
+    });
+}
+
+// Funções utilitárias
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function mostrarLoading() {
+    document.getElementById('loadingSpinner').classList.remove('hidden');
+}
+
+function esconderLoading() {
+    document.getElementById('loadingSpinner').classList.add('hidden');
+}
+
+function mostrarSucesso(mensagem) {
+    const successMessage = document.getElementById('successMessage');
+    const successMessageText = document.getElementById('successMessageText');
+    
+    successMessageText.textContent = mensagem;
+    successMessage.style.display = 'block';
+    
+    setTimeout(() => {
+        successMessage.style.display = 'none';
+    }, 3000);
+}
+
+function mostrarErro(mensagem) {
+    alert(mensagem);
+}
+
+function mostrarErroFormulario(campo, mensagem) {
+    const errorElement = document.getElementById(`${campo}Error`);
+    if (errorElement) {
+        errorElement.textContent = mensagem;
+        errorElement.style.display = 'block';
+    }
+}
+
+// Carregar preferências salvas
+window.addEventListener('load', function() {
+    const visualizacaoSalva = localStorage.getItem('visualizacaoLembretes');
+    if (visualizacaoSalva === 'list') {
+        mudarVisualizacao('list');
+    }
+});
+
+// Exportar funções globais
+window.filtrarCalendario = filtrarCalendario;
+window.aplicarFiltros = aplicarFiltros;
+window.limparFiltros = limparFiltros;
+window.mudarVisualizacao = mudarVisualizacao;
+
+// Debug: Verificar se os eventos estão sendo carregados
+console.log('Eventos disponíveis:', window.eventosCalendario);
+console.log('Calendar element exists:', !!document.getElementById('calendar'));
 </script>
-
-
 {% endblock %}

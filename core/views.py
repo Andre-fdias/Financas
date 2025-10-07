@@ -13,18 +13,18 @@ from django.utils import timezone as dj_timezone # Alias para evitar conflito co
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.db import transaction
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import json # Já estava importado, mas é bom garantir
 from django.views.decorators.http import require_GET, require_POST
 from django.db.models import Q # Importante para combinar querysets
 from dateutil.relativedelta import relativedelta
 import numpy as np
 from sklearn.linear_model import LinearRegression
-
+from .choices import CATEGORIA_CHOICES, SUBCATEGORIA_CHOICES, SUBCATEGORIA_PARA_CATEGORIA
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from datetime import datetime
-from .models import Entrada, ContaBancaria
+from .models import Entrada, ContaBancaria, Categoria, Subcategoria
 from .choices import FORMA_RECEBIMENTO_CHOICES,  BANCO_CHOICES, FORMA_PAGAMENTO_CHOICES, FORMA_RECEBIMENTO_CHOICES, TIPO_PAGAMENTO_DETALHE_CHOICES, SITUACAO_CHOICES, TIPO_OPERACAO_CHOICES
 from django.http import HttpResponse
 from django.views.decorators.http import require_GET
@@ -80,78 +80,65 @@ from datetime import datetime
 # FUNÇÕES AUXILIARES
 # ================================================================
 
-def get_month_range(date_obj):
-    """Retorna o primeiro e último dia do mês para uma dada data."""
-    first_day = date_obj.replace(day=1)
-    last_day = (first_day + relativedelta(months=1)) - timedelta(days=1)
-    return first_day, last_day
 
-def calculate_percentage_change(current, previous):
-    """Calcula a variação percentual entre dois valores."""
-    if previous == 0:
-        return 0 if current == 0 else 100
-    return ((current - previous) / previous) * 100
+import json
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from dateutil.relativedelta import relativedelta
+from datetime import timedelta, datetime, date
+from django.utils import timezone as dj_timezone
+from decimal import Decimal
+from django.db.models import Sum, Q
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.core.paginator import Paginator
+
 
 def get_sum(queryset):
     """Retorna a soma de 'valor' de um queryset como Decimal, ou 0.00 se vazio."""
     result = queryset.aggregate(total=Sum('valor'))['total']
     return Decimal(str(result)) if result is not None else Decimal('0.00')
 
-# Função para converter Decimals e Dates para tipos serializáveis em JSON
+
 def serialize_for_json(obj):
+    """
+    Função para converter Decimals, Dates e objetos Django para tipos serializáveis em JSON
+    """
     if isinstance(obj, Decimal):
         return float(obj)
     if isinstance(obj, (date, datetime)):
         return obj.isoformat()
+    if hasattr(obj, '__iter__') and not isinstance(obj, (str, dict, list)):
+        return list(obj)
     if isinstance(obj, dict):
         return {k: serialize_for_json(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [serialize_for_json(elem) for elem in obj]
     return obj
 
-@login_required
-def get_financial_insights(request):
-    user = request.user
-    hoje = date.today()
-    num_meses_historico = 12
-    num_meses_projecao = 6
+def calculate_percentage_change(current, previous):
+    """Calcula a variação percentual entre dois valores."""
+    if previous == 0:
+        return 0 if current == 0 else (100.0 if current > 0 else -100.0)
+    change = ((current - previous) / previous) * 100
+    return round(change, 2)
 
-    # ... (Copie toda a lógica de cálculo de dados do dashboard,
-    #       incluindo o loop para `meses_labels`, `entradas_por_mes_data`,
-    #       `saidas_por_mes_data` e a seção de "PROJEÇÃO FUTURA".)
+def get_month_range(date_obj):
+    """Retorna o primeiro e último dia do mês de uma data"""
+    primeiro_dia = date_obj.replace(day=1)
+    ultimo_dia = (primeiro_dia + relativedelta(months=1)) - timedelta(days=1)
+    return primeiro_dia, ultimo_dia
 
-    # A parte de cálculo da projeção com LinearRegression já existe na sua view dashboard.
-    # Copie-a para cá.
-    projecao_labels = meses_labels.copy()
-    projecao_saldo_data = saldo_acumulado_data.copy()
-    # Lógica de regressão linear para saldo, receitas e despesas
-    if len(data_para_regressao_saldo) >= 3:
-        try:
-            X_hist = np.array(range(len(data_para_regressao_saldo))).reshape(-1, 1)
-            y_hist_saldo = np.array(data_para_regressao_saldo)
-            model_saldo = LinearRegression().fit(X_hist, y_hist_saldo)
-            X_fut = np.array(range(len(data_para_regressao_saldo), len(data_para_regressao_saldo) + num_meses_projecao)).reshape(-1, 1)
-            projecao_saldo_futuro = model_saldo.predict(X_fut)
-
-            for i in range(num_meses_projecao):
-                next_month = hoje + relativedelta(months=i+1)
-                projecao_labels.append(next_month.strftime('%b/%y'))
-                projecao_saldo_data.append(float(projecao_saldo_futuro[i]))
-
-        except Exception as e:
-            pass
-    
-    # Exemplo simples de insights baseados na projeção
-    proximo_mes_saldo_projetado = projecao_saldo_data[-num_meses_projecao] if projecao_saldo_data else 0
-    insight_text = f"Com base nos seus gastos e receitas, o saldo projetado para o próximo mês é de R$ {proximo_mes_saldo_projetado:,.2f}."
-
-    # Retorna os dados como JSON
-    return JsonResponse({
-        'success': True,
-        'insight_text': insight_text,
-        'projecao_labels': projecao_labels,
-        'projecao_saldo_data': projecao_saldo_data
-    })
+def converter_moeda_para_decimal(valor_str):
+    """Converte string de moeda brasileira para Decimal"""
+    if not valor_str:
+        return None
+    try:
+        # Remove R$, pontos e converte vírgula para ponto
+        valor_limpo = valor_str.replace('R$', '').replace('.', '').replace(',', '.').strip()
+        return Decimal(valor_limpo)
+    except:
+        return None
 
 # ================================================================
 # VIEWS DA APLICAÇÃO
@@ -180,70 +167,148 @@ def custom_logout(request):
     messages.success(request, 'Logout realizado com sucesso!')
     return redirect('core:login')
 
+
 # ================================================================
-# VIEWS DE DASHBOARD
+# VIEW DASHBOARD
 # ================================================================
+
 @login_required
 def dashboard(request):
     user = request.user
-    hoje = dj_timezone.now().date() 
-    primeiro_dia_mes_atual, ultimo_dia_mes_atual = get_month_range(hoje)
-
-    # Obter o período de filtro e meses meta (para reserva de emergência)
-    # Por agora, não estamos usando o 'periodo' para filtrar os dados gerais,
-    # mas é mantido para extensibilidade futura.
+    hoje = dj_timezone.now().date()
+    
+    # ================================================================
+    # PROCESSAMENTO DOS FILTROS
+    # ================================================================
+    
+    # Obter parâmetros de filtro
     periodo = request.GET.get('periodo', '30')
+    data_inicial = request.GET.get('data_inicial')
+    data_final = request.GET.get('data_final')
+    tipo_transacao = request.GET.get('tipo_transacao', 'todos')
+    conta_id = request.GET.get('conta', 'todas')
+    categoria = request.GET.get('categoria', 'todas')
+    forma_recebimento = request.GET.get('forma_recebimento', 'todas')
+    valor_minimo = request.GET.get('valor_minimo')
+    valor_maximo = request.GET.get('valor_maximo')
+    status = request.GET.get('status', 'todos')
+    recorrencia = request.GET.get('recorrencia', 'todas')
     meses_meta = int(request.GET.get('meses_meta', 6))
 
-    # Definir a data de início para os dados agregados (usado para últimas transações e alguns gráficos)
-    # Para consistência, usaremos um período maior para gráficos de histórico.
-    data_inicio_filtro = hoje - timedelta(days=365) # Exemplo: buscar dados do último ano para histórico
+    # Processar datas baseadas nos filtros
+    if data_inicial and data_final:
+        try:
+            data_inicio_filtro = datetime.strptime(data_inicial, '%Y-%m-%d').date()
+            data_fim_filtro = datetime.strptime(data_final, '%Y-%m-%d').date()
+        except ValueError:
+            data_fim_filtro = hoje
+            data_inicio_filtro = hoje - timedelta(days=int(periodo))
+    else:
+        # Usar período padrão
+        data_fim_filtro = hoje
+        if periodo == '30':
+            data_inicio_filtro = hoje - timedelta(days=30)
+        elif periodo == '90':
+            data_inicio_filtro = hoje - timedelta(days=90)
+        elif periodo == '180':
+            data_inicio_filtro = hoje - timedelta(days=180)
+        elif periodo == '365':
+            data_inicio_filtro = hoje - timedelta(days=365)
+        else:
+            data_inicio_filtro = hoje - timedelta(days=30)
 
     # ================================================================
-    # 1. DADOS PRINCIPAIS PARA OS CARDS
+    # FILTRAGEM DOS DADOS
     # ================================================================
 
-    saldo_total = ContaBancaria.objects.filter(proprietario=user).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
+    # Base querysets
+    entradas_base = Entrada.objects.filter(conta_bancaria__proprietario=user)
+    saidas_base = Saida.objects.filter(conta_bancaria__proprietario=user)
 
-    # Receitas e Despesas do Mês Atual
-    entradas_mes_atual = Entrada.objects.filter(
-        conta_bancaria__proprietario=user,
-        data__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
+    # Aplicar filtros de data
+    entradas_filtradas = entradas_base.filter(data__range=(data_inicio_filtro, data_fim_filtro))
+    saidas_filtradas = saidas_base.filter(data_lancamento__range=(data_inicio_filtro, data_fim_filtro))
+
+    # Filtro por tipo de transação
+    if tipo_transacao == 'entradas':
+        saidas_filtradas = saidas_filtradas.none()
+    elif tipo_transacao == 'saidas':
+        entradas_filtradas = entradas_filtradas.none()
+
+    # Filtro por conta bancária
+    if conta_id != 'todas':
+        entradas_filtradas = entradas_filtradas.filter(conta_bancaria_id=conta_id)
+        saidas_filtradas = saidas_filtradas.filter(conta_bancaria_id=conta_id)
+
+    # Filtro por categoria
+    if categoria != 'todas':
+        saidas_filtradas = saidas_filtradas.filter(categoria=categoria)
+
+    # Filtro por forma de recebimento
+    if forma_recebimento != 'todas':
+        entradas_filtradas = entradas_filtradas.filter(forma_recebimento=forma_recebimento)
+
+    # Filtro por status
+    if status != 'todos':
+        saidas_filtradas = saidas_filtradas.filter(situacao=status)
+
+    # Filtro por recorrência
+    if recorrencia != 'todas':
+        saidas_filtradas = saidas_filtradas.filter(recorrente=recorrencia)
+
+    # Filtro por valor mínimo
+    if valor_minimo:
+        valor_min = converter_moeda_para_decimal(valor_minimo)
+        if valor_min:
+            entradas_filtradas = entradas_filtradas.filter(valor__gte=valor_min)
+            saidas_filtradas = saidas_filtradas.filter(valor__gte=valor_min)
+
+    # Filtro por valor máximo
+    if valor_maximo:
+        valor_max = converter_moeda_para_decimal(valor_maximo)
+        if valor_max:
+            entradas_filtradas = entradas_filtradas.filter(valor__lte=valor_max)
+            saidas_filtradas = saidas_filtradas.filter(valor__lte=valor_max)
+
+    # ================================================================
+    # DADOS PRINCIPAIS (COM FILTROS APLICADOS)
+    # ================================================================
+
+    # Saldo total (não filtrado por data)
+    saldo_total = ContaBancaria.objects.filter(proprietario=user).aggregate(
+        Sum('saldo_atual')
+    )['saldo_atual__sum'] or Decimal('0.00')
+
+    # Receitas e Despesas do período filtrado
+    entradas_periodo = entradas_filtradas.aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    saidas_periodo = saidas_filtradas.aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+
+    # Cálculo de variação (período anterior)
+    dias_periodo = (data_fim_filtro - data_inicio_filtro).days
+    periodo_anterior_inicio = data_inicio_filtro - timedelta(days=dias_periodo)
+    periodo_anterior_fim = data_inicio_filtro - timedelta(days=1)
+
+    entradas_periodo_anterior = entradas_base.filter(
+        data__range=(periodo_anterior_inicio, periodo_anterior_fim)
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
-    saidas_mes_atual = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
+    saidas_periodo_anterior = saidas_base.filter(
+        data_lancamento__range=(periodo_anterior_inicio, periodo_anterior_fim)
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
-    # Receitas e Despesas do Mês Anterior para Variação
-    primeiro_dia_mes_anterior = primeiro_dia_mes_atual - relativedelta(months=1)
-    ultimo_dia_mes_anterior = (primeiro_dia_mes_anterior + relativedelta(months=1)) - timedelta(days=1)
+    variacao_receitas = calculate_percentage_change(float(entradas_periodo), float(entradas_periodo_anterior))
+    variacao_despesas = calculate_percentage_change(float(saidas_periodo), float(saidas_periodo_anterior))
 
-    entradas_mes_anterior = Entrada.objects.filter(
-        conta_bancaria__proprietario=user,
-        data__range=(primeiro_dia_mes_anterior, ultimo_dia_mes_anterior)
-    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-    saidas_mes_anterior = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(primeiro_dia_mes_anterior, ultimo_dia_mes_anterior)
-    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-    variacao_receitas = calculate_percentage_change(float(entradas_mes_atual), float(entradas_mes_anterior))
-    variacao_despesas = calculate_percentage_change(float(saidas_mes_atual), float(saidas_mes_anterior))
-
-    # Reserva de Emergência (Saldo em contas tipo 'poupanca')
+    # Reserva de Emergência
     saldo_poupancas = ContaBancaria.objects.filter(
         proprietario=user,
         tipo='poupanca',
         ativa=True
     ).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
 
-    # Despesa mensal média (calcula média dos últimos 6 meses para reserva)
+    # Despesa mensal média (últimos 6 meses)
     data_seis_meses_atras = hoje - relativedelta(months=6)
-    despesas_ultimos_6_meses = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
+    despesas_ultimos_6_meses = saidas_base.filter(
         data_lancamento__gte=data_seis_meses_atras,
         data_lancamento__lte=hoje
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
@@ -251,7 +316,7 @@ def dashboard(request):
     despesa_mensal_media = float(despesas_ultimos_6_meses) / 6 if despesas_ultimos_6_meses else 0
 
     # ================================================================
-    # 2. DADOS PARA GRÁFICOS (Últimos 12 meses para histórico mais completo)
+    # DADOS PARA GRÁFICOS (Últimos 12 meses)
     # ================================================================
     num_meses_historico = 12
     meses_labels = []
@@ -259,24 +324,17 @@ def dashboard(request):
     saidas_por_mes_data = []
     saldo_acumulado_data = []
     
-    # Calcular saldo acumulado histórico
-    temp_saldo_acumulado_base = float(saldo_total) # Saldo atual como base
-    
-    # Para calcular o saldo inicial do período, somamos as saídas e subtraímos as entradas do período para trás
-    # Este é um cálculo mais complexo para um saldo "real" no início de cada mês no histórico
-    # Para simplificar e focar nos gráficos, vamos pegar o saldo_total e ajustar para trás para cada mês
+    temp_saldo_acumulado_base = float(saldo_total)
 
-    for i in range(num_meses_historico - 1, -1, -1): # Começa do mês mais antigo para o atual
+    for i in range(num_meses_historico - 1, -1, -1):
         data_mes = hoje - relativedelta(months=i)
         primeiro_dia, ultimo_dia = get_month_range(data_mes)
         
-        entradas_mes = Entrada.objects.filter(
-            conta_bancaria__proprietario=user,
+        entradas_mes = entradas_base.filter(
             data__range=(primeiro_dia, ultimo_dia)
         ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
-        saidas_mes = Saida.objects.filter(
-            conta_bancaria__proprietario=user,
+        saidas_mes = saidas_base.filter(
             data_lancamento__range=(primeiro_dia, ultimo_dia)
         ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
         
@@ -284,59 +342,46 @@ def dashboard(request):
         entradas_por_mes_data.append(float(entradas_mes))
         saidas_por_mes_data.append(float(saidas_mes))
 
-        # Calcula o saldo para este mês (saldo do fim do mês anterior + entradas - saídas)
-        # Para o saldo acumulado, vamos simular começando com o saldo atual e ajustando para trás
-        if i == 0: # Mês atual
+        if i == 0:
             saldo_acumulado_data.append(float(saldo_total))
         else:
-            # Saldo acumulado do mês anterior = Saldo acumulado do mês atual - (entradas do mês atual - saídas do mês atual)
-            # Ao construir de trás para frente, o primeiro elemento adicionado será o mais antigo, então o append está ok
-            # No final, faremos um reverse
             saldo_para_este_mes = temp_saldo_acumulado_base - (float(entradas_mes) - float(saidas_mes))
             saldo_acumulado_data.append(saldo_para_este_mes)
             temp_saldo_acumulado_base = saldo_para_este_mes
     
-    # Ajusta os dados para ordem cronológica (do mês mais antigo para o mais novo)
+    # Ajustar ordem cronológica
     meses_labels.reverse()
     entradas_por_mes_data.reverse()
     saidas_por_mes_data.reverse()
     saldo_acumulado_data.reverse()
 
     # ================================================================
-    # 3. SAZONALIDADE (Saldo Líquido Mensal)
+    # SAZONALIDADE
     # ================================================================
     sazonalidade_labels = meses_labels
     sazonalidade_values = [e - s for e, s in zip(entradas_por_mes_data, saidas_por_mes_data)]
 
     # ================================================================
-    # 4. PROJEÇÃO FUTURA (Regressão Linear Simples)
-    # Considera os últimos 6 meses para a projeção, ou menos se não houver dados.
+    # PROJEÇÃO FUTURA
     # ================================================================
-    num_meses_projecao = 6 # Projeta 6 meses à frente
-    
-    # Usar os últimos N meses de dados para a regressão
-    data_para_regressao_saldo = saldo_acumulado_data[-num_meses_historico:]
-    data_para_regressao_receitas = entradas_por_mes_data[-num_meses_historico:]
-    data_para_regressao_despesas = saidas_por_mes_data[-num_meses_historico:]
-    
+    num_meses_projecao = 6
     projecao_labels = meses_labels.copy()
     projecao_saldo_data = saldo_acumulado_data.copy()
     projecao_receitas_data = entradas_por_mes_data.copy()
     projecao_despesas_data = saidas_por_mes_data.copy()
 
-    if len(data_para_regressao_saldo) >= 3: # Mínimo de 3 pontos para regressão significativa
+    if len(saldo_acumulado_data) >= 3:
         try:
-            X_hist = np.array(range(len(data_para_regressao_saldo))).reshape(-1, 1)
-            y_hist_saldo = np.array(data_para_regressao_saldo)
-            y_hist_receitas = np.array(data_para_regressao_receitas)
-            y_hist_despesas = np.array(data_para_regressao_despesas)
+            X_hist = np.array(range(len(saldo_acumulado_data))).reshape(-1, 1)
+            y_hist_saldo = np.array(saldo_acumulado_data)
+            y_hist_receitas = np.array(entradas_por_mes_data)
+            y_hist_despesas = np.array(saidas_por_mes_data)
 
             model_saldo = LinearRegression().fit(X_hist, y_hist_saldo)
             model_receitas = LinearRegression().fit(X_hist, y_hist_receitas)
             model_despesas = LinearRegression().fit(X_hist, y_hist_despesas)
 
-            # Projeta 'num_meses_projecao' meses à frente
-            X_fut = np.array(range(len(data_para_regressao_saldo), len(data_para_regressao_saldo) + num_meses_projecao)).reshape(-1, 1)
+            X_fut = np.array(range(len(saldo_acumulado_data), len(saldo_acumulado_data) + num_meses_projecao)).reshape(-1, 1)
             
             projecao_saldo_futuro = model_saldo.predict(X_fut)
             projecao_receitas_futuro = model_receitas.predict(X_fut)
@@ -349,172 +394,143 @@ def dashboard(request):
                 projecao_receitas_data.append(float(projecao_receitas_futuro[i]))
                 projecao_despesas_data.append(float(projecao_despesas_futuro[i]))
         except Exception as e:
-            # Fallback se a regressão falhar (e.g., dados insuficientes, erro matemático)
-            print(f"Erro na projeção de regressão linear: {e}")
-            pass # Continua sem projeção se houver erro
+            print(f"Erro na projeção: {e}")
 
     # ================================================================
-    # 5. DESPESAS POR CATEGORIA (Mês atual)
+    # DESPESAS POR CATEGORIA (período filtrado)
     # ================================================================
-    saidas_por_categoria = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
-    ).values('categoria').annotate(total=Sum('valor')).order_by('categoria')
+    saidas_por_categoria = saidas_filtradas.values('categoria').annotate(
+        total=Sum('valor')
+    ).order_by('categoria')
 
-    # Mapeia os códigos das categorias para seus nomes de exibição
     mapa_categorias_saida_display = {c[0]: c[1] for c in CATEGORIA_CHOICES}
-    categorias_despesas_labels = [mapa_categorias_saida_display.get(item['categoria'], item['categoria']) for item in saidas_por_categoria]
+    categorias_despesas_labels = [
+        mapa_categorias_saida_display.get(item['categoria'], item['categoria']) 
+        for item in saidas_por_categoria
+    ]
     categorias_despesas_data = [float(item['total']) for item in saidas_por_categoria]
 
     # ================================================================
-    # 6. RECEITAS POR CATEGORIA/TIPO (Considera 'forma_recebimento' como categoria para fins de gráfico)
+    # RECEITAS POR FORMA DE RECEBIMENTO (período filtrado)
     # ================================================================
-    entradas_por_forma = Entrada.objects.filter(
-        conta_bancaria__proprietario=user,
-        data__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
-    ).values('forma_recebimento').annotate(total=Sum('valor')).order_by('forma_recebimento')
+    entradas_por_forma = entradas_filtradas.values('forma_recebimento').annotate(
+        total=Sum('valor')
+    ).order_by('-total')
 
-    mapa_formas_recebimento_display = {fr[0]: fr[1] for fr in FORMA_RECEBIMENTO_CHOICES}
-    categorias_receitas_labels = [mapa_formas_recebimento_display.get(item['forma_recebimento'], item['forma_recebimento']) for item in entradas_por_forma]
-    categorias_receitas_values = [float(item['total']) for item in entradas_por_forma]
+    if not entradas_por_forma:
+        categorias_receitas_labels = ['Sem receitas']
+        categorias_receitas_values = [0.0]
+    else:
+        mapa_formas_recebimento_display = {fr[0]: fr[1] for fr in FORMA_RECEBIMENTO_CHOICES}
+        categorias_receitas_labels = [
+            mapa_formas_recebimento_display.get(item['forma_recebimento'], item['forma_recebimento']) 
+            for item in entradas_por_forma
+        ]
+        categorias_receitas_values = [float(item['total']) for item in entradas_por_forma]
 
+    MAX_CATEGORIAS_RECEITAS = 6
+    if len(categorias_receitas_labels) > MAX_CATEGORIAS_RECEITAS:
+        categorias_receitas_labels = categorias_receitas_labels[:MAX_CATEGORIAS_RECEITAS]
+        categorias_receitas_values = categorias_receitas_values[:MAX_CATEGORIAS_RECEITAS]
 
     # ================================================================
-    # 7. SALDOS POR CONTA BANCÁRIA
+    # SALDOS POR CONTA BANCÁRIA
     # ================================================================
     contas_ativas = ContaBancaria.objects.filter(proprietario=user, ativa=True)
     saldo_contas_labels = []
     saldo_contas_values = []
     
     for conta in contas_ativas:
-        # Calcular o saldo "real" da conta (saldo inicial + entradas - saídas)
-        entradas_na_conta = Entrada.objects.filter(
-            conta_bancaria=conta,
-            data__range=(hoje.replace(day=1), hoje) # Entradas do mês atual
-        ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-        saidas_na_conta = Saida.objects.filter(
-            conta_bancaria=conta,
-            data_lancamento__range=(hoje.replace(day=1), hoje) # Saídas do mês atual
-        ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-        saldo_atual_conta = (conta.saldo_atual or Decimal('0.00')) + entradas_na_conta - saidas_na_conta
-        
-        # Ajuste para cartão de crédito: o saldo_atual da conta de crédito é o limite disponível
-        # Se for cartão de crédito, o valor na tela deve ser a fatura atual (ou o que foi gasto)
         if conta.tipo == 'credito':
-            # Considerando que 'saldo_atual' para cartões de crédito pode representar o limite
-            # Ou, se for '0.00' representa que ainda não foi usado.
-            # Para o dashboard, talvez o mais interessante seja o "uso do limite" ou "dívida"
-            # Aqui, vou mostrar o saldo atual da conta (que deve ser o limite disponível)
-            # ou o gasto se `saldo_atual` for usado para isso
+            saidas_na_conta = saidas_filtradas.filter(conta_bancaria=conta).aggregate(
+                Sum('valor')
+            )['valor__sum'] or Decimal('0.00')
             saldo_contas_values.append(float(conta.limite_cartao - saidas_na_conta) if conta.limite_cartao else float(-saidas_na_conta))
         else:
-            saldo_contas_values.append(float(saldo_atual_conta))
+            saldo_contas_values.append(float(conta.saldo_atual or Decimal('0.00')))
         
         saldo_contas_labels.append(f"{conta.get_nome_banco_display()} ({conta.get_tipo_display()})")
 
     # ================================================================
-    # 8. DESPESAS FIXAS VS VARIÁVEIS (Mês atual)
+    # DESPESAS FIXAS VS VARIÁVEIS (período filtrado)
     # ================================================================
-    despesas_fixas = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual),
+    despesas_fixas = saidas_filtradas.filter(
         recorrente__in=['mensal', 'anual']
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
-    despesas_variaveis = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
-    ).exclude(recorrente__in=['mensal', 'anual']).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-    # ================================================================
-    # 9. STATUS DE PAGAMENTOS (Mês atual)
-    # ================================================================
-    pagos_total = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_vencimento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual),
-        situacao='pago'
-    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
-
-    pendentes_total = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_vencimento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual),
-        situacao='pendente'
+    despesas_variaveis = saidas_filtradas.exclude(
+        recorrente__in=['mensal', 'anual']
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
     # ================================================================
-    # 10. ANÁLISE COMPORTAMENTAL
+    # STATUS DE PAGAMENTOS (período filtrado)
     # ================================================================
-    gastos_por_dia_semana_raw = {'Seg': Decimal('0.00'), 'Ter': Decimal('0.00'), 'Qua': Decimal('0.00'), 'Qui': Decimal('0.00'), 'Sex': Decimal('0.00'), 'Sáb': Decimal('0.00'), 'Dom': Decimal('0.00')}
-    data_30_dias_atras = hoje - timedelta(days=29)
-    saidas_ultimos_30_dias = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        data_lancamento__range=(data_30_dias_atras, hoje)
+    pagos_total = saidas_filtradas.filter(situacao='pago').aggregate(
+        Sum('valor')
+    )['valor__sum'] or Decimal('0.00')
+
+    pendentes_total = saidas_filtradas.filter(situacao='pendente').aggregate(
+        Sum('valor')
+    )['valor__sum'] or Decimal('0.00')
+
+    # ================================================================
+    # ANÁLISE COMPORTAMENTAL
+    # ================================================================
+    gastos_por_dia_semana_raw = {
+        'Seg': Decimal('0.00'), 'Ter': Decimal('0.00'), 'Qua': Decimal('0.00'), 
+        'Qui': Decimal('0.00'), 'Sex': Decimal('0.00'), 'Sáb': Decimal('0.00'), 'Dom': Decimal('0.00')
+    }
+    
+    saidas_ultimos_30_dias = saidas_base.filter(
+        data_lancamento__range=(hoje - timedelta(days=29), hoje)
     )
     
     dias_da_semana_map = {0: 'Seg', 1: 'Ter', 2: 'Qua', 3: 'Qui', 4: 'Sex', 5: 'Sáb', 6: 'Dom'}
     
     for saida in saidas_ultimos_30_dias:
-        dia_semana_idx = saida.data_lancamento.weekday() # 0 para Segunda, 6 para Domingo
+        dia_semana_idx = saida.data_lancamento.weekday()
         dia_semana_label = dias_da_semana_map[dia_semana_idx]
         gastos_por_dia_semana_raw[dia_semana_label] += saida.valor
 
     gastos_por_dia_semana = {k: float(v) for k,v in gastos_por_dia_semana_raw.items()}
 
-    # Gastos por hora do dia (simplificado para demonstração)
+    # Gastos por hora do dia
     gastos_por_hora_dia_raw = {str(h): Decimal('0.00') for h in range(24)}
     for saida in saidas_ultimos_30_dias:
-        # Apenas se a data_lancamento for um datetime, ou usar um valor padrão para hora
         if isinstance(saida.data_lancamento, datetime):
             hora = saida.data_lancamento.hour
         else:
-            # Se data_lancamento é um date, vamos usar uma hora arbitrária para agregação ou ignorar
-            # Para este exemplo, vou simular uma distribuição uniforme
-            hora = saida.data_lancamento.day % 24 # Apenas para ter uma distribuição
+            hora = saida.data_lancamento.day % 24
         gastos_por_hora_dia_raw[str(hora)] += saida.valor
 
     gastos_por_hora_dia = {k: float(v) for k,v in gastos_por_hora_dia_raw.items()}
 
-
-    # Categorias comportamentais simplificadas (necessita de categorização no modelo Saida para ser mais preciso)
-    # Para este exemplo, usaremos uma divisão arbitrária.
-    total_despesas_mes = float(saidas_mes_atual)
+    # Categorias comportamentais
+    total_despesas_periodo = float(saidas_periodo)
     categorias_comportamento_data = {
-        'Essenciais': total_despesas_mes * 0.6,  # Estimativa
-        'Supérfluos': total_despesas_mes * 0.3,  # Estimativa
-        'Investimentos': total_despesas_mes * 0.1 # Estimativa (ou 0 se não houver investimento direto)
+        'Essenciais': total_despesas_periodo * 0.6,
+        'Supérfluos': total_despesas_periodo * 0.3,
+        'Investimentos': total_despesas_periodo * 0.1
     }
 
     # ================================================================
-    # 11. INDICADORES DE SAÚDE FINANCEIRA
+    # INDICADORES DE SAÚDE FINANCEIRA
     # ================================================================
-    liquidez_corrente = (float(saldo_total) / float(saidas_mes_atual) * 100) if saidas_mes_atual else 0
-    margem_seguranca = ((float(entradas_mes_atual) - float(saidas_mes_atual)) / float(entradas_mes_atual) * 100) if entradas_mes_atual else 0
+    liquidez_corrente = (float(saldo_total) / float(saidas_periodo) * 100) if saidas_periodo else 0
+    margem_seguranca = ((float(entradas_periodo) - float(saidas_periodo)) / float(entradas_periodo) * 100) if entradas_periodo else 0
     
-    # Dívidas (ex: saldo negativo de cartões de crédito, empréstimos)
-    # Assumindo que o saldo_atual negativo em contas de crédito representa dívida
-    dividas = ContaBancaria.objects.filter(
-        proprietario=user,
-        tipo='credito',
-    ).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
-    
-    # Soma de todas as despesas a pagar no cartão para o mês atual
-    gastos_cartao_mes_atual = Saida.objects.filter(
-        conta_bancaria__proprietario=user,
-        conta_bancaria__tipo='credito',
-        data_vencimento__range=(primeiro_dia_mes_atual, ultimo_dia_mes_atual)
+    # Endividamento
+    gastos_cartao_periodo = saidas_filtradas.filter(
+        conta_bancaria__tipo='credito'
     ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
 
     limite_total_credito = ContaBancaria.objects.filter(
-        proprietario=user,
-        tipo='credito'
+        proprietario=user, tipo='credito'
     ).aggregate(Sum('limite_cartao'))['limite_cartao__sum'] or Decimal('0.00')
 
-    # Endividamento: % de gastos_cartao_mes_atual em relação ao limite_total_credito
-    endividamento = (float(gastos_cartao_mes_atual) / float(limite_total_credito) * 100) if limite_total_credito > 0 else 0
+    endividamento = (float(gastos_cartao_periodo) / float(limite_total_credito) * 100) if limite_total_credito > 0 else 0
     
-    poupanca_mensal_estimada = float(entradas_mes_atual) - float(saidas_mes_atual)
+    poupanca_mensal_estimada = float(entradas_periodo) - float(saidas_periodo)
     reserva_emergencia_ideal_indicador = despesa_mensal_media * meses_meta
 
     nivel_risco_texto = "Baixo"
@@ -524,38 +540,34 @@ def dashboard(request):
         nivel_risco_texto = "Moderado"
 
     # ================================================================
-    # 12. SIMULAÇÕES DE CENÁRIOS
+    # SIMULAÇÕES DE CENÁRIOS
     # ================================================================
-    aumento_10_despesas = float(saidas_mes_atual) * 1.10
-    reducao_10_despesas = float(saidas_mes_atual) * 0.90
-    aumento_10_receitas = float(entradas_mes_atual) * 1.10
-    reducao_10_receitas = float(entradas_mes_atual) * 0.90
-    impacto_inflacao_5 = float(saidas_mes_atual) * 1.05
+    aumento_10_despesas = float(saidas_periodo) * 1.10
+    reducao_10_despesas = float(saidas_periodo) * 0.90
+    aumento_10_receitas = float(entradas_periodo) * 1.10
+    reducao_10_receitas = float(entradas_periodo) * 0.90
+    impacto_inflacao_5 = float(saidas_periodo) * 1.05
 
     # ================================================================
-    # 13. ANÁLISE DE RISCOS
+    # ANÁLISE DE RISCOS
     # ================================================================
-    concentracao_risco = 0 # Requer categorização de entradas para cálculo preciso
+    concentracao_risco = 0  # Simplificado
 
     # ================================================================
-    # 14. OTIMIZAÇÃO DE INVESTIMENTOS
+    # OTIMIZAÇÃO DE INVESTIMENTOS
     # ================================================================
     alocacao_investimentos_labels = ['Reserva Emergencial', 'Renda Fixa', 'Renda Variável']
-    alocacao_investimentos_values = [70, 20, 10] # Valores de exemplo
+    alocacao_investimentos_values = [70, 20, 10]
+    
     sugestao_investimentos = "Priorize a construção da reserva de emergência."
     if float(saldo_poupancas) >= reserva_emergencia_ideal_indicador:
         sugestao_investimentos = "Sua reserva está completa! Considere diversificar seus investimentos."
 
     # ================================================================
-    # 15. ÚLTIMAS TRANSAÇÕES
+    # ÚLTIMAS TRANSAÇÕES (período filtrado)
     # ================================================================
-    ultimas_entradas = Entrada.objects.filter(
-    conta_bancaria__proprietario=user
-    ).select_related('conta_bancaria').order_by('-data')[:5]
-
-    ultimas_saidas = Saida.objects.filter(
-        conta_bancaria__proprietario=user
-    ).select_related('conta_bancaria', 'categoria').order_by('-data_lancamento')[:5]
+    ultimas_entradas = entradas_filtradas.select_related('conta_bancaria').order_by('-data')[:5]
+    ultimas_saidas = saidas_filtradas.select_related('conta_bancaria').order_by('-data_lancamento')[:5]
 
     ultimas_transacoes_list = []
     for entrada in ultimas_entradas:
@@ -564,7 +576,7 @@ def dashboard(request):
             'descricao': entrada.nome,
             'valor': float(entrada.valor),
             'tipo': 'Entrada',
-            'categoria': 'Receita',  # Categoria padrão para entradas
+            'categoria': 'Receita',
             'conta': entrada.conta_bancaria.get_nome_banco_display() if entrada.conta_bancaria else 'N/A'
         })
 
@@ -572,9 +584,9 @@ def dashboard(request):
         ultimas_transacoes_list.append({
             'data': saida.data_lancamento.isoformat(),
             'descricao': saida.nome,
-            'valor': float(-saida.valor),  # Despesas são negativas
+            'valor': float(-saida.valor),
             'tipo': 'Saída',
-            'categoria': saida.categoria.nome if saida.categoria else 'Sem Categoria',
+            'categoria': saida.categoria if saida.categoria else 'Sem Categoria',
             'conta': saida.conta_bancaria.get_nome_banco_display() if saida.conta_bancaria else 'N/A'
         })
 
@@ -582,17 +594,17 @@ def dashboard(request):
     ultimas_transacoes_list = ultimas_transacoes_list[:10]
 
     # ================================================================
-    # CONSTRUÇÃO DO CONTEXTO A SER PASSADO PARA JSON
+    # CONSTRUÇÃO DO CONTEXTO JSON
     # ================================================================
     context_data = {
-        'saldo_geral': float(saldo_total),
-        'entradas_mes': float(entradas_mes_atual),
-        'saidas_mes': float(saidas_mes_atual),
+        'saldo_geral': saldo_total,
+        'entradas_mes': entradas_periodo,
+        'saidas_mes': saidas_periodo,
         'variacao_receitas': variacao_receitas,
         'variacao_despesas': variacao_despesas,
         
         'despesa_mensal_media': despesa_mensal_media,
-        'saldo_poupancas': float(saldo_poupancas),
+        'saldo_poupancas': saldo_poupancas,
         'meses_meta': meses_meta,
 
         'indicadores': {
@@ -651,27 +663,45 @@ def dashboard(request):
         'saldo_contas_labels': saldo_contas_labels,
         'saldo_contas_values': saldo_contas_values,
         
-        'despesas_fixas': float(despesas_fixas),
-        'despesas_variaveis': float(despesas_variaveis),
+        'despesas_fixas': despesas_fixas,
+        'despesas_variaveis': despesas_variaveis,
 
-        'pagos_total': float(pagos_total),
-        'pendentes_total': float(pendentes_total),
+        'pagos_total': pagos_total,
+        'pendentes_total': pendentes_total,
     }
 
-    # Serializa todos os dados para JSON, usando a função auxiliar para Decimals e Dates
-    dados_graficos_json = json.dumps(context_data, default=serialize_for_json)
-    
-    context = {'dados_graficos_json': dados_graficos_json}
+    # Serializar para JSON
+    try:
+        dados_graficos_json = json.dumps(context_data, default=serialize_for_json)
+    except Exception as e:
+        print(f"Erro na serialização JSON: {e}")
+        dados_graficos_json = "{}"
+
+    # ================================================================
+    # CONTEXTO FINAL
+    # ================================================================
+    context = {
+        'dados_graficos_json': dados_graficos_json,
+        'contas_bancarias': ContaBancaria.objects.filter(proprietario=user, ativa=True),
+        'categorias_choices': CATEGORIA_CHOICES,
+        'FORMA_RECEBIMENTO_CHOICES': FORMA_RECEBIMENTO_CHOICES,
+        'filtros_atuais': {
+            'periodo': periodo,
+            'data_inicial': data_inicial,
+            'data_final': data_final,
+            'tipo_transacao': tipo_transacao,
+            'conta': conta_id,
+            'categoria': categoria,
+            'forma_recebimento': forma_recebimento,
+            'valor_minimo': valor_minimo,
+            'valor_maximo': valor_maximo,
+            'status': status,
+            'recorrencia': recorrencia,
+            'meses_meta': meses_meta,
+        }
+    }
     
     return render(request, 'core/dashboard.html', context)
-
-
-# ===== FUNÇÃO AUXILIAR ÚNICA =====
-def get_sum(queryset):
-    """Retorna a soma de 'valor' de um queryset como Decimal, ou 0.00 se vazio."""
-    result = queryset.aggregate(total=Sum('valor'))['total']
-    return Decimal(str(result)) if result is not None else Decimal('0.00')
-
 # ===== FUNÇÕES ADICIONAIS =====
 def get_contas_bancarias_data(usuario):
     """Retorna dados das contas bancárias para gráficos"""
@@ -821,6 +851,44 @@ def conta_list(request):
         count=Count('id')
     ).order_by('tipo')
 
+    # Data atual para filtrar transações
+    from datetime import date
+    hoje = date.today()
+
+    for conta in contas:
+        # Saldo Inicial = saldo_atual do modelo (saldo base da conta)
+        # Usando nomes diferentes para evitar conflitos
+        saldo_inicial_valor = conta.saldo_atual or Decimal('0.00')
+        
+        # Calcular entradas da conta ATÉ HOJE
+        entradas_conta = Entrada.objects.filter(
+            conta_bancaria=conta,
+            data__lte=hoje
+        ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        
+        # Calcular saídas da conta ATÉ HOJE
+        saidas_conta = Saida.objects.filter(
+            conta_bancaria=conta,
+            data_vencimento__lte=hoje,
+            situacao='pago'
+        ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        
+        # Saldo Atual = Saldo Inicial + Entradas - Saídas
+        saldo_calculado_valor = saldo_inicial_valor + entradas_conta - saidas_conta
+        
+        # Atribuir aos objetos de forma explícita
+        conta.saldo_inicial_calc = saldo_inicial_valor
+        conta.saldo_calculado_calc = saldo_calculado_valor
+        
+        # DEBUG: Verificar os valores
+        print(f"=== CONTA: {conta.nome_banco} ===")
+        print(f"Saldo Atual (BD): {conta.saldo_atual}")
+        print(f"Saldo Inicial (Calc): {saldo_inicial_valor}")
+        print(f"Entradas: {entradas_conta}")
+        print(f"Saídas: {saidas_conta}")
+        print(f"Saldo Calculado: {saldo_calculado_valor}")
+        print("=" * 30)
+
     # Obter choices dos modelos
     tipos_conta_choices = ContaBancaria._meta.get_field('tipo').choices
     banco_choices = BANCO_CHOICES
@@ -873,6 +941,8 @@ def conta_list(request):
                 'numero_conta': conta.numero_conta,
                 'nome_do_titular': conta.nome_do_titular,
                 'saldo_atual': float(conta.saldo_atual),
+                'saldo_inicial': float(conta.saldo_inicial),
+                'saldo_calculado': float(conta.saldo_calculado),
                 'ativa': conta.ativa,
                 'numero_cartao': conta.numero_cartao,
                 'limite_cartao': float(conta.limite_cartao) if conta.limite_cartao else None,
@@ -893,6 +963,7 @@ def conta_list(request):
         })
 
     return render(request, 'core/conta_list.html', context)
+
 
 
 @login_required
@@ -1362,8 +1433,23 @@ def entrada_delete(request, pk):
 
 
 # ================================================================
-# VIEWS DE SAÍDAS
+# VIEWS DE SAÍDAS CORRIGIDAS
 # ================================================================
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import JsonResponse
+from django.contrib import messages
+from django.utils import timezone as dj_timezone
+from django.views import View
+from django.db.models import Q
+from dateutil.relativedelta import relativedelta
+from decimal import Decimal
+import json
+from .models import Saida, ContaBancaria, Categoria
+from .forms import SaidaForm
+from .choices import CATEGORIA_CHOICES, SUBCATEGORIA_CHOICES
 
 
 @login_required
@@ -1383,49 +1469,56 @@ def saida_list(request):
     ano_atual = hoje.year
     mes_atual = hoje.month
     
-    # Filtros
-    # Define o mês e ano atual como padrão se não houver filtro na URL
-    ano_filter_str = request.GET.get('ano', str(ano_atual))
-    mes_filter_str = request.GET.get('mes', str(mes_atual).zfill(2)) # Garante dois dígitos
-    status_filter_code = request.GET.get('status', '') # Padrão vazio para 'Todos'
+    # Filtros - CORREÇÃO: Sempre começar com ano e mês atuais quando não especificados
+    ano_filter_str = request.GET.get('ano', '')
+    mes_filter_str = request.GET.get('mes', '')
+    status_filter_code = request.GET.get('status', '')
     
-    # Validar filtros
-    try:
-        ano_filter = int(ano_filter_str)
-    except (ValueError, TypeError):
+    # Se não há filtros, usar ano e mês atuais
+    if not ano_filter_str and not mes_filter_str:
         ano_filter = ano_atual
-    
-    if mes_filter_str == '': # Se o filtro de mês for explicitamente vazio ('Todos os meses')
-        mes_num = None
+        mes_num = mes_atual
+        mes_selecionado = str(mes_atual).zfill(2)
     else:
-        try:
-            mes_num = int(mes_filter_str)
-            if mes_num < 1 or mes_num > 12:
+        # Validar filtro de ano
+        if ano_filter_str:
+            try:
+                ano_filter = int(ano_filter_str)
+            except (ValueError, TypeError):
+                ano_filter = ano_atual
+        else:
+            ano_filter = ano_atual
+        
+        # Validar filtro de mês
+        if mes_filter_str:
+            try:
+                mes_num = int(mes_filter_str)
+                if mes_num < 1 or mes_num > 12:
+                    mes_num = mes_atual
+                mes_selecionado = str(mes_num).zfill(2)
+            except (ValueError, TypeError):
                 mes_num = mes_atual
-        except (ValueError, TypeError):
-            mes_num = mes_atual
-    
-    # Aplica os filtros
-    saidas_qs = Saida.objects.filter(usuario=request.user)
-    
-    saidas_qs = saidas_qs.filter(data_vencimento__year=ano_filter)
-    
-    if mes_num:
-        saidas_qs = saidas_qs.filter(data_vencimento__month=mes_num)
-        mes_selecionado = str(mes_num).zfill(2)
-    else:
-        # Se 'Todos os meses' foi selecionado (mes_num é None),
-        # ou se o filtro de mês na URL estava vazio,
-        # mes_selecionado deve ser vazio para marcar a opção "Todos os meses" no HTML.
-        mes_selecionado = '' 
+                mes_selecionado = str(mes_atual).zfill(2)
+        else:
+            mes_num = None
+            mes_selecionado = ''
     
     if status_filter_code:
-        saidas_qs = saidas_qs.filter(situacao=status_filter_code)
         status_selecionado = status_filter_code
     else:
         status_selecionado = ''
     
-    # Processar despesas para exibir no template
+    # Aplica os filtros
+    saidas_qs = Saida.objects.filter(usuario=request.user)
+    saidas_qs = saidas_qs.filter(data_vencimento__year=ano_filter)
+    
+    if mes_num:
+        saidas_qs = saidas_qs.filter(data_vencimento__month=mes_num)
+    
+    if status_filter_code:
+        saidas_qs = saidas_qs.filter(situacao=status_filter_code)
+    
+    # Processar despesas
     saidas = saidas_qs.order_by('-data_vencimento')
     
     # Cálculos para os cards
@@ -1436,10 +1529,11 @@ def saida_list(request):
     percentual_pago = round((despesas_pagas / total_despesas * 100) if total_despesas > 0 else 0, 2)
     percentual_pendente = round((despesas_pendentes / total_despesas * 100) if total_despesas > 0 else 0, 2)
     
-    # Para cálculo da variação mensal (apenas se estiver filtrando por mês)
+    # Variação mensal
     variacao_mensal = Decimal('0.00')
-    variacao_mensal_abs = Decimal('0.00') # NOVO: Variável para o valor absoluto
-    if mes_num: # Se um mês específico está sendo filtrado
+    variacao_mensal_abs = Decimal('0.00')
+    
+    if mes_num:
         mes_anterior_date = hoje - relativedelta(months=1)
         primeiro_dia_mes_anterior, ultimo_dia_mes_anterior = get_month_range(mes_anterior_date)
         
@@ -1447,7 +1541,7 @@ def saida_list(request):
             usuario=request.user,
             data_vencimento__range=(primeiro_dia_mes_anterior, ultimo_dia_mes_anterior)
         )
-        # Se um filtro de status está ativo, aplique-o também ao mês anterior para uma comparação justa
+        
         if status_filter_code:
             saidas_mes_anterior_qs = saidas_mes_anterior_qs.filter(situacao=status_filter_code)
 
@@ -1458,23 +1552,140 @@ def saida_list(request):
         else:
             variacao_mensal = Decimal('100.00') if total_despesas > 0 else Decimal('0.00')
         
-        variacao_mensal_abs = abs(variacao_mensal) # NOVO: Calcula o valor absoluto aqui
+        variacao_mensal_abs = abs(variacao_mensal)
     
     # Nome do mês para o título
-    mes_nome = dict(meses_choices).get(mes_selecionado, 'Todos os meses') # Usa mes_selecionado aqui
-    if mes_selecionado == '': # Se for "Todos os meses"
+    if mes_selecionado:
+        mes_nome = dict(meses_choices).get(mes_selecionado, '')
+    else:
         mes_nome = 'Todos os meses'
 
-
-    # Anos disponíveis (busca anos com registros e adiciona alguns anos ao redor do atual)
+    # Anos disponíveis
     anos_com_registros = set(Saida.objects.filter(usuario=request.user).values_list('data_vencimento__year', flat=True))
     anos_disponiveis = sorted(list(anos_com_registros.union(range(ano_atual - 2, ano_atual + 2))), reverse=True)
 
-    # Mapeamento de meses e status para badges
+    # Mapeamentos
     meses_display_map = {k: v for k, v in meses_choices}
-    status_display_map = {k: v for k, v in STATUS_CHOICES_DISPLAY} # Mapeamento para exibir nomes
+    status_display_map = {k: v for k, v in STATUS_CHOICES_DISPLAY}
     
-    form = SaidaForm(user=request.user) # Instancia o formulário para o modal
+    # Obter contas bancárias ativas do usuário
+    contas_bancarias = ContaBancaria.objects.filter(proprietario=request.user, ativa=True)
+
+ # ====== CONTEXTO CORRIGIDO PARA CATEGORIAS/SUBCATEGORIAS ======
+    
+    # Choices das categorias
+    categorias_choices = CATEGORIA_CHOICES
+    
+    # Choices das subcategorias (formato correto)
+    subcategorias_choices = SUBCATEGORIA_CHOICES
+    
+    # Mapeamento subcategoria -> categoria (para JavaScript)
+    subcategoria_mapping = {
+        # Moradia
+        'moradia_aluguel': 'moradia',
+        'moradia_financiamento': 'moradia',
+        'moradia_condominio': 'moradia',
+        'moradia_iptu': 'moradia',
+        'moradia_energia': 'moradia',
+        'moradia_agua': 'moradia',
+        'moradia_gas': 'moradia',
+        'moradia_internet': 'moradia',
+        'moradia_manutencao': 'moradia',
+        
+        # Alimentação
+        'alimentacao_supermercado': 'alimentacao',
+        'alimentacao_hortifruti': 'alimentacao',
+        'alimentacao_padaria': 'alimentacao',
+        'alimentacao_restaurante': 'alimentacao',
+        'alimentacao_lanches': 'alimentacao',
+        
+        # Transporte
+        'transporte_combustivel': 'transporte',
+        'transporte_manutencao': 'transporte',
+        'transporte_seguro': 'transporte',
+        'transporte_estacionamento': 'transporte',
+        'transporte_publico': 'transporte',
+        'transporte_app': 'transporte',
+        
+        # Saúde
+        'saude_plano': 'saude',
+        'saude_medicamentos': 'saude',
+        'saude_consultas': 'saude',
+        'saude_exames': 'saude',
+        'saude_odontologia': 'saude',
+        
+        # Educação
+        'educacao_mensalidade': 'educacao',
+        'educacao_cursos': 'educacao',
+        'educacao_materiais': 'educacao',
+        
+        # Lazer
+        'lazer_cinema': 'lazer',
+        'lazer_shows': 'lazer',
+        'lazer_viagens': 'lazer',
+        'lazer_entretenimento': 'lazer',
+
+        # Seguros
+        'seguros_vida': 'seguros',
+        'seguros_residencial': 'seguros',
+        'seguros_viagem': 'seguros',
+
+        # Despesas Pessoais
+        'pessoais_academia': 'pessoais',
+        'pessoais_estetica': 'pessoais',
+        'pessoais_vestuario': 'pessoais',
+        'pessoais_calcados': 'pessoais',
+        'pessoais_acessorios': 'pessoais',
+
+        # Família
+        'familia_mesada': 'familia',
+        'familia_presentes': 'familia',
+        'familia_pets': 'familia',
+
+        # Contas e Serviços
+        'contas_telefone': 'contas',
+        'contas_assinaturas': 'contas',
+        'contas_tv': 'contas',
+
+        # Investimentos
+        'investimentos_poupanca': 'investimentos',
+        'investimentos_fundos': 'investimentos',
+        'investimentos_acoes': 'investimentos',
+        'investimentos_cripto': 'investimentos',
+
+        # Impostos
+        'impostos_irpf': 'impostos',
+        'impostos_inss': 'impostos',
+        'impostos_taxas': 'impostos',
+    }
+
+    context = {
+        'saidas': saidas,
+        'total_despesas': total_despesas,
+        'despesas_pagas': despesas_pagas,
+        'despesas_pendentes': despesas_pendentes,
+        'percentual_pago': percentual_pago,
+        'percentual_pendente': percentual_pendente,
+        'variacao_mensal': variacao_mensal,
+        'variacao_mensal_abs': variacao_mensal_abs,
+        'mes_atual_nome': mes_nome,
+        'ano_atual': ano_filter,
+        'meses': meses_choices,
+        'anos_disponiveis': anos_disponiveis,
+        'STATUS_CHOICES': STATUS_CHOICES_DISPLAY,
+        'ano_selecionado': str(ano_filter),
+        'mes_selecionado': mes_selecionado,
+        'status_selecionado': status_selecionado,
+        'meses_display_map': meses_display_map,
+        'status_display_map': status_display_map,
+        'today_date': dj_timezone.now().date().isoformat(),
+        'contas_bancarias': contas_bancarias,
+        
+        # ====== NOVAS VARIÁVEIS PARA CATEGORIAS/SUBCATEGORIAS ======
+        'categorias_choices': categorias_choices,
+        'subcategorias_choices': subcategorias_choices,
+        'subcategoria_mapping': subcategoria_mapping,
+    }
     
     context = {
         'saidas': saidas,
@@ -1484,159 +1695,904 @@ def saida_list(request):
         'percentual_pago': percentual_pago,
         'percentual_pendente': percentual_pendente,
         'variacao_mensal': variacao_mensal,
-        'variacao_mensal_abs': variacao_mensal_abs, # NOVO: Passa o valor absoluto para o template
-        'mes_atual_nome': mes_nome, # Nome do mês para o título, baseado no filtro
-        'ano_atual': ano_filter, # Usa o ano filtrado, não necessariamente o atual
-        'meses': meses_choices, # Para o select de filtro
+        'variacao_mensal_abs': variacao_mensal_abs,
+        
+        # Variáveis para o filtro
+        'mes_atual_nome': dict(meses_choices).get(str(mes_atual).zfill(2)),
+        'mes_atual_num': mes_atual,
+        'ano_atual': ano_atual,
+        
+        # Filtros atuais
+        'ano_selecionado': str(ano_filter),
+        'mes_selecionado': mes_selecionado,
+        'status_selecionado': status_selecionado,
+        
+        # Opções disponíveis
+        'meses': meses_choices,
         'anos_disponiveis': anos_disponiveis,
-        'STATUS_CHOICES': STATUS_CHOICES_DISPLAY, # Para o select de filtro
-        'ano_selecionado': str(ano_filter), # Passa o ano filtrado (string)
-        'mes_selecionado': mes_selecionado, # Passa o mês filtrado (string de 2 dígitos ou '')
-        'status_selecionado': status_selecionado, # Passa o status filtrado (string)
-        'meses_display_map': meses_display_map, # Para os badges
-        'status_display_map': status_display_map, # Para os badges
-        'form': form, # Passa o formulário para o template
-        'today_date': dj_timezone.now().date().isoformat(), # Para o atributo max da data de lançamento
+        'STATUS_CHOICES': STATUS_CHOICES_DISPLAY,
+        'meses_display_map': meses_display_map,
+        'status_display_map': status_display_map,
+        'today_date': dj_timezone.now().date().isoformat(),
+        'contas_bancarias': contas_bancarias,
+        
+        # Categorias e subcategorias
+        'categorias_choices': categorias_choices,
+        'subcategorias_choices': subcategorias_choices,
+        'subcategoria_mapping': subcategoria_mapping,
     }
     
     return render(request, 'core/saida_list.html', context)
 
-
-from django.views import View
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
-
-@method_decorator(csrf_exempt, name='dispatch')
-@method_decorator(login_required, name='dispatch')
-class MarcarComoPagoView(View):
-    def post(self, request, saida_id):
-        print(f"DEBUG: saida_id = {saida_id}")
-        print(f"DEBUG: request.user = {request.user}")
-        
+@login_required
+@csrf_exempt
+def saida_create(request):
+    """
+    View para criar nova despesa com validações de parcelamento e recorrência
+    """
+    if request.method == 'POST':
         try:
-            saida = Saida.objects.get(id=saida_id, usuario=request.user)
-            saida.situacao = 'pago'
-            saida.save()
+            data = request.POST.copy()
             
-            return JsonResponse({
-                'success': True,
-                'message': 'Despesa marcada como paga com sucesso!'
-            })
+            print("Dados recebidos:", dict(data))
+            print("Recorrência selecionada:", data.get('recorrente'))
             
-        except Saida.DoesNotExist:
+            # Processar valor monetário
+            if 'valor' in data and data['valor']:
+                try:
+                    valorstr = data['valor'].replace("R$", "").replace(".", "").replace(",", ".").strip()
+                    datavalor = Decimal(valorstr)
+                    print("Valor convertido:", datavalor)
+                except (ValueError, InvalidOperation) as e:
+                    print("Erro na conversão do valor:", e)
+                    return JsonResponse({
+                        'success': False,
+                        'errors': {'valor': ['Valor inválido. Use o formato: 1234,56']},
+                        'message': 'Erro na formatação do valor'
+                    }, status=400)
+            
+            # VALIDAÇÃO: Parcelamento só permitido para cartão de crédito ou boleto
+            tipo_pagamento = data.get('tipo_pagamento_detalhe')
+            forma_pagamento = data.get('forma_pagamento')
+            
+            if tipo_pagamento == 'parcelado' and forma_pagamento not in ['cartao_credito', 'boleto']:
+                return JsonResponse({
+                    'success': False,
+                    'errors': {
+                        'tipo_pagamento_detalhe': ['Parcelamento só é permitido para Cartão de Crédito ou Boleto.'],
+                        'forma_pagamento': ['Forma de pagamento não permite parcelamento.']
+                    },
+                    'message': 'Parcelamento não permitido para esta forma de pagamento'
+                }, status=400)
+            
+            # VALIDAÇÃO: Não permitir recorrência com parcelamento
+            recorrente = data.get('recorrente', 'unica')
+            if tipo_pagamento == 'parcelado' and recorrente != 'unica':
+                return JsonResponse({
+                    'success': False,
+                    'errors': {
+                        'recorrente': ['Não é possível combinar recorrência com parcelamento.'],
+                        'tipo_pagamento_detalhe': ['Parcelamento não pode ser recorrente.']
+                    },
+                    'message': 'Não é possível combinar recorrência com parcelamento'
+                }, status=400)
+            
+            # Processar valor da parcela se existir
+            if 'valor_parcela' in data and data['valor_parcela']:
+                try:
+                    valor_parcela_str = data['valor_parcela'].replace('R$', '').replace('.', '').replace(',', '.').strip()
+                    valor_parcela_str = valor_parcela_str.replace('.', '', valor_parcela_str.count('.') - 1) if valor_parcela_str.count('.') > 1 else valor_parcela_str
+                    data['valor_parcela'] = Decimal(valor_parcela_str) if valor_parcela_str else None
+                except (ValueError, InvalidOperation):
+                    data['valor_parcela'] = None
+            
+            # Se for à vista, limpar campos de parcelamento
+            if data.get('tipo_pagamento_detalhe') == 'avista':
+                data['quantidade_parcelas'] = 1
+                if 'valor' in data and data['valor']:
+                    data['valor_parcela'] = data['valor']
+            
+            # Criar e validar formulário
+            form = SaidaForm(data, user=request.user)
+            
+            if form.is_valid():
+                saida = form.save(commit=False)
+                saida.usuario = request.user
+                
+                # Se for recorrente, garantir que é à vista
+                if saida.recorrente != 'unica':
+                    saida.tipo_pagamento_detalhe = 'avista'
+                    saida.quantidade_parcelas = 1
+                    saida.parcela_atual = 1
+                    saida.valor_parcela = saida.valor
+                
+                saida.save()
+                
+                # SE FOR PARCELADO: Criar parcelas futuras
+                if saida.tipo_pagamento_detalhe == 'parcelado' and saida.quantidade_parcelas > 1:
+                    criar_parcelas_futuras(saida)
+                
+                # SE FOR RECORRENTE: Criar ocorrências futuras
+                if saida.recorrente != 'unica':
+                    print(f"Criando ocorrências futuras para recorrência: {saida.recorrente}")
+                    criar_ocorrencias_futuras(saida)
+                
+                print("Despesa salva com sucesso. ID:", saida.id)
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Despesa criada com sucesso!',
+                    'saida_id': saida.id
+                })
+            else:
+                print("Erros no formulário:", form.errors)
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Por favor, corrija os erros no formulário.'
+                }, status=400)
+                
+        except Exception as e:
+            print("Erro ao criar despesa:", str(e))
+            import traceback
+            traceback.print_exc()
+            
             return JsonResponse({
                 'success': False,
-                'message': 'Despesa não encontrada.'
-            }, status=404)
+                'message': f'Erro interno do servidor: {str(e)}'
+            }, status=500)
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Método não permitido'
+    }, status=405)
+
+
+
+
+def criar_ocorrencias_futuras(saida_original):
+    """
+    Cria ocorrências futuras para despesas recorrentes baseado no tipo de recorrência
+    Limite máximo: 24 meses a partir da data original
+    """
+    from dateutil.relativedelta import relativedelta
+    from datetime import date
+    
+    # Mapeamento de recorrência para meses
+    recorrencia_meses = {
+        'mensal': 1,
+        'anual': 12
+    }
+    
+    meses_entre_ocorrencias = recorrencia_meses.get(saida_original.recorrente, 1)
+    data_base = saida_original.data_vencimento
+    data_limite = data_base + relativedelta(months=24)  # Limite de 24 meses
+    
+    ocorrencias_criadas = 0
+    data_ocorrencia = data_base
+    
+    # Para a primeira ocorrência futura, já avançamos o período
+    data_ocorrencia = data_ocorrencia + relativedelta(months=meses_entre_ocorrencias)
+    
+    while ocorrencias_criadas < 24 and data_ocorrencia <= data_limite:
+        # Cria nova ocorrência
+        nova_ocorrencia = Saida.objects.create(
+            usuario=saida_original.usuario,
+            conta_bancaria=saida_original.conta_bancaria,
+            nome=f"{saida_original.nome} ({ocorrencias_criadas + 2})",
+            local=saida_original.local,
+            categoria=saida_original.categoria,
+            subcategoria=saida_original.subcategoria,
+            observacao=saida_original.observacao,
+            valor=saida_original.valor,
+            data_lancamento=data_ocorrencia,
+            data_vencimento=data_ocorrencia,
+            forma_pagamento=saida_original.forma_pagamento,
+            tipo_pagamento_detalhe='avista',  # Recorrência sempre à vista
+            quantidade_parcelas=1,
+            parcela_atual=1,
+            valor_parcela=saida_original.valor,
+            recorrente=saida_original.recorrente,
+            situacao='pendente',
+            recorrencia_original=saida_original,  # Usar o campo correto para recorrência
+            e_recorrente=True
+        )
+        
+        ocorrencias_criadas += 1
+        print(f"Ocorrência {ocorrencias_criadas} criada para {data_ocorrencia}")
+        
+        # Avança para a próxima ocorrência
+        data_ocorrencia = data_ocorrencia + relativedelta(months=meses_entre_ocorrencias)
+    
+    print(f"Total de {ocorrencias_criadas} ocorrências futuras criadas para a despesa {saida_original.id}")
+
+
+def criar_parcelas_futuras(saida_original):
+    """
+    Cria parcelas futuras para uma despesa parcelada
+    """
+    from dateutil.relativedelta import relativedelta
+    
+    # A PRIMEIRA PARCELA JÁ EXISTE (é a saida_original), então começamos da parcela 2
+    for numero_parcela in range(2, saida_original.quantidade_parcelas + 1):
+        nova_saida = Saida(
+            usuario=saida_original.usuario,
+            conta_bancaria=saida_original.conta_bancaria,
+            nome=f"{saida_original.nome} (Parcela {numero_parcela}/{saida_original.quantidade_parcelas})",
+            local=saida_original.local,
+            categoria=saida_original.categoria,
+            subcategoria=saida_original.subcategoria,
+            observacao=saida_original.observacao,
+            valor=saida_original.valor_parcela,  # Usar o valor da parcela, não o total
+            data_lancamento=saida_original.data_lancamento + relativedelta(months=numero_parcela-1),
+            data_vencimento=saida_original.data_vencimento + relativedelta(months=numero_parcela-1),
+            forma_pagamento=saida_original.forma_pagamento,
+            tipo_pagamento_detalhe=saida_original.tipo_pagamento_detalhe,
+            recorrente='unica',  # Parcelas não são recorrentes
+            quantidade_parcelas=saida_original.quantidade_parcelas,
+            valor_parcela=saida_original.valor_parcela,
+            situacao='pendente',
+            parcela_atual=numero_parcela,
+            despesa_original=saida_original,
+            e_parcela=True  # Marcar como parcela (não original)
+        )
+        nova_saida.save()
+    print(f"Total de {saida_original.quantidade_parcelas - 1} parcelas futuras criadas")
+
+
+
+def configurar_proxima_ocorrencia(saida_original):
+    """
+    Configura a próxima ocorrência para uma despesa recorrente
+    """
+    from dateutil.relativedelta import relativedelta
+    
+    # Mapeamento de recorrência para intervalo
+    intervalos = {
+        'mensal': relativedelta(months=1),
+        'trimestral': relativedelta(months=3),
+        'semestral': relativedelta(months=6),
+        'anual': relativedelta(years=1)
+    }
+    
+    if saida_original.recorrente in intervalos:
+        intervalo = intervalos[saida_original.recorrente]
+        
+        nova_saida = Saida(
+            usuario=saida_original.usuario,
+            conta_bancaria=saida_original.conta_bancaria,
+            nome=saida_original.nome,
+            local=saida_original.local,
+            categoria=saida_original.categoria,
+            subcategoria=saida_original.subcategoria,
+            observacao=saida_original.observacao,
+            valor=saida_original.valor,
+            data_lancamento=saida_original.data_lancamento + intervalo,
+            data_vencimento=saida_original.data_vencimento + intervalo,
+            forma_pagamento=saida_original.forma_pagamento,
+            tipo_pagamento_detalhe='avista',  # Recorrência sempre à vista
+            recorrente=saida_original.recorrente,
+            quantidade_parcelas=1,
+            valor_parcela=saida_original.valor,
+            situacao='pendente',
+            parcela_atual=1,
+            despesa_original=saida_original
+        )
+        nova_saida.save()
         
 
 @login_required
-def saida_create(request):
-    if request.method == 'POST':
-        form = SaidaForm(request.POST, user=request.user)
-        if form.is_valid():
-            saida = form.save(commit=False)
-            saida.usuario = request.user
-            saida.save()
-
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': True, 'message': 'Despesa cadastrada com sucesso!'})
-            else:
-                messages.success(request, 'Despesa cadastrada com sucesso!')
-                return redirect('core:saida_list')
-        else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                errors = {field: [str(error) for error in error_list] for field, error_list in form.errors.items()}
-                return JsonResponse({'success': False, 'errors': errors}, status=400)
-            else:
-                # Se o formulário for inválido e não for AJAX, redireciona com erro
-                messages.error(request, 'Erro ao cadastrar despesa. Verifique os dados informados.')
-                return redirect('core:saida_list')
-
-    # Requisições GET são apenas para abrir o modal via AJAX
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({'success': True})
+def saida_info(request, pk):
+    saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
     
-    # Se for um GET não-AJAX, redireciona para a lista
-    return redirect('core:saida_list')
+    data = {
+        'success': True,
+        'despesa': {
+            'id': saida.id,
+            'nome': saida.nome,
+            'tipo_pagamento': saida.tipo_pagamento_detalhe,
+            'quantidade_parcelas': saida.quantidade_parcelas,
+            'parcela_atual': saida.parcela_atual,
+            'recorrente': saida.recorrente,
+            'valor': str(saida.valor),
+        }
+    }
+    
+    return JsonResponse(data)
 
 @login_required
 def saida_update(request, pk):
     saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
-
+    
     if request.method == 'POST':
-        form = SaidaForm(request.POST, instance=saida, user=request.user)
-        if form.is_valid():
-            form.save()
+        # Verificar se é uma requisição AJAX para obter o formulário
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.POST.get('action') == 'get_form':
+            try:
+                # Inicializar o formulário com a instância existente
+                form = SaidaForm(instance=saida, user=request.user)
+                
+                # Calcular valor total para edição completa
+                valor_total = saida.valor
+                if saida.tipo_pagamento_detalhe == 'parcelado' and saida.quantidade_parcelas > 1:
+                    valor_total = saida.valor_parcela * saida.quantidade_parcelas
+                
+                # Renderizar o template do formulário de edição
+                form_html = render_to_string('core/includes/saida_edit_modal.html', {
+                    'form': form,
+                    'saida': saida,
+                    'contas_bancarias': ContaBancaria.objects.filter(proprietario=request.user, ativa=True),
+                    'categorias_choices': CATEGORIA_CHOICES,
+                    'subcategorias_choices': SUBCATEGORIA_CHOICES,
+                    'subcategoria_mapping': {
+                        # Moradia
+                        'moradia_aluguel': 'moradia',
+                        'moradia_financiamento': 'moradia',
+                        'moradia_condominio': 'moradia',
+                        'moradia_iptu': 'moradia',
+                        'moradia_energia': 'moradia',
+                        'moradia_agua': 'moradia',
+                        'moradia_gas': 'moradia',
+                        'moradia_internet': 'moradia',
+                        'moradia_manutencao': 'moradia',
+                        
+                        # Alimentação
+                        'alimentacao_supermercado': 'alimentacao',
+                        'alimentacao_hortifruti': 'alimentacao',
+                        'alimentacao_padaria': 'alimentacao',
+                        'alimentacao_restaurante': 'alimentacao',
+                        'alimentacao_lanches': 'alimentacao',
+                        
+                        # Transporte
+                        'transporte_combustivel': 'transporte',
+                        'transporte_manutencao': 'transporte',
+                        'transporte_seguro': 'transporte',
+                        'transporte_estacionamento': 'transporte',
+                        'transporte_publico': 'transporte',
+                        'transporte_app': 'transporte',
+                        
+                        # Saúde
+                        'saude_plano': 'saude',
+                        'saude_medicamentos': 'saude',
+                        'saude_consultas': 'saude',
+                        'saude_exames': 'saude',
+                        'saude_odontologia': 'saude',
+                        
+                        # Educação
+                        'educacao_mensalidade': 'educacao',
+                        'educacao_cursos': 'educacao',
+                        'educacao_materiais': 'educacao',
+                        
+                        # Lazer
+                        'lazer_cinema': 'lazer',
+                        'lazer_shows': 'lazer',
+                        'lazer_viagens': 'lazer',
+                        'lazer_entretenimento': 'lazer',
 
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                return JsonResponse({'success': True, 'message': 'Despesa atualizada com sucesso!'})
+                        # Seguros
+                        'seguros_vida': 'seguros',
+                        'seguros_residencial': 'seguros',
+                        'seguros_viagem': 'seguros',
+
+                        # Despesas Pessoais
+                        'pessoais_academia': 'pessoais',
+                        'pessoais_estetica': 'pessoais',
+                        'pessoais_vestuario': 'pessoais',
+                        'pessoais_calcados': 'pessoais',
+                        'pessoais_acessorios': 'pessoais',
+
+                        # Família
+                        'familia_mesada': 'familia',
+                        'familia_presentes': 'familia',
+                        'familia_pets': 'familia',
+
+                        # Contas e Serviços
+                        'contas_telefone': 'contas',
+                        'contas_assinaturas': 'contas',
+                        'contas_tv': 'contas',
+
+                        # Investimentos
+                        'investimentos_poupanca': 'investimentos',
+                        'investimentos_fundos': 'investimentos',
+                        'investimentos_acoes': 'investimentos',
+                        'investimentos_cripto': 'investimentos',
+
+                        # Impostos
+                        'impostos_irpf': 'impostos',
+                        'impostos_inss': 'impostos',
+                        'impostos_taxas': 'impostos',
+                    },
+                    'today_date': date.today().isoformat(),
+                    'valor_total': valor_total,
+                }, request=request)
+                
+                return JsonResponse({
+                    'success': True,
+                    'form_html': form_html
+                })
+            except Exception as e:
+                print(f"Erro ao carregar formulário de edição: {e}")
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Erro ao carregar formulário: {str(e)}'
+                }, status=500)
+        
+        # Processar o formulário de edição normal
+        print("=== PROCESSANDO EDIÇÃO DE DESPESA ===")
+        print("Dados recebidos:", dict(request.POST))
+        
+        # Criar cópia dos dados POST para manipulação
+        post_data = request.POST.copy()
+        
+        # Determinar tipo de edição
+        tipo_edicao = post_data.get('tipo_edicao', 'parcela')
+        aplicar_todas = post_data.get('aplicar_todas', 'false') == 'true'
+        
+        print(f"Tipo de edição: {tipo_edicao}")
+        print(f"Aplicar para todas: {aplicar_todas}")
+        
+        # Processar valor monetário
+        if 'valor' in post_data and post_data['valor']:
+            try:
+                valor_str = post_data['valor'].replace("R$", "").replace(".", "").replace(",", ".").strip()
+                post_data['valor'] = Decimal(valor_str)
+                print("Valor convertido:", post_data['valor'])
+            except (ValueError, InvalidOperation) as e:
+                print("Erro na conversão do valor:", e)
+                return JsonResponse({
+                    'success': False,
+                    'errors': {'valor': ['Valor inválido. Use o formato: 1234,56']},
+                    'message': 'Erro na formatação do valor'
+                }, status=400)
+        
+        # Processar valor_parcela se existir
+        if 'valor_parcela' in post_data and post_data['valor_parcela']:
+            try:
+                valor_parcela_str = post_data['valor_parcela'].replace('R$', '').replace('.', '').replace(',', '.').strip()
+                post_data['valor_parcela'] = Decimal(valor_parcela_str) if valor_parcela_str else None
+                print("Valor parcela convertido:", post_data['valor_parcela'])
+            except (ValueError, InvalidOperation):
+                post_data['valor_parcela'] = None
+        
+        # LÓGICA DE EDIÇÃO POR TIPO
+        if tipo_edicao == 'parcela':
+            # EDIÇÃO APENAS ESTA PARCELA
+            if not aplicar_todas:
+                # Manter apenas campos permitidos para edição de parcela individual
+                campos_permitidos = [
+                    'conta_bancaria', 'nome', 'local', 'forma_pagamento', 
+                    'valor', 'categoria', 'subcategoria', 'observacao', 
+                    'data_vencimento', 'situacao'
+                ]
+                
+                # Para outros campos, manter os valores originais
+                campos_originais = {
+                    'tipo_pagamento_detalhe': saida.tipo_pagamento_detalhe,
+                    'recorrente': saida.recorrente,
+                    'quantidade_parcelas': saida.quantidade_parcelas,
+                    'valor_parcela': saida.valor_parcela,
+                    'data_lancamento': saida.data_lancamento,  # Mantém data original
+                }
+                
+                for campo, valor in campos_originais.items():
+                    if campo not in post_data:
+                        post_data[campo] = valor
+            
+            # EDIÇÃO APLICAR PARA TODAS AS PARCELAS
             else:
-                messages.success(request, 'Despesa atualizada com sucesso!')
-                return redirect('core:saida_list')
+                # Manter todos os campos exceto data_lancamento
+                campos_originais = {
+                    'data_lancamento': saida.data_lancamento,  # Mantém data original
+                }
+                
+                for campo, valor in campos_originais.items():
+                    if campo not in post_data:
+                        post_data[campo] = valor
+                
+                # Para edição aplicando a todas, usar valor da parcela salvo no banco
+                if 'valor' in post_data and saida.valor_parcela:
+                    # Se estiver editando o valor, calcular novo valor da parcela
+                    if post_data['valor'] != saida.valor:
+                        novo_valor_total = post_data['valor']
+                        quantidade_parcelas = saida.quantidade_parcelas
+                        post_data['valor_parcela'] = novo_valor_total / quantidade_parcelas
+                    else:
+                        post_data['valor_parcela'] = saida.valor_parcela
+        
+        # EDIÇÃO TODAS AS PARCELAS
+        elif tipo_edicao == 'todas':
+            # Manter data_lancamento original
+            campos_originais = {
+                'data_lancamento': saida.data_lancamento,  # Mantém data original
+            }
+            
+            for campo, valor in campos_originais.items():
+                if campo not in post_data:
+                    post_data[campo] = valor
+            
+            # Para edição completa, calcular valor da parcela baseado no valor total
+            if 'valor' in post_data and 'quantidade_parcelas' in post_data:
+                try:
+                    valor_total = post_data['valor']
+                    quantidade_parcelas = int(post_data['quantidade_parcelas'])
+                    if quantidade_parcelas > 0:
+                        post_data['valor_parcela'] = valor_total / quantidade_parcelas
+                        print(f"Valor parcela calculado: {post_data['valor_parcela']}")
+                except (ValueError, ZeroDivisionError) as e:
+                    print(f"Erro ao calcular valor parcela: {e}")
+        
+        # Garantir que campos obrigatórios tenham valores padrão se não enviados
+        if 'tipo_pagamento_detalhe' not in post_data or not post_data['tipo_pagamento_detalhe']:
+            post_data['tipo_pagamento_detalhe'] = 'avista'
+        
+        if 'recorrente' not in post_data or not post_data['recorrente']:
+            post_data['recorrente'] = 'unica'
+        
+        if 'quantidade_parcelas' not in post_data or not post_data['quantidade_parcelas']:
+            post_data['quantidade_parcelas'] = 1
+        
+        if 'valor_parcela' not in post_data or not post_data['valor_parcela']:
+            post_data['valor_parcela'] = post_data.get('valor', 0)
+        
+        # Se for à vista, garantir quantidade_parcelas = 1
+        if post_data.get('tipo_pagamento_detalhe') == 'avista':
+            post_data['quantidade_parcelas'] = 1
+            post_data['valor_parcela'] = post_data.get('valor', 0)
+        
+        print("Dados processados para validação:", {k: v for k, v in post_data.items()})
+        
+        # Criar e validar formulário
+        form = SaidaForm(post_data, instance=saida, user=request.user)
+        
+        if form.is_valid():
+            try:
+                saida_salva = form.save(commit=False)
+                
+                # Aplicar para todas as parcelas se solicitado
+                if aplicar_todas and saida.tipo_pagamento_detalhe == 'parcelado' and saida.despesa_original:
+                    print("Aplicando alterações para todas as parcelas...")
+                    # Encontrar todas as parcelas
+                    parcelas = Saida.objects.filter(
+                        Q(despesa_original=saida.despesa_original) | Q(pk=saida.despesa_original.pk)
+                    )
+                    
+                    for parcela in parcelas:
+                        # Atualizar campos comuns
+                        parcela.conta_bancaria = form.cleaned_data['conta_bancaria']
+                        parcela.nome = form.cleaned_data['nome']
+                        parcela.local = form.cleaned_data['local']
+                        parcela.categoria = form.cleaned_data['categoria']
+                        parcela.subcategoria = form.cleaned_data['subcategoria']
+                        parcela.observacao = form.cleaned_data['observacao']
+                        parcela.forma_pagamento = form.cleaned_data['forma_pagamento']
+                        parcela.situacao = form.cleaned_data['situacao']
+                        parcela.tipo_pagamento_detalhe = form.cleaned_data['tipo_pagamento_detalhe']
+                        parcela.recorrente = form.cleaned_data['recorrente']
+                        parcela.quantidade_parcelas = form.cleaned_data['quantidade_parcelas']
+                        parcela.valor_parcela = form.cleaned_data['valor_parcela']
+                        
+                        # Para valor, só atualizar se for a primeira parcela
+                        if parcela.parcela_atual == 1:
+                            parcela.valor = form.cleaned_data['valor_parcela']  # Usar valor da parcela
+                            parcela.data_vencimento = form.cleaned_data['data_vencimento']
+                        else:
+                            # Para parcelas futuras, manter o valor da parcela calculado
+                            parcela.valor = form.cleaned_data['valor_parcela']
+                            # Ajustar data de vencimento baseado na diferença da primeira parcela
+                            if saida.parcela_atual == 1:
+                                diferenca_meses = parcela.parcela_atual - 1
+                                nova_data_vencimento = form.cleaned_data['data_vencimento'] + relativedelta(months=diferenca_meses)
+                                parcela.data_vencimento = nova_data_vencimento
+                        
+                        parcela.save()
+                        print(f"Parcela {parcela.parcela_atual} atualizada")
+                
+                else:
+                    # Salvar apenas a despesa atual
+                    saida_salva.save()
+                
+                print("Despesa atualizada com sucesso!")
+                
+                return JsonResponse({
+                    'success': True, 
+                    'message': 'Despesa atualizada com sucesso!'
+                })
+                    
+            except Exception as e:
+                print(f"Erro ao salvar despesa: {e}")
+                import traceback
+                traceback.print_exc()
+                
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'Erro ao atualizar despesa: {str(e)}',
+                    'error_details': str(e)
+                }, status=400)
         else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                # Retorna os erros de validação diretamente
-                errors = {field: [str(error) for error in error_list] for field, error_list in form.errors.items()}
-                return JsonResponse({'success': False, 'errors': errors}, status=400)
+            print("=== ERROS DE VALIDAÇÃO ===")
+            print(form.errors)
+            return JsonResponse({
+                'success': False, 
+                'errors': form.errors,
+                'message': 'Erro de validação. Verifique os campos.'
+            }, status=400)
+    
+    return redirect('core:saida_list')
 
-    else: # GET request (quando o botão "Editar" é clicado)
-        form = SaidaForm(instance=saida, user=request.user)
 
-    # Obter contas bancárias do usuário (para o template normal e para os dados do modal GET)
-    contas_bancarias = ContaBancaria.objects.filter(proprietario=request.user, ativa=True)
 
-    # Se for requisição AJAX (para abrir o modal para edição), retornar JSON com os dados para preenchimento
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return JsonResponse({
-            'success': True,
-            'id': saida.pk,
-            'nome': saida.nome,
-            'valor': str(saida.valor),
-            'data_lancamento': saida.data_lancamento.isoformat() if saida.data_lancamento else '',
-            'data_vencimento': saida.data_vencimento.isoformat() if saida.data_vencimento else '',
-            'local': saida.local if saida.local else '',
-            'categoria': saida.categoria if saida.categoria else '',
-            'subcategoria': saida.subcategoria if saida.subcategoria else '',
-            'forma_pagamento': saida.forma_pagamento if saida.forma_pagamento else '',
-            'tipo_pagamento_detalhe': saida.tipo_pagamento_detalhe if saida.tipo_pagamento_detalhe else '',
-            'situacao': saida.situacao if saida.situacao else '',
-            'quantidade_parcelas': saida.quantidade_parcelas if saida.quantidade_parcelas else 1,
-            'recorrente': saida.recorrente if saida.recorrente else '',
-            'observacao': saida.observacao if saida.observacao else '',
-            'conta_bancaria': saida.conta_bancaria.pk if saida.conta_bancaria else '', # Retorna o PK da conta
-            'valor_parcela': str(saida.valor_parcela) if saida.valor_parcela else ''
-        })
 
-    # Se for requisição normal (não AJAX), renderizar a página completa
-    return render(request, 'core/saida_form.html', {
-        'form': form,
-        'action': 'Editar',
-        'FORMA_PAGAMENTO_CHOICES': FORMA_PAGAMENTO_CHOICES,
-        'SITUACAO_CHOICES': SITUACAO_CHOICES,
-        'CATEGORIA_CHOICES': CATEGORIA_CHOICES,
-        'SUBCATEGORIA_CHOICES': SUBCATEGORIA_CHOICES,
-        'TIPO_PAGAMENTO_DETALHE_CHOICES': TIPO_PAGAMENTO_DETALHE_CHOICES,
-        'PERIODICIDADE_CHOICES': PERIODICIDADE_CHOICES,
-        'contas_bancarias': contas_bancarias
+
+@login_required
+def debug_saida_update(request, pk):
+    """View temporária para debug"""
+    saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
+    
+    print("=== DEBUG SAIDA UPDATE ===")
+    print(f"Method: {request.method}")
+    print(f"Headers: {dict(request.headers)}")
+    print(f"POST data: {dict(request.POST)}")
+    print(f"is_ajax: {request.headers.get('x-requested-with') == 'XMLHttpRequest'}")
+    
+    return JsonResponse({
+        'debug': True,
+        'method': request.method,
+        'is_ajax': request.headers.get('x-requested-with') == 'XMLHttpRequest',
+        'action': request.POST.get('action'),
+        'saida_id': saida.id
     })
+
+
+def formatar_valor_para_formulario(valor):
+    """
+    Formata valor decimal para o formato usado no formulário (com vírgula)
+    """
+    if valor is None:
+        return ''
+    
+    try:
+        # Converte para string e substitui ponto por vírgula
+        valor_str = str(valor)
+        if '.' in valor_str:
+            partes = valor_str.split('.')
+            if len(partes) == 2:
+                # Formata com 2 casas decimais
+                return f"{partes[0]},{partes[1].ljust(2, '0')}"
+        return valor_str.replace('.', ',')
+    except:
+        return str(valor)
+
+@login_required
+def marcar_como_pago(request, pk):
+    """
+    View para marcar despesa como paga
+    """
+    try:
+        saida = Saida.objects.get(pk=pk, usuario=request.user)
+        
+        if saida.situacao != 'pago':
+            saida.situacao = 'pago'
+            saida.data_lancamento = dj_timezone.now().date()
+            
+            # Se for à vista, ajustar data de vencimento
+            if saida.tipo_pagamento_detalhe == 'avista':
+                saida.data_vencimento = saida.data_lancamento
+            
+            saida.save()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Despesa marcada como paga com sucesso!'
+            })
+        else:
+            return JsonResponse({
+                'success': False, 
+                'message': 'Esta despesa já está paga.'
+            })
+            
+    except Saida.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'message': 'Despesa não encontrada.'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao marcar despesa como paga: {str(e)}'
+        }, status=500)
+
 
 @login_required
 def saida_delete(request, pk):
-    saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
+    """
+    View para excluir despesa com opções para parcelas e recorrências
+    """
+    try:
+        saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
 
-    if request.method == 'POST':
-        saida.delete()
+        if request.method == 'POST':
+            delete_option = request.POST.get('delete_option', 'esta')
+            nome_despesa = saida.nome
+            count = 1  # Contador padrão para uma despesa
+            
+            print(f"Excluindo despesa {pk} com opção: {delete_option}")
+            
+            if delete_option == 'esta':
+                # Excluir apenas esta despesa
+                saida.delete()
+                message = f'Despesa "{nome_despesa}" excluída com sucesso!'
+                
+            elif delete_option == 'todas_parcelas' and saida.despesa_original:
+                # Excluir todas as parcelas (esta é uma parcela)
+                despesa_original = saida.despesa_original
+                parcelas = Saida.objects.filter(
+                    Q(despesa_original=despesa_original) | Q(pk=despesa_original.pk)
+                )
+                count = parcelas.count()
+                parcelas.delete()
+                message = f'Todas as {count} parcelas da despesa "{despesa_original.nome}" foram excluídas!'
+                
+            elif delete_option == 'todas_parcelas_futuras' and saida.parcela_atual == 1:
+                # Excluir apenas parcelas futuras (esta é a primeira parcela)
+                parcelas_futuras = Saida.objects.filter(
+                    despesa_original=saida,
+                    parcela_atual__gt=1
+                )
+                count = parcelas_futuras.count()
+                parcelas_futuras.delete()
+                # Mantém a primeira parcela (esta)
+                message = f'{count} parcelas futuras da despesa "{nome_despesa}" foram excluídas!'
+                
+            elif delete_option == 'todas_ocorrencias' and saida.despesa_original:
+                # Excluir todas as ocorrências recorrentes
+                despesa_original = saida.despesa_original
+                ocorrencias = Saida.objects.filter(
+                    Q(despesa_original=despesa_original) | Q(pk=despesa_original.pk)
+                )
+                count = ocorrencias.count()
+                ocorrencias.delete()
+                message = f'Todas as {count} ocorrências da despesa "{despesa_original.nome}" foram excluídas!'
+                
+            elif delete_option == 'futuras_ocorrencias' and saida.despesa_original:
+                # Excluir apenas ocorrências futuras
+                ocorrencias_futuras = Saida.objects.filter(
+                    despesa_original=saida.despesa_original,
+                    data_vencimento__gt=saida.data_vencimento
+                )
+                count = ocorrencias_futuras.count()
+                ocorrencias_futuras.delete()
+                message = f'{count} ocorrências futuras da despesa "{saida.despesa_original.nome}" foram excluídas!'
+                
+            else:
+                # Fallback: excluir apenas esta despesa
+                saida.delete()
+                message = f'Despesa "{nome_despesa}" excluída com sucesso!'
 
+            print(f"Exclusão concluída: {message}")
+
+            # Para requisições AJAX
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True, 
+                    'message': message
+                })
+
+            messages.success(request, message)
+            return redirect('saida_list')
+
+        # GET request - Retornar informações sobre a despesa para o modal
+        elif request.method == 'GET':
+            print(f"Buscando informações da despesa {pk}")
+            
+            despesa_info = {
+                'id': saida.id,
+                'nome': saida.nome,
+                'valor': str(saida.valor),
+                'data_vencimento': saida.data_vencimento.strftime('%d/%m/%Y'),
+                'tipo_pagamento': saida.tipo_pagamento_detalhe,
+                'parcela_atual': saida.parcela_atual,
+                'quantidade_parcelas': saida.quantidade_parcelas,
+                'recorrente': saida.recorrente,
+                'tem_parcelas': False,
+                'tem_recorrencias': False,
+                'e_parcela': saida.despesa_original is not None,
+                'e_original': saida.parcela_atual == 1 and saida.quantidade_parcelas > 1,
+                'e_recorrente': saida.recorrente != 'unica',
+            }
+            
+            # Verificar se existem parcelas
+            if saida.despesa_original:
+                print("Esta despesa é uma parcela")
+                # Esta é uma parcela - ver quantas parcelas existem no total
+                despesa_original = saida.despesa_original
+                total_parcelas = Saida.objects.filter(
+                    Q(despesa_original=despesa_original) | Q(pk=despesa_original.pk)
+                ).count()
+                despesa_info['total_parcelas'] = total_parcelas
+                despesa_info['tem_parcelas'] = total_parcelas > 1
+                print(f"Total de parcelas encontradas: {total_parcelas}")
+                
+            elif saida.parcela_atual == 1 and saida.quantidade_parcelas > 1:
+                print("Esta despesa é a primeira parcela")
+                # Esta é a primeira parcela - ver se existem parcelas futuras
+                parcelas_futuras = Saida.objects.filter(
+                    despesa_original=saida,
+                    parcela_atual__gt=1
+                ).count()
+                despesa_info['parcelas_futuras'] = parcelas_futuras
+                despesa_info['tem_parcelas'] = parcelas_futuras > 0
+                print(f"Parcelas futuras encontradas: {parcelas_futuras}")
+            
+            # Verificar se existem ocorrências recorrentes
+            if saida.despesa_original and saida.recorrente != 'unica':
+                print("Esta despesa tem ocorrências recorrentes")
+                ocorrencias = Saida.objects.filter(
+                    despesa_original=saida.despesa_original
+                ).count()
+                despesa_info['total_ocorrencias'] = ocorrencias
+                despesa_info['tem_recorrencias'] = ocorrencias > 1
+                print(f"Total de ocorrências: {ocorrencias}")
+                
+            elif saida.recorrente != 'unica':
+                print("Esta despesa é recorrente")
+                ocorrencias_futuras = Saida.objects.filter(
+                    despesa_original=saida,
+                    data_vencimento__gt=saida.data_vencimento
+                ).count()
+                despesa_info['ocorrencias_futuras'] = ocorrencias_futuras
+                despesa_info['tem_recorrencias'] = ocorrencias_futuras > 0
+                print(f"Ocorrências futuras: {ocorrencias_futuras}")
+
+            print(f"Informações da despesa: {despesa_info}")
+
+            return JsonResponse({
+                'success': True,
+                'despesa': despesa_info
+            })
+
+        return JsonResponse({
+            'success': False,
+            'message': 'Método não permitido'
+        }, status=405)
+        
+    except Saida.DoesNotExist:
+        print(f"Despesa {pk} não encontrada")
+        # Despesa já foi excluída ou não existe
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'success': True, 'message': 'Despesa excluída com sucesso!'})
+            return JsonResponse({
+                'success': False,
+                'message': 'Despesa não encontrada ou já foi excluída.'
+            }, status=404)
+        
+        messages.error(request, 'Despesa não encontrada ou já foi excluída.')
+        return redirect('saida_list')
+        
+    except Exception as e:
+        # Log do erro para debug
+        print(f"Erro ao excluir despesa {pk}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': f'Erro ao excluir despesa: {str(e)}'
+            }, status=500)
+        
+        messages.error(request, 'Erro ao excluir despesa.')
+        return redirect('saida_list')
 
-        messages.success(request, 'Despesa excluída com sucesso!')
-        return redirect('core:saida_list')
-
-    # GET request (se acessado diretamente, o que não deve ocorrer com o modal JS)
-    # Apenas para garantir que o Django tem um fallback
-    return render(request, 'core/saida_confirm_delete.html', {'saida': saida})
+def get_month_range(date):
+    """Retorna o primeiro e último dia do mês"""
+    from calendar import monthrange
+    year = date.year
+    month = date.month
+    first_day = dj_timezone.datetime(year, month, 1).date()
+    last_day = dj_timezone.datetime(year, month, monthrange(year, month)[1]).date()
+    return first_day, last_day
 
 
 class GetSubcategoriasView(View):
@@ -1648,8 +2604,6 @@ class GetSubcategoriasView(View):
             if sc[2] == categoria
         ]
         return JsonResponse(subcategorias, safe=False)
-    
-    
 # ================================================================
 # VIEWS DE EXTRATO COMPLETO
 # ================================================================
@@ -1666,68 +2620,105 @@ def extrato_completo(request):
     ano_atual = hoje.year
     mes_atual = hoje.month
     
+    # Obter parâmetros de filtro
     ano_filtro = request.GET.get('ano', str(ano_atual))
     mes_filtro = request.GET.get('mes', str(mes_atual))
     tipo_filtro = request.GET.get('tipo')
+    conta_filtro = request.GET.get('conta')
     
+    # Obter todas as contas do usuário para o filtro
+    contas_usuario = ContaBancaria.objects.filter(proprietario=request.user)
+
+        
+    # ADICIONE ESTA LINHA - contas bancárias para o modal
+    contas_bancarias = ContaBancaria.objects.filter(proprietario=request.user, ativa=True)
+    
+    # Filtrar entradas e saídas
     entradas = Entrada.objects.filter(usuario=request.user)
     saidas = Saida.objects.filter(usuario=request.user)
     
+    # Aplicar filtros
     if mes_filtro and mes_filtro != 'todos':
         entradas = entradas.filter(data__month=mes_filtro)
         saidas = saidas.filter(data_vencimento__month=mes_filtro)
     
-    entradas = entradas.filter(data__year=ano_filtro)
-    saidas = saidas.filter(data_vencimento__year=ano_filtro)
+    if ano_filtro and ano_filtro != 'todos':
+        entradas = entradas.filter(data__year=ano_filtro)
+        saidas = saidas.filter(data_vencimento__year=ano_filtro)
     
     if tipo_filtro == 'entrada':
         saidas = saidas.none()
     elif tipo_filtro == 'saida':
         entradas = entradas.none()
     
-    transacoes = sorted(
+    if conta_filtro and conta_filtro != 'todas':
+        entradas = entradas.filter(conta_bancaria_id=conta_filtro)
+        saidas = saidas.filter(conta_bancaria_id=conta_filtro)
+    
+    # Paginação
+    todas_transacoes = sorted(
         list(entradas) + list(saidas),
         key=lambda x: x.data if hasattr(x, 'data') else x.data_vencimento,
         reverse=True
     )
     
+    paginator = Paginator(todas_transacoes, 25)
+    page_number = request.GET.get('page')
+    transacoes_paginadas = paginator.get_page(page_number)
+    
+    # Cálculos totais
     total_entradas = entradas.aggregate(total=Sum('valor'))['total'] or 0
     total_saidas = saidas.aggregate(total=Sum('valor'))['total'] or 0
     saldo_mes = total_entradas - total_saidas
     
+    # Cálculo da variação mensal
     mes_para_calculo = int(mes_filtro) if mes_filtro and mes_filtro != 'todos' else mes_atual
-    ano_para_calculo = int(ano_filtro)
+    ano_para_calculo = int(ano_filtro) if ano_filtro and ano_filtro != 'todos' else ano_atual
     
-    mes_anterior = mes_para_calculo - 1 if mes_para_calculo > 1 else 12
-    ano_mes_anterior = ano_para_calculo if mes_para_calculo > 1 else ano_para_calculo - 1
-    
-    entradas_mes_anterior = Entrada.objects.filter(
-        usuario=request.user,
-        data__month=mes_anterior,
-        data__year=ano_mes_anterior
-    ).aggregate(total=Sum('valor'))['total'] or 0
-    
-    saidas_mes_anterior = Saida.objects.filter(
-        usuario=request.user,
-        data_vencimento__month=mes_anterior,
-        data_vencimento__year=ano_mes_anterior
-    ).aggregate(total=Sum('valor'))['total'] or 0
-    
-    saldo_mes_anterior = entradas_mes_anterior - saidas_mes_anterior
-    
-    if saldo_mes_anterior != 0:
-        variacao_mensal = round((saldo_mes - saldo_mes_anterior) / abs(saldo_mes_anterior) * 100, 2)
+    if mes_filtro and mes_filtro != 'todos':
+        mes_anterior = mes_para_calculo - 1 if mes_para_calculo > 1 else 12
+        ano_mes_anterior = ano_para_calculo if mes_para_calculo > 1 else ano_para_calculo - 1
+        
+        entradas_mes_anterior = Entrada.objects.filter(
+            usuario=request.user,
+            data__month=mes_anterior,
+            data__year=ano_mes_anterior
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        
+        saidas_mes_anterior = Saida.objects.filter(
+            usuario=request.user,
+            data_vencimento__month=mes_anterior,
+            data_vencimento__year=ano_mes_anterior
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        
+        saldo_mes_anterior = entradas_mes_anterior - saidas_mes_anterior
+        
+        if saldo_mes_anterior != 0:
+            variacao_mensal = round((saldo_mes - saldo_mes_anterior) / abs(saldo_mes_anterior) * 100, 2)
+        else:
+            variacao_mensal = 100 if saldo_mes > 0 else 0
     else:
-        variacao_mensal = 100 if saldo_mes > 0 else 0
+        variacao_mensal = 0
     
-    mes_nome = dict(meses).get(int(mes_filtro) if mes_filtro and mes_filtro != 'todos' else mes_atual, '')
+    mes_nome = dict(meses).get(int(mes_filtro) if mes_filtro and mes_filtro != 'todos' else mes_atual, 'Todos os meses' if mes_filtro == 'todos' else '')
+    
+    # Obter anos disponíveis a partir das transações
+    anos_entradas = Entrada.objects.filter(usuario=request.user).dates('data', 'year')
+    anos_saidas = Saida.objects.filter(usuario=request.user).dates('data_vencimento', 'year')
+    anos_disponiveis = sorted(set([d.year for d in anos_entradas] + [d.year for d in anos_saidas]), reverse=True)
+    
+    if not anos_disponiveis:
+        anos_disponiveis = [ano_atual]
     
     return render(request, 'core/extrato_completo.html', {
-        'transacoes': transacoes,
+        'transacoes': transacoes_paginadas,
         'meses': meses,
-        'anos_disponiveis': list(range(ano_atual - 2, ano_atual + 1)),
-        'ano_selecionado': int(ano_filtro),
-        'mes_selecionado': str(mes_atual) if not mes_filtro or mes_filtro == 'todos' else mes_filtro,
+        'anos_disponiveis': anos_disponiveis,
+        'contas_usuario': contas_usuario,
+        'contas_bancarias': contas_bancarias,  # ADICIONE ESTA LINHA
+        'ano_selecionado': ano_filtro,
+        'mes_selecionado': mes_filtro,
+        'conta_selecionada': conta_filtro,
         'tipo_filtro': tipo_filtro,
         'total_entradas': total_entradas,
         'total_saidas': total_saidas,
@@ -1736,6 +2727,215 @@ def extrato_completo(request):
         'mes_atual_nome': mes_nome,
         'ano_atual': ano_para_calculo,
     })
+
+# core/views_extrato.py
+from django.shortcuts import render, get_object_or_404
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.db.models import Q, Sum
+from datetime import datetime, timedelta
+from decimal import Decimal
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+from .models import ContaBancaria, Entrada, Saida
+from dateutil.relativedelta import relativedelta
+from datetime import date
+from decimal import Decimal
+
+
+@login_required
+def modal_selecao_extrato(request):
+    """Retorna o modal de seleção para extrato bancário"""
+    contas_bancarias = ContaBancaria.objects.filter(proprietario=request.user, ativa=True)
+    
+    context = {
+        'contas_bancarias': contas_bancarias
+    }
+    
+    return render(request, 'core/modal_extrato_bancario.html', context)
+
+
+
+
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
+from io import BytesIO
+from django.http import HttpResponse
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from datetime import timedelta
+from decimal import Decimal
+from .models import ContaBancaria, Entrada, Saida
+from django.db.models import Sum
+import json
+
+@login_required
+def gerar_extrato_bancario_pdf(request):
+    """Gera extrato bancário em PDF usando template HTML + xhtml2pdf"""
+    print("DEBUG: View acessada - Método:", request.method)
+    
+    if request.method == 'GET':
+        conta_id = request.GET.get('conta')
+        periodo = request.GET.get('periodo', '30')
+        
+        print(f"DEBUG: Parâmetros - Conta ID: {conta_id}, Período: {periodo}")
+        
+        if not conta_id:
+            print("DEBUG: Nenhuma conta selecionada")
+            return JsonResponse({'success': False, 'error': 'Nenhuma conta selecionada'})
+        
+        try:
+            conta = get_object_or_404(ContaBancaria, id=conta_id, proprietario=request.user)
+            print(f"DEBUG: Conta encontrada: {conta}")
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar conta: {e}")
+            return JsonResponse({'success': False, 'error': 'Conta não encontrada'})
+        
+        # Calcular datas baseadas no período selecionado
+        data_fim = timezone.now().date()
+        dias = int(periodo)
+        data_inicio = data_fim - timedelta(days=dias)
+        
+        print(f"DEBUG: Período: {data_inicio} a {data_fim}")
+        
+        # Buscar transações do período
+        entradas = Entrada.objects.filter(
+            conta_bancaria__proprietario=request.user,
+            conta_bancaria=conta,
+            data__range=[data_inicio, data_fim]
+        ).order_by('data')
+        
+        saidas = Saida.objects.filter(
+            usuario=request.user,
+            conta_bancaria=conta,
+            data_vencimento__range=[data_inicio, data_fim]
+        ).order_by('data_vencimento')
+        
+        print(f"DEBUG: {entradas.count()} entradas, {saidas.count()} saídas encontradas")
+        
+        # Calcular totais do período
+        total_entradas = entradas.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        total_saidas = saidas.aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        
+        # CORREÇÃO: Calcular saldo inicial (saldo na data de início do período)
+        # 1. Saldo inicial da conta (quando foi criada)
+        saldo_inicial_conta = conta.saldo_atual or Decimal('0.00')
+        
+        # 2. Entradas que ocorreram ANTES do período do extrato
+        entradas_anteriores = Entrada.objects.filter(
+            conta_bancaria__proprietario=request.user,
+            conta_bancaria=conta,
+            data__lt=data_inicio  # APENAS transações anteriores à data de início
+        ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        
+        # 3. Saídas que ocorreram ANTES do período do extrato
+        saidas_anteriores = Saida.objects.filter(
+            usuario=request.user,
+            conta_bancaria=conta,
+            data_vencimento__lt=data_inicio  # APENAS transações anteriores à data de início
+        ).aggregate(total=Sum('valor'))['total'] or Decimal('0.00')
+        
+        # 4. Saldo na data de início = saldo inicial + entradas anteriores - saídas anteriores
+        saldo_inicial = saldo_inicial_conta + entradas_anteriores - saidas_anteriores
+        
+        print(f"DEBUG: Saldo inicial da conta: {saldo_inicial_conta}")
+        print(f"DEBUG: Entradas anteriores ao período: {entradas_anteriores}")
+        print(f"DEBUG: Saídas anteriores ao período: {saidas_anteriores}")
+        print(f"DEBUG: Saldo na data de início: {saldo_inicial}")
+        
+        # Preparar dados para o template
+        transacoes = []
+        saldo_acumulado = float(saldo_inicial)
+        
+        # Combinar e ordenar todas as transações
+        todas_transacoes = []
+        
+        for entrada in entradas:
+            todas_transacoes.append({
+                'data': entrada.data,
+                'nome': entrada.nome,
+                'valor': float(entrada.valor),
+                'tipo': 'Entrada',
+                'categoria': entrada.forma_recebimento,
+                'saldo_acumulado': None
+            })
+        
+        for saida in saidas:
+            todas_transacoes.append({
+                'data': saida.data_vencimento,
+                'nome': saida.nome,
+                'valor': float(saida.valor),
+                'tipo': 'Saida',
+                'categoria': saida.categoria if saida.categoria else 'Outros',
+                'saldo_acumulado': None
+            })
+        
+        # Ordenar por data e calcular saldo acumulado
+        todas_transacoes.sort(key=lambda x: x['data'])
+        
+        for transacao in todas_transacoes:
+            if transacao['tipo'] == 'Entrada':
+                saldo_acumulado += transacao['valor']
+            else:
+                saldo_acumulado -= transacao['valor']
+            
+            transacao['saldo_acumulado'] = saldo_acumulado
+            transacoes.append(transacao)
+        
+        # Saldo final deve ser o último saldo acumulado
+        saldo_final = saldo_acumulado
+        
+        context = {
+            'usuario': request.user,
+            'conta': conta,
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'periodo': f"{data_inicio.strftime('%d/%m/%Y')} a {data_fim.strftime('%d/%m/%Y')}",
+            'transacoes': transacoes,
+            'total_entradas': float(total_entradas),
+            'total_saidas': float(total_saidas),
+            'saldo_inicial': float(saldo_inicial),
+            'saldo_final': float(saldo_final),
+            'data_geracao': timezone.now(),
+        }
+        
+        try:
+            # Renderizar template HTML
+            html_string = render_to_string('core/extrato_pdf.html', context)
+            
+            # Criar buffer para o PDF
+            result = BytesIO()
+            
+            # Converter HTML para PDF
+            pdf = pisa.pisaDocument(BytesIO(html_string.encode("UTF-8")), result)
+            
+            if not pdf.err:
+                # Retornar PDF como resposta
+                response = HttpResponse(result.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="extrato_{conta.get_nome_banco_display()}_{data_inicio}_{data_fim}.pdf"'
+                return response
+            else:
+                return JsonResponse({'success': False, 'error': 'Erro ao gerar PDF'})
+            
+        except Exception as e:
+            print(f"DEBUG: Erro ao gerar PDF: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Erro ao gerar PDF: {str(e)}'})
+    
+    print("DEBUG: Método não permitido")
+    return JsonResponse({'success': False, 'error': 'Método não permitido'})
+
 
 def get_saldo_historico(usuario, meses=12):
     historico_saldo = []
@@ -2879,65 +4079,479 @@ def get_activity_color(activity_type):
 # VIEWS DA Lembrete
 # ================================================================
    
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.shortcuts import get_object_or_404, render
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.db import transaction
+from django.db.models import Q, Sum, Count, Case, When, Value, IntegerField
+from django.db.models.functions import Coalesce
+from datetime import datetime, timedelta
+import json
+from decimal import Decimal
 
-# --- Lembretes ---
+from .models import Lembrete, Entrada, Saida
+from .forms import LembreteForm
+
+
+def get_mes_portugues(data):
+    """Retorna o nome do mês em português"""
+    meses = {
+        1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril',
+        5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto',
+        9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+    }
+    return meses.get(data.month, data.strftime('%B'))
+
+
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.db.models import Q, Sum
+from django.db.models.functions import Coalesce
+from datetime import datetime, timedelta, date
+from decimal import Decimal
+import json
+
+from .models import Lembrete, Entrada, Saida
+
+def get_mes_portugues(data):
+    """Retorna o nome do mês em português"""
+    meses = {
+        1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril',
+        5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto',
+        9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+    }
+    return meses.get(data.month, data.strftime('%B'))
 
 @login_required
 def lembrete_list(request):
-    lembretes = Lembrete.objects.filter(user=request.user).order_by('data_limite')
-    form = LembreteForm()
+    # Obter todos os parâmetros de filtro da URL
+    status_filtro = request.GET.get('status', '')
+    tipo_filtro = request.GET.get('tipo', '')
+    periodo_filtro = request.GET.get('periodo', '30')
+    order_filtro = request.GET.get('order', 'data_limite')
+    data_inicial = request.GET.get('data_inicial', '')
+    data_final = request.GET.get('data_final', '')
+    search_query = request.GET.get('search', '')
     
-    context = {
-        'lembretes': lembretes,
-        'form': form,
+    # Data atual para cálculos
+    hoje = timezone.now().date()
+    mes_atual_ptbr = f"{get_mes_portugues(hoje)} {hoje.year}"
+    
+    # BASE QUERYSETS
+    # Lembretes do usuário
+    lembretes = Lembrete.objects.filter(user=request.user)
+    
+    # Entradas do usuário
+    entradas = Entrada.objects.filter(conta_bancaria__proprietario=request.user)
+    
+    # Saídas do usuário
+    saidas = Saida.objects.filter(usuario=request.user)
+    
+    # APLICAR FILTROS NOS LEMBRETES
+    if status_filtro:
+        if status_filtro == 'pendente':
+            lembretes = lembretes.filter(concluido=False)
+        elif status_filtro == 'concluido':
+            lembretes = lembretes.filter(concluido=True)
+        elif status_filtro == 'urgente':
+            data_limite_urgente = hoje + timedelta(days=2)
+            lembretes = lembretes.filter(
+                concluido=False,
+                data_limite__lte=data_limite_urgente,
+                data_limite__gte=hoje
+            )
+    
+    if tipo_filtro and hasattr(Lembrete, 'tipo'):
+        lembretes = lembretes.filter(tipo=tipo_filtro)
+    
+    if periodo_filtro != 'todos':
+        if periodo_filtro == 'custom' and data_inicial and data_final:
+            try:
+                data_inicial_obj = datetime.strptime(data_inicial, '%Y-%m-%d').date()
+                data_final_obj = datetime.strptime(data_final, '%Y-%m-%d').date()
+                lembretes = lembretes.filter(data_limite__range=[data_inicial_obj, data_final_obj])
+            except (ValueError, TypeError):
+                data_inicio_periodo = hoje - timedelta(days=30)
+                lembretes = lembretes.filter(data_limite__gte=data_inicio_periodo)
+        else:
+            try:
+                dias = int(periodo_filtro)
+                data_inicio_periodo = hoje - timedelta(days=dias)
+                lembretes = lembretes.filter(data_limite__gte=data_inicio_periodo)
+            except (ValueError, TypeError):
+                data_inicio_periodo = hoje - timedelta(days=30)
+                lembretes = lembretes.filter(data_limite__gte=data_inicio_periodo)
+    
+    if search_query:
+        lembretes = lembretes.filter(
+            Q(titulo__icontains=search_query) |
+            Q(descricao__icontains=search_query)
+        )
+    
+    # ORDENAÇÃO
+    order_mapping = {
+        'data_limite': 'data_limite',
+        '-data_limite': '-data_limite',
+        'data_criacao': 'data_criacao',
+        '-data_criacao': '-data_criacao',
+        'titulo': 'titulo',
+        '-titulo': '-titulo',
+        'concluido': 'concluido',
+        '-concluido': '-concluido',
+        'prioridade': 'prioridade',
+        '-prioridade': '-prioridade',
+        'urgente': 'data_limite',
     }
+    
+    campo_ordenacao = order_mapping.get(order_filtro, 'data_limite')
+    lembretes = lembretes.order_by(campo_ordenacao)
+    
+    # ESTATÍSTICAS DOS LEMBRETES
+    total_lembretes = lembretes.count()
+    lembretes_pendentes = lembretes.filter(concluido=False).count()
+    lembretes_concluidos = lembretes.filter(concluido=True).count()
+    
+    # Lembretes urgentes (≤ 2 dias)
+    data_limite_urgente = hoje + timedelta(days=2)
+    lembretes_urgentes = lembretes.filter(
+        concluido=False,
+        data_limite__lte=data_limite_urgente,
+        data_limite__gte=hoje
+    ).count()
+    
+    # Lembretes próximos (3-7 dias)
+    data_limite_proximo_inicio = hoje + timedelta(days=3)
+    data_limite_proximo_fim = hoje + timedelta(days=7)
+    lembretes_proximos = lembretes.filter(
+        concluido=False,
+        data_limite__range=[data_limite_proximo_inicio, data_limite_proximo_fim]
+    ).count()
+    
+    # CÁLCULOS FINANCEIROS PARA O MÊS ATUAL
+    primeiro_dia_mes = hoje.replace(day=1)
+    ultimo_dia_mes = (primeiro_dia_mes + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    
+    # Entradas do mês
+    entradas_mes_query = entradas.filter(
+        data__range=[primeiro_dia_mes, ultimo_dia_mes]
+    )
+    entradas_mes = entradas_mes_query.aggregate(
+        total=Coalesce(Sum('valor'), Decimal('0.00'))
+    )['total'] or Decimal('0.00')
+    
+    # Contagem de entradas
+    entradas_count = entradas_mes_query.count()
+    
+    # Saídas do mês
+    saidas_mes_query = saidas.filter(
+        data_vencimento__range=[primeiro_dia_mes, ultimo_dia_mes]
+    )
+    saidas_mes = saidas_mes_query.aggregate(
+        total=Coalesce(Sum('valor'), Decimal('0.00'))
+    )['total'] or Decimal('0.00')
+    
+    # Contagem total de saídas
+    saidas_count = saidas_mes_query.count()
+    
+    # Saídas pagas e pendentes
+    saidas_pagas_mes = saidas.filter(
+        data_vencimento__range=[primeiro_dia_mes, ultimo_dia_mes],
+        situacao='paga'
+    ).count()
+    
+    saidas_pendentes_mes = saidas.filter(
+        data_vencimento__range=[primeiro_dia_mes, ultimo_dia_mes],
+        situacao='pendente'
+    ).count()
+    
+    # Saldo mensal
+    saldo_mensal = entradas_mes - saidas_mes
+    
+    # CONTAS A VENCER (todas as saídas pendentes que ainda não venceram)
+    contas_a_vencer = saidas.filter(
+        situacao='pendente',
+        data_vencimento__gte=hoje  # Apenas as que ainda não venceram
+    ).count()
+    
+    # DADOS PARA O CALENDÁRIO (período mais amplo: 12 meses)
+    data_inicio_calendario = hoje - timedelta(days=365)
+    data_fim_calendario = hoje + timedelta(days=365)
+
+    # Eventos do calendário
+    eventos_calendario = []
+
+    # Adicionar lembretes ao calendário
+    lembretes_calendario = Lembrete.objects.filter(
+        user=request.user,
+        data_limite__range=[data_inicio_calendario, data_fim_calendario]
+    )
+
+    for lembrete in lembretes_calendario:
+        dias_restantes = (lembrete.data_limite - hoje).days
+        evento = {
+            'id': f"lembrete_{lembrete.id}",
+            'title': f"📋 {lembrete.titulo}",
+            'start': lembrete.data_limite.isoformat(),
+            'color': '#3B82F6',
+            'extendedProps': {
+                'type': 'lembrete',
+                'dias_restantes': dias_restantes,
+                'concluido': lembrete.concluido,
+                'descricao': lembrete.descricao or '',
+                'url': f'/lembretes/editar/{lembrete.id}/',
+                'fullTitle': f"📋 {lembrete.titulo}"
+            }
+        }
+        eventos_calendario.append(evento)
+
+    # Adicionar entradas ao calendário
+    entradas_calendario = entradas.filter(
+        data__range=[data_inicio_calendario, data_fim_calendario]
+    )
+
+    for entrada in entradas_calendario:
+        evento = {
+            'id': f"entrada_{entrada.id}",
+            'title': f"💰 {entrada.nome}",
+            'start': entrada.data.isoformat(),
+            'color': '#10B981',
+            'extendedProps': {
+                'type': 'entrada',
+                'descricao': f"Valor: R$ {entrada.valor:.2f}",
+                'valor': float(entrada.valor),
+                'url': f'/entradas/editar/{entrada.id}/',
+                'fullTitle': f"💰 {entrada.nome} - R$ {entrada.valor:.2f}"
+            }
+        }
+        eventos_calendario.append(evento)
+
+    # Adicionar saídas ao calendário
+    saidas_calendario = saidas.filter(
+        data_vencimento__range=[data_inicio_calendario, data_fim_calendario]
+    )
+
+    for saida in saidas_calendario:
+        dias_restantes = (saida.data_vencimento - hoje).days
+        evento = {
+            'id': f"saida_{saida.id}",
+            'title': f"💸 {saida.nome}",
+            'start': saida.data_vencimento.isoformat(),
+            'color': '#EF4444' if saida.situacao == 'pendente' else '#8B5CF6',
+            'extendedProps': {
+                'type': 'saida_pendente' if saida.situacao == 'pendente' else 'saida_paga',
+                'dias_restantes': dias_restantes,
+                'situacao': saida.situacao,
+                'descricao': f"Valor: R$ {saida.valor:.2f}\nStatus: {saida.get_situacao_display()}",
+                'valor': float(saida.valor),
+                'url': f'/saidas/editar/{saida.id}/',
+                'fullTitle': f"💸 {saida.nome} - R$ {saida.valor:.2f}"
+            }
+        }
+        eventos_calendario.append(evento)
+    
+    # Garantir que todas as datas sejam strings serializáveis
+    for evento in eventos_calendario:
+        if isinstance(evento['start'], date):
+            evento['start'] = evento['start'].isoformat()
+    
+    # Serializar para JSON seguro
+    eventos_json = json.dumps(eventos_calendario, default=str, ensure_ascii=False)
+    
+    # CONTEXT DATA
+    context = {
+        # Filtros atuais
+        'status_filtro': status_filtro,
+        'tipo_filtro': tipo_filtro,
+        'periodo_filtro': periodo_filtro,
+        'order_filtro': order_filtro,
+        'data_inicial': data_inicial,
+        'data_final': data_final,
+        'search_query': search_query,
+        'mes_atual': mes_atual_ptbr,
+        
+        # Dados principais
+        'lembretes': lembretes,
+        'total_lembretes': total_lembretes,
+        'lembretes_pendentes': lembretes_pendentes,
+        'lembretes_concluidos': lembretes_concluidos,
+        'lembretes_urgentes': lembretes_urgentes,
+        'lembretes_proximos': lembretes_proximos,
+        
+        # Estatísticas financeiras
+        'entradas_count': entradas_count,
+        'saidas_count': saidas_count,
+        'entradas_mes': entradas_mes,
+        'saidas_mes': saidas_mes,
+        'saidas_pagas_mes': saidas_pagas_mes,
+        'saidas_pendentes_mes': saidas_pendentes_mes,
+        'saldo_mensal': saldo_mensal,
+        'contas_a_vencer': contas_a_vencer,
+        
+        # Dados do calendário
+        'eventos_calendario': eventos_json,
+        'mes_atual': f"{get_mes_portugues(hoje)} {hoje.year}",
+        'hoje': hoje.isoformat(),
+        
+        # Datas para referência
+        'primeiro_dia_mes': primeiro_dia_mes.isoformat(),
+        'ultimo_dia_mes': ultimo_dia_mes.isoformat(),
+        
+        # Opções para templates
+        'periodo_options': [
+            {'value': '7', 'label': 'Últimos 7 dias'},
+            {'value': '30', 'label': 'Últimos 30 dias'},
+            {'value': '90', 'label': 'Últimos 3 meses'},
+            {'value': '365', 'label': 'Último ano'},
+            {'value': 'custom', 'label': 'Personalizado'},
+            {'value': 'todos', 'label': 'Todos os períodos'},
+        ],
+        
+        'status_options': [
+            {'value': '', 'label': 'Todos os status'},
+            {'value': 'pendente', 'label': 'Pendentes'},
+            {'value': 'concluido', 'label': 'Concluídos'},
+            {'value': 'urgente', 'label': 'Urgentes (≤ 2 dias)'},
+        ],
+        
+        'order_options': [
+            {'value': 'data_limite', 'label': 'Data Limite (Recente)'},
+            {'value': '-data_limite', 'label': 'Data Limite (Antigo)'},
+            {'value': 'data_criacao', 'label': 'Data Criação (Recente)'},
+            {'value': '-data_criacao', 'label': 'Data Criação (Antigo)'},
+            {'value': 'titulo', 'label': 'Nome (A-Z)'},
+            {'value': '-titulo', 'label': 'Nome (Z-A)'},
+            {'value': 'concluido', 'label': 'Status (Concluído)'},
+            {'value': '-concluido', 'label': 'Status (Pendente)'},
+        ]
+    }
+    
     return render(request, 'core/lembrete_list.html', context)
 
-# views.py
+
+
+# VIEWS PARA OPERAÇÕES CRUD (mantenha estas também)
 @login_required
+@csrf_exempt
+@require_http_methods(["POST"])
 def lembrete_create(request):
-    if request.method == 'POST':
-        form = LembreteForm(request.POST)
+    try:
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST.dict()
+        
+        form = LembreteForm(data)
+        
         if form.is_valid():
             lembrete = form.save(commit=False)
             lembrete.user = request.user
             lembrete.save()
-            return JsonResponse({'success': True, 'message': 'Lembrete criado com sucesso!'})
+            
+            return JsonResponse({
+                'success': True, 
+                'message': 'Lembrete criado com sucesso!',
+                'lembrete_id': lembrete.id
+            })
         else:
-            return JsonResponse({'success': False, 'errors': form.errors.get_json_data()}, status=400)
-    
-    return JsonResponse({'success': False, 'message': 'Método não permitido'}, status=405)
+            errors = {field: [str(error) for error in error_list] for field, error_list in form.errors.items()}
+            return JsonResponse({
+                'success': False, 
+                'errors': errors
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao criar lembrete: {str(e)}'
+        }, status=500)
 
 @login_required
+@csrf_exempt
+@require_http_methods(["POST"])
 def lembrete_update(request, pk):
-    lembrete = get_object_or_404(Lembrete, pk=pk, user=request.user)
-    if request.method == 'POST':
-        form = LembreteForm(request.POST, instance=lembrete)
+    try:
+        lembrete = get_object_or_404(Lembrete, pk=pk, user=request.user)
+        
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+        else:
+            data = request.POST.dict()
+        
+        form = LembreteForm(data, instance=lembrete)
+        
         if form.is_valid():
             form.save()
-            return JsonResponse({'success': True, 'message': 'Lembrete atualizado com sucesso!'})
+            return JsonResponse({
+                'success': True, 
+                'message': 'Lembrete atualizado com sucesso!'
+            })
         else:
-            return JsonResponse({'success': False, 'errors': form.errors.get_json_data()}, status=400)
-    
-    return JsonResponse({'success': False, 'message': 'Método não permitido'}, status=405)
+            errors = {field: [str(error) for error in error_list] for field, error_list in form.errors.items()}
+            return JsonResponse({
+                'success': False, 
+                'errors': errors
+            }, status=400)
+            
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar lembrete: {str(e)}'
+        }, status=500)
 
 @login_required
-def lembrete_delete(request, pk):
-    lembrete = get_object_or_404(Lembrete, pk=pk, user=request.user)
-    if request.method == 'POST':
-        lembrete.delete()
-        return JsonResponse({'success': True, 'message': 'Lembrete excluído com sucesso.'})
-    
-    return JsonResponse({'success': False, 'message': 'Método não permitido'}, status=405)
-
-# views.py
-from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
-import json
-
 @csrf_exempt
-@require_POST
+@require_http_methods(["POST", "DELETE"])
+def lembrete_delete(request, pk):
+    try:
+        lembrete = get_object_or_404(Lembrete, pk=pk, user=request.user)
+        lembrete.delete()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Lembrete excluído com sucesso.'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao excluir lembrete: {str(e)}'
+        }, status=500)
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def lembrete_toggle(request, pk):
+    try:
+        lembrete = get_object_or_404(Lembrete, pk=pk, user=request.user)
+        
+        if request.content_type == 'application/json':
+            data = json.loads(request.body)
+            concluido = data.get('concluido', False)
+        else:
+            concluido = request.POST.get('concluido') == 'true'
+        
+        lembrete.concluido = concluido
+        lembrete.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Status do lembrete atualizado com sucesso!',
+            'concluido': lembrete.concluido
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar status: {str(e)}'
+        }, status=500)
+    
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
 def alternar_status_lembrete(request):
     try:
         data = json.loads(request.body)
@@ -2947,6 +4561,32 @@ def alternar_status_lembrete(request):
         lembrete = Lembrete.objects.get(id=lembrete_id, user=request.user)
         lembrete.concluido = concluido
         lembrete.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Status do lembrete atualizado com sucesso!'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Erro ao atualizar status: {str(e)}'
+        }, status=500)
+
+@login_required
+@csrf_exempt
+@require_POST
+def alternar_status_lembrete(request):
+    try:
+        data = json.loads(request.body)
+        lembrete_id = data.get('lembrete_id')
+        concluido = data.get('concluido')
+        
+        lembrete = Lembrete.objects.get(id=lembrete_id, user=request.user)
+        
+        with transaction.atomic():
+            lembrete.concluido = concluido
+            lembrete.save()
         
         return JsonResponse({
             'success': True,
@@ -2963,6 +4603,8 @@ def alternar_status_lembrete(request):
             'success': False,
             'message': f'Erro ao atualizar status: {str(e)}'
         }, status=500)
+    
+
 
 
 # views.py
@@ -3114,3 +4756,495 @@ def operacao_saque_delete(request, pk):
             'success': False, 
             'message': 'Operação não encontrada.'
         }, status=404)
+
+
+
+
+
+
+
+
+
+
+
+        # ================================================================
+# VIEWS DA ORACULO
+# ================================================================
+   
+@login_required
+def oraculo_financeiro(request):
+    """
+    Página de oráculo financeiro - análise inteligente das finanças
+    """
+    user = request.user
+    hoje = date.today()
+    
+    # Dados básicos para análise
+    saldo_total = ContaBancaria.objects.filter(proprietario=user).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
+    
+    # Entradas e saídas dos últimos 6 meses
+    seis_meses_atras = hoje - relativedelta(months=6)
+    primeiro_dia_seis_meses = seis_meses_atras.replace(day=1)
+    
+    entradas_ultimos_6_meses = Entrada.objects.filter(
+        conta_bancaria__proprietario=user,
+        data__gte=primeiro_dia_seis_meses
+    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    
+    saidas_ultimos_6_meses = Saida.objects.filter(
+        conta_bancaria__proprietario=user,
+        data_vencimento__gte=primeiro_dia_seis_meses
+    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    
+    # Média mensal
+    media_entradas_mensal = entradas_ultimos_6_meses / Decimal('6.00')
+    media_saidas_mensal = saidas_ultimos_6_meses / Decimal('6.00')
+    
+    # Reserva de emergência
+    saldo_poupancas = ContaBancaria.objects.filter(
+        proprietario=user,
+        tipo='poupanca',
+        ativa=True
+    ).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
+    
+    meses_reserva = saldo_poupancas / media_saidas_mensal if media_saidas_mensal > 0 else 0
+    
+    # Análise de dívidas
+    dividas_cartao = Saida.objects.filter(
+        conta_bancaria__proprietario=user,
+        conta_bancaria__tipo='credito',
+        situacao='pendente'
+    ).aggregate(Sum('valor'))['valor__sum'] or Decimal('0.00')
+    
+    # Fluxo mensal e taxa de economia
+    fluxo_mensal = media_entradas_mensal - media_saidas_mensal
+    taxa_economia = (fluxo_mensal / media_entradas_mensal * 100) if media_entradas_mensal > 0 else 0
+    
+    # MELHORIA 1: Análise de hábitos de gastos por dia da semana
+    from django.db.models.functions import ExtractWeekDay
+    
+    gastos_por_dia = Saida.objects.filter(
+        conta_bancaria__proprietario=user,
+        data_vencimento__gte=primeiro_dia_seis_meses
+    ).annotate(
+        dia_semana=ExtractWeekDay('data_vencimento')
+    ).values('dia_semana').annotate(
+        total=Sum('valor')
+    ).order_by('dia_semana')
+    
+    # Mapear números dos dias para nomes
+    dias_semana_map = {
+        1: 'Domingo',
+        2: 'Segunda',
+        3: 'Terça', 
+        4: 'Quarta',
+        5: 'Quinta',
+        6: 'Sexta',
+        7: 'Sábado'
+    }
+    
+    gastos_por_dia_formatado = []
+    for gasto in gastos_por_dia:
+        gastos_por_dia_formatado.append({
+            'dia': dias_semana_map.get(gasto['dia_semana'], 'Desconhecido'),
+            'total': float(gasto['total'] or 0)
+        })
+    
+    # MELHORIA 2: Dados comparativos com média nacional (fictícios)
+    media_brasileira = {
+        'economia': Decimal('5.2'),  # % da renda
+        'reserva': Decimal('1.8'),   # meses
+        'endividamento': Decimal('68.3')  # % das famílias
+    }
+    
+    # MELHORIA 3: Sistema de metas
+    metas_usuario = [
+        {'nome': 'Reserva de 6 meses', 'atingida': meses_reserva >= 6, 'valor': meses_reserva, 'meta': 6},
+        {'nome': 'Economizar 20%', 'atingida': taxa_economia >= 20, 'valor': taxa_economia, 'meta': 20},
+        {'nome': 'Zerar dívidas', 'atingida': dividas_cartao == 0, 'valor': float(dividas_cartao), 'meta': 0}
+    ]
+    
+    # Insights baseados nos dados
+    insights = []
+    
+    # Insight 1: Reserva de emergência
+    if meses_reserva < 3:
+        insights.append({
+            'tipo': 'alerta',
+            'titulo': 'Reserva de Emergência Insuficiente',
+            'descricao': f'Sua reserva cobre apenas {meses_reserva:.1f} meses de despesas. O ideal é ter 3-6 meses.',
+            'acao': 'Aumente suas economias mensalmente.'
+        })
+    elif meses_reserva >= 6:
+        insights.append({
+            'tipo': 'sucesso',
+            'titulo': 'Reserva de Emergência Adequada',
+            'descricao': f'Parabéns! Sua reserva cobre {meses_reserva:.1f} meses de despesas.',
+            'acao': 'Considere investir o excedente.'
+        })
+    
+    # Insight 2: Comparativo com média brasileira
+    if meses_reserva < media_brasileira['reserva']:
+        insights.append({
+            'tipo': 'alerta',
+            'titulo': 'Abaixo da Média Nacional',
+            'descricao': f'Sua reserva de {meses_reserva:.1f} meses está abaixo da média brasileira de {media_brasileira["reserva"]} meses.',
+            'acao': 'Busque acompanhar ou superar a média nacional.'
+        })
+    
+    # Insight 3: Fluxo mensal
+    if fluxo_mensal < 0:
+        insights.append({
+            'tipo': 'perigo',
+            'titulo': 'Fluxo de Caixa Negativo',
+            'descricao': f'Seu fluxo mensal está negativo em R$ {abs(fluxo_mensal):.2f}.',
+            'acao': 'Revise suas despesas e identifique onde cortar gastos.'
+        })
+    else:
+        if taxa_economia < 10:
+            insights.append({
+                'tipo': 'alerta',
+                'titulo': 'Baixa Taxa de Economia',
+                'descricao': f'Você está economizando apenas {taxa_economia:.1f}% da sua renda.',
+                'acao': 'Tente economizar pelo menos 15-20% da sua renda.'
+            })
+        elif taxa_economia > media_brasileira['economia']:
+            insights.append({
+                'tipo': 'sucesso',
+                'titulo': 'Acima da Média Nacional',
+                'descricao': f'Parabéns! Sua taxa de economia de {taxa_economia:.1f}% está acima da média brasileira de {media_brasileira["economia"]}%.',
+                'acao': 'Continue mantendo essa disciplina financeira.'
+            })
+    
+    # Insight 4: Dívidas
+    if dividas_cartao > Decimal('0.00'):
+        insights.append({
+            'tipo': 'perigo',
+            'titulo': 'Dívidas em Aberto',
+            'descricao': f'Você tem R$ {dividas_cartao:.2f} em dívidas de cartão de crédito.',
+            'acao': 'Priorize o pagamento dessas dívidas para evitar juros altos.'
+        })
+    
+    # Insight 5: Gastos por categoria
+    saidas_por_categoria = Saida.objects.filter(
+        conta_bancaria__proprietario=user,
+        data_vencimento__gte=primeiro_dia_seis_meses
+    ).values('categoria').annotate(total=Sum('valor')).order_by('-total')[:5]
+    
+    if saidas_por_categoria:
+        maior_categoria = saidas_por_categoria[0]
+        insights.append({
+            'tipo': 'info',
+            'titulo': 'Maior Gasto por Categoria',
+            'descricao': f'Sua maior categoria de gastos é {maior_categoria["categoria"]} com R$ {maior_categoria["total"]:.2f}.',
+            'acao': 'Analise se esses gastos estão alinhados com suas prioridades.'
+        })
+    
+    # Insight 6: Hábitos de gastos por dia
+    if gastos_por_dia_formatado:
+        dia_mais_gasto = max(gastos_por_dia_formatado, key=lambda x: x['total'])
+        insights.append({
+            'tipo': 'info',
+            'titulo': 'Dia de Maior Gasto',
+            'descricao': f'Você gasta mais às {dia_mais_gasto["dia"]}s (R$ {dia_mais_gasto["total"]:.2f}).',
+            'acao': 'Planeje melhor seus gastos neste dia da semana.'
+        })
+    
+    # Previsão para os próximos 3 meses
+    previsao_3_meses = []
+    saldo_projetado = float(saldo_total)
+    
+    for i in range(1, 4):
+        mes_projetado = hoje + relativedelta(months=i)
+        saldo_projetado += float(fluxo_mensal)
+        previsao_3_meses.append({
+            'mes': mes_projetado.strftime('%B/%Y'),
+            'saldo_projetado': saldo_projetado
+        })
+    
+    context = {
+        'saldo_total': saldo_total,
+        'media_entradas_mensal': media_entradas_mensal,
+        'media_saidas_mensal': media_saidas_mensal,
+        'fluxo_mensal': fluxo_mensal,
+        'taxa_economia': taxa_economia,
+        'meses_reserva': meses_reserva,
+        'dividas_cartao': dividas_cartao,
+        'insights': insights,
+        'previsao_3_meses': previsao_3_meses,
+        'gastos_por_dia': gastos_por_dia_formatado,
+        'media_brasileira': media_brasileira,
+        'metas_usuario': metas_usuario,
+        'hoje': hoje.strftime('%d/%m/%Y')
+    }
+    
+    return render(request, 'core/oraculo_financeiro.html', context)
+
+
+
+
+# ================================================================
+# VIEWS DE CATEGORIA E SUBCATEGORIA
+# ================================================================
+# 
+# 
+#  
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.forms import UserChangeForm
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.db.models import Sum
+from datetime import date, timedelta, datetime
+from django.utils import timezone as dj_timezone
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.db import transaction
+from decimal import Decimal
+import json
+from django.views.decorators.http import require_http_methods
+from django.db.models import Q
+from dateutil.relativedelta import relativedelta
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+# Importações dos seus modelos, formas e choices
+from .models import ContaBancaria, Entrada, Saida, Transferencia, Lembrete, OperacaoSaque, Categoria, Subcategoria, Profile
+from .forms import ContaBancariaForm, EntradaForm, SaidaForm, TransferenciaForm, OperacaoSaqueForm, CustomUserCreationForm, ProfileUpdateForm, LembreteForm
+from .choices import FORMA_RECEBIMENTO_CHOICES, BANCO_CHOICES, FORMA_PAGAMENTO_CHOICES
+
+
+@login_required
+def get_categorias_and_subcategorias(request):
+    """
+    API que retorna categorias e subcategorias para o usuário logado
+    ou categorias padrão.
+    """
+    try:
+        # Busca todas as categorias do usuário logado e as categorias padrão.
+        categorias = Categoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True)
+        ).distinct()
+        
+        # Busca todas as subcategorias do usuário logado e as padrão.
+        subcategorias_todas = Subcategoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True)
+        ).distinct().order_by('nome')
+
+        # Cria uma estrutura de dados aninhada para as categorias e subcategorias
+        data = []
+        for cat in categorias:
+            subcats = [
+                {'id': sub.id, 'nome': sub.nome, 'categoria_id': sub.categoria.id}
+                for sub in subcategorias_todas if sub.categoria == cat
+            ]
+            data.append({
+                'id': cat.id,
+                'nome': cat.nome,
+                'subcategorias': subcats
+            })
+
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+
+@require_POST
+def criar_categoria_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Autenticação necessária.'}, status=401)
+    
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+
+        if not nome:
+            return JsonResponse({'success': False, 'message': 'O nome da categoria é obrigatório.'}, status=400)
+        
+        if Categoria.objects.filter(Q(usuario=request.user) | Q(eh_padrao=True), nome__iexact=nome).exists():
+            return JsonResponse({'success': False, 'message': 'Já existe uma categoria com este nome.'}, status=400)
+            
+        nova_categoria = Categoria.objects.create(
+            nome=nome,
+            usuario=request.user,
+            eh_padrao=False
+        )
+        return JsonResponse({'success': True, 'message': 'Categoria criada com sucesso!', 'categoria': {'id': nova_categoria.id, 'nome': nova_categoria.nome}})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Requisição JSON inválida.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Ocorreu um erro: {str(e)}'}, status=500)
+
+@require_POST
+def criar_subcategoria_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'message': 'Autenticação necessária.'}, status=401)
+        
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+        categoria_id = data.get('categoria_id')
+
+        if not nome or not categoria_id:
+            return JsonResponse({
+                'success': False,
+                'message': 'Nome e categoria são obrigatórios.'
+            }, status=400)
+        
+        categoria = get_object_or_404(
+            Categoria, 
+            Q(usuario=request.user) | Q(eh_padrao=True),
+            id=categoria_id
+        )
+        
+        if Subcategoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True),
+            nome__iexact=nome,
+            categoria=categoria
+        ).exists():
+            return JsonResponse({
+                'success': False,
+                'message': 'Já existe uma subcategoria com este nome para esta categoria.'
+            }, status=400)
+        
+        subcategoria = Subcategoria.objects.create(
+            nome=nome,
+            categoria=categoria,
+            usuario=request.user,
+            eh_padrao=False
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Subcategoria criada com sucesso!',
+            'subcategoria': {
+                'id': subcategoria.id,
+                'nome': subcategoria.nome,
+                'categoria_id': categoria.id
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Ocorreu um erro: {str(e)}'
+        }, status=500)
+
+
+
+# APIs para Categorias e Subcategorias
+@login_required
+@require_http_methods(["GET"])
+def api_categorias(request):
+    """
+    Retorna todas as categorias do usuário e as categorias padrão como um JSON.
+    """
+    try:
+        categorias = Categoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True)
+        ).distinct().order_by('nome')
+
+        categorias_data = [{'id': cat.id, 'nome': cat.nome} for cat in categorias]
+        
+        return JsonResponse({'success': True, 'categorias': categorias_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao listar categorias: {str(e)}'}, status=500)
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_subcategorias_por_categoria(request, categoria_id):
+    """
+    Retorna subcategorias de uma categoria específica como um JSON.
+    """
+    try:
+        subcategorias = Subcategoria.objects.filter(
+            categoria_id=categoria_id
+        ).order_by('nome')
+        
+        subcategorias_data = [{'id': sub.id, 'nome': sub.nome} for sub in subcategorias]
+        
+        return JsonResponse({'success': True, 'subcategorias': subcategorias_data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao listar subcategorias: {str(e)}'}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def api_criar_categoria(request):
+    """
+    Cria uma nova categoria via AJAX.
+    """
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+        
+        if not nome:
+            return JsonResponse({'success': False, 'message': 'Nome da categoria é obrigatório.'}, status=400)
+        
+        if Categoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True),
+            nome__iexact=nome
+        ).exists():
+            return JsonResponse({'success': False, 'message': 'Já existe uma categoria com este nome.'}, status=400)
+        
+        categoria = Categoria.objects.create(
+            nome=nome,
+            usuario=request.user,
+            eh_padrao=False
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Categoria criada com sucesso!',
+            'categoria': {'id': categoria.id, 'nome': categoria.nome}
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao criar categoria: {str(e)}'}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def api_criar_subcategoria(request):
+    """
+    Cria uma nova subcategoria via AJAX.
+    """
+    try:
+        data = json.loads(request.body)
+        nome = data.get('nome', '').strip()
+        categoria_id = data.get('categoria_id')
+        
+        if not nome or not categoria_id:
+            return JsonResponse({'success': False, 'message': 'Nome e categoria são obrigatórios.'}, status=400)
+        
+        categoria = get_object_or_404(
+            Categoria, 
+            Q(usuario=request.user) | Q(eh_padrao=True),
+            id=categoria_id
+        )
+        
+        if Subcategoria.objects.filter(
+            Q(usuario=request.user) | Q(eh_padrao=True),
+            nome__iexact=nome,
+            categoria=categoria
+        ).exists():
+            return JsonResponse({'success': False, 'message': 'Já existe uma subcategoria com este nome para esta categoria.'}, status=400)
+        
+        subcategoria = Subcategoria.objects.create(
+            nome=nome,
+            categoria=categoria,
+            usuario=request.user,
+            eh_padrao=False
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Subcategoria criada com sucesso!',
+            'subcategoria': {
+                'id': subcategoria.id,
+                'nome': subcategoria.nome,
+                'categoria_id': categoria.id
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'Erro ao criar subcategoria: {str(e)}'}, status=500)

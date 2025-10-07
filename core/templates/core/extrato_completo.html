@@ -169,10 +169,10 @@
             </div>
             
             <div class="flex flex-wrap gap-3">
-                <button onclick="exportToCSV()" class="export-btn px-6 py-3 text-white rounded-lg font-semibold flex items-center gap-2">
-                    <i class="fas fa-file-export"></i>
-                    Exportar CSV
-                </button>
+<button onclick="abrirModalExtrato()" class="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-red-700 transition-colors">
+    <i class="fas fa-file-pdf"></i>
+    Exportar PDF
+</button>
                 <button onclick="window.print()" class="px-6 py-3 bg-gray-600 text-white rounded-lg font-semibold flex items-center gap-2 hover:bg-gray-700 transition-colors">
                     <i class="fas fa-print"></i>
                     Imprimir
@@ -297,6 +297,26 @@
                     <option value="saida" {% if tipo_filtro == 'saida' %}selected{% endif %}>Saídas</option>
                 </select>
             </div>
+
+
+            <!-- Adicione após o filtro de tipo -->
+
+<!-- Conta Filter -->
+<div>
+    <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+        <i class="fas fa-building mr-2"></i>Conta
+    </label>
+    <select name="conta" id="contaFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        <option value="todas">Todas as contas</option>
+        {% for conta in contas_usuario %}
+        <option value="{{ conta.id }}" {% if conta_selecionada == conta.id|stringformat:"s" %}selected{% endif %}>
+            {{ conta.get_nome_banco_display }} - {{ conta.get_tipo_display }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+
 
             <!-- Quick Actions -->
             <div>
@@ -510,6 +530,75 @@
         <p class="text-center mt-4 text-gray-600">Processando...</p>
     </div>
 </div>
+
+
+<!-- Modal de Extrato (coloque antes do fechamento do body) -->
+<div id="modalExtrato" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6 relative">
+            <button onclick="fecharModalExtrato()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6">
+                <i class="fas fa-file-pdf mr-2 text-red-600"></i>
+                Emitir Extrato Bancário
+            </h2>
+            
+            <form id="formExtrato" onsubmit="gerarExtrato(event)">
+                {% csrf_token %}
+                <!-- Seleção da Conta -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                        <i class="fas fa-building mr-2"></i>Conta Bancária
+                    </label>
+                    <select name="conta" id="contaSelect" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="">Selecione uma conta...</option>
+                        {% for conta in contas_bancarias %}
+                        <option value="{{ conta.id }}">
+                            {{ conta.get_nome_banco_display }} - 
+                            {{ conta.get_tipo_display }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Período -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                        <i class="fas fa-calendar-alt mr-2"></i>Período do Extrato
+                    </label>
+                    <select name="periodo" id="periodoSelect" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="15">Últimos 15 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="60">Últimos 60 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </div>
+                
+                <!-- Botões -->
+                <div class="flex gap-3">
+                    <button type="button" onclick="fecharModalExtrato()" 
+                            class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnEmitir" 
+                            class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors opacity-50 cursor-not-allowed" 
+                            disabled>
+                        <i class="fas fa-file-pdf mr-2"></i>
+                        Emitir Extrato
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -763,5 +852,208 @@
     window.addEventListener('error', function() {
         hideLoading();
     });
+  
+  
+// No seu template atual, atualize a função exportToPDF:
+function exportToPDF() {
+    showLoading();
+    
+    fetch('/extrato/modal-selecao/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar modal');
+            }
+            return response.text();
+        })
+        .then(html => {
+            hideLoading();
+            
+            // Remover modais existentes
+            const existingModals = document.querySelectorAll('.fixed.inset-0.bg-black');
+            existingModals.forEach(modal => modal.remove());
+            
+            // Adicionar novo modal
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.body.style.overflow = 'hidden';
+            
+            // Re-inicializar os event listeners do modal
+            initModalEvents();
+        })
+        .catch(error => {
+            hideLoading();
+            showNotification('Erro ao abrir modal de extrato', 'error');
+            console.error('Error:', error);
+        });
+}
+
+// Função para inicializar os eventos do modal
+function initModalEvents() {
+    // Habilitar botão quando conta e período forem selecionados
+    const contaSelect = document.getElementById('contaSelect');
+    const periodoSelect = document.getElementById('periodoSelect');
+    const btnEmitir = document.getElementById('btnEmitir');
+    
+    if (contaSelect && periodoSelect && btnEmitir) {
+        function habilitarBotaoEmitir() {
+            if (contaSelect.value && periodoSelect.value) {
+                btnEmitir.disabled = false;
+                btnEmitir.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                btnEmitir.disabled = true;
+                btnEmitir.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        contaSelect.addEventListener('change', habilitarBotaoEmitir);
+        periodoSelect.addEventListener('change', habilitarBotaoEmitir);
+        
+        // Inicializar estado do botão
+        habilitarBotaoEmitir();
+    }
+    
+    // Fechar modal com ESC (para modais carregados via AJAX)
+    document.addEventListener('keydown', function modalEscHandler(e) {
+        if (e.key === 'Escape') {
+            const modal = document.querySelector('.fixed.inset-0.bg-black');
+            if (modal) {
+                modal.remove();
+                document.body.style.overflow = '';
+                document.removeEventListener('keydown', modalEscHandler);
+            }
+        }
+    });
+    
+    // Fechar modal clicando fora (para modais carregados via AJAX)
+    document.addEventListener('click', function modalClickHandler(e) {
+        if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
+            e.target.remove();
+            document.body.style.overflow = '';
+            document.removeEventListener('click', modalClickHandler);
+        }
+    });
+}
+
+// Adicione esta função no script do modal
+function fecharModalExtrato() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black');
+    if (modal) {
+        modal.remove();
+    }
+    document.body.style.overflow = '';
+}
+
+// Funções para o modal de extrato
+function abrirModalExtrato() {
+    document.getElementById('modalExtrato').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    habilitarBotaoEmitir(); // Atualiza o estado do botão
+}
+
+function fecharModalExtrato() {
+    document.getElementById('modalExtrato').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function habilitarBotaoEmitir() {
+    const contaSelect = document.getElementById('contaSelect');
+    const periodoSelect = document.getElementById('periodoSelect');
+    const btnEmitir = document.getElementById('btnEmitir');
+    
+    if (contaSelect && periodoSelect && btnEmitir) {
+        if (contaSelect.value && periodoSelect.value) {
+            btnEmitir.disabled = false;
+            btnEmitir.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnEmitir.disabled = true;
+            btnEmitir.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+    }
+}
+
+function gerarExtrato(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    console.log('DEBUG: Gerando extrato com parâmetros:', params.toString());
+    
+    // Mostrar loading
+    const btnEmitir = document.getElementById('btnEmitir');
+    const originalText = btnEmitir.innerHTML;
+    btnEmitir.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Gerando...';
+    btnEmitir.disabled = true;
+    
+    // Fazer a requisição
+    fetch(`/extrato/gerar-pdf/?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/pdf'
+        }
+    })
+    .then(response => {
+        console.log('DEBUG: Status da resposta:', response.status);
+        console.log('DEBUG: Content-Type:', response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+            return response.json().then(errorData => {
+                throw new Error(errorData.error || 'Erro ao gerar extrato');
+            });
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        console.log('DEBUG: PDF recebido, tamanho:', blob.size);
+        
+        if (blob.size === 0) {
+            throw new Error('PDF vazio recebido');
+        }
+        
+        // Criar download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        const nomeArquivo = `extrato_${dataAtual}.pdf`;
+        
+        a.download = nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Fechar modal
+        fecharModalExtrato();
+        
+        // Mostrar mensagem de sucesso
+        showNotification('Extrato gerado com sucesso!', 'success');
+    })
+    .catch(error => {
+        console.error('DEBUG: Erro completo:', error);
+        
+        // Mostrar mensagem de erro
+        showNotification('Erro ao gerar extrato: ' + error.message, 'error');
+    })
+    .finally(() => {
+        // Restaurar botão
+        btnEmitir.innerHTML = originalText;
+        btnEmitir.disabled = false;
+    });
+}
+
+// Adicionar event listeners quando o documento carregar
+document.addEventListener('DOMContentLoaded', function() {
+    const contaSelect = document.getElementById('contaSelect');
+    const periodoSelect = document.getElementById('periodoSelect');
+    
+    if (contaSelect && periodoSelect) {
+        contaSelect.addEventListener('change', habilitarBotaoEmitir);
+        periodoSelect.addEventListener('change', habilitarBotaoEmitir);
+    }
+});
 </script>
 {% endblock %}

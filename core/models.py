@@ -91,7 +91,8 @@ class Categoria(BaseModel):
     """
     nome = models.CharField(max_length=100)
     usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-
+    # Se for uma categoria padrão do sistema, usuario será null
+    eh_padrao = models.BooleanField(default=False)
     class Meta:
         verbose_name = "Categoria"
         verbose_name_plural = "Categorias"
@@ -111,8 +112,8 @@ class Subcategoria(BaseModel):
     """
     nome = models.CharField(max_length=100)
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='subcategorias')
-    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
-
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    eh_padrao = models.BooleanField(default=False)
     class Meta:
         verbose_name = "Subcategoria"
         verbose_name_plural = "Subcategorias"
@@ -212,53 +213,82 @@ class Saida(BaseModel):
     data_vencimento = models.DateField(verbose_name="Data de Vencimento")
     local = models.CharField(max_length=100, blank=True, null=True, verbose_name="Local")
     
-    categoria = models.ForeignKey(
-        Categoria,
-        on_delete=models.SET_NULL,
+    # Categorias
+    categoria = models.CharField(
+        max_length=20,
+        choices=CATEGORIA_CHOICES,
         null=True,
         blank=True,
         verbose_name="Categoria"
     )
     
-    subcategoria = models.ForeignKey(
-        Subcategoria,
-        on_delete=models.SET_NULL,
+    subcategoria = models.CharField(
+        max_length=30,
+        choices=SUBCATEGORIA_CHOICES,
         null=True,
         blank=True,
         verbose_name="Subcategoria"
     )
     
+    # Forma de pagamento
     forma_pagamento = models.CharField(
         max_length=20,
         choices=FORMA_PAGAMENTO_CHOICES,
         default='dinheiro'
     )
     
+    # Detalhes do tipo de pagamento
     tipo_pagamento_detalhe = models.CharField(
         max_length=10,
         choices=TIPO_PAGAMENTO_DETALHE_CHOICES,
         default='avista'
     )
     
+    # Situação
     situacao = models.CharField(
         max_length=10,
         choices=SITUACAO_CHOICES,
         default='pendente'
     )
     
+    # Campos para parcelamento
     quantidade_parcelas = models.IntegerField(default=1)
-    recorrente = models.CharField(
-        max_length=10,
-        choices=PERIODICIDADE_CHOICES,
-        default='unica'
-    )
-    
+    parcela_atual = models.PositiveIntegerField(default=1)
     valor_parcela = models.DecimalField(
         max_digits=15,
         decimal_places=2,
         default=0,
         verbose_name="Valor da Parcela"
     )
+    
+    # Campos para recorrência
+    recorrente = models.CharField(
+        max_length=10,
+        choices=PERIODICIDADE_CHOICES,
+        default='unica'
+    )
+    
+    # Relacionamentos para controle de parcelas e recorrência
+    despesa_original = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        related_name='parcelas_futuras'
+    )
+    
+    # Novo campo para controle de recorrência
+    recorrencia_original = models.ForeignKey(
+        'self', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True,
+        related_name='ocorrencias_futuras'
+    )
+    
+    # Flags para identificar o tipo de registro
+    e_parcela = models.BooleanField(default=False)
+    e_recorrente = models.BooleanField(default=False)
     
     observacao = models.TextField(blank=True, null=True)
 
@@ -270,76 +300,77 @@ class Saida(BaseModel):
             models.Index(fields=['usuario', 'data_lancamento']),
             models.Index(fields=['data_vencimento']),
             models.Index(fields=['situacao']),
+            models.Index(fields=['e_parcela']),
+            models.Index(fields=['e_recorrente']),
         ]
 
     def __str__(self):
         return f"{self.nome} - R$ {self.valor}"
-
-    def clean(self):
-        super().clean()
-        
-        # Aceita tanto datetime quanto date
-        data_lancamento = self.data_lancamento
-        if isinstance(data_lancamento, datetime):
-            data_lancamento = data_lancamento.date()
-
-        # Validação para data de lançamento não pode ser futura
-        if data_lancamento and data_lancamento > timezone.now().date():
-            raise ValidationError({
-                'data_lancamento': 'Data de lançamento não pode ser futura.'
-            })
-            
-        # Se for à vista e pago, data de vencimento deve ser igual a data de lançamento
-        if self.tipo_pagamento_detalhe == 'avista' and self.situacao == 'pago':
-            if self.data_vencimento != data_lancamento:
-                self.data_vencimento = data_lancamento
-                
-        # Validações de parcelamento
-        if self.tipo_pagamento_detalhe == 'parcelado':
-            if self.quantidade_parcelas <= 1:
-                raise ValidationError({
-                    'quantidade_parcelas': 'Para pagamento parcelado, o número de parcelas deve ser maior que 1.'
-                })
-            if not self.valor_parcela or self.valor_parcela == 0:
-                self.valor_parcela = Decimal(self.valor) / Decimal(self.quantidade_parcelas)
-                
-            # Aceita diferença de até 1 centavo para questões de arredondamento
-            soma_parcelas = self.valor_parcela * Decimal(self.quantidade_parcelas)
-            if abs(soma_parcelas - Decimal(self.valor)) > Decimal('0.01'):
-                raise ValidationError({
-                    'valor_parcela': 'A soma das parcelas difere do valor total em mais de R$0,01.'
-                })
-                
-        # Validação para recorrência
-        if self.recorrente != 'unica' and self.tipo_pagamento_detalhe == 'parcelado':
-            raise ValidationError({
-                'recorrente': 'Não é possível ter recorrência em pagamentos parcelados.'
-            })
-
+    
     def save(self, *args, **kwargs):
-        # Garante que o valor da parcela está correto antes de salvar
-        if self.tipo_pagamento_detalhe == 'parcelado' and self.quantidade_parcelas > 1:
-            self.valor_parcela = Decimal(self.valor) / Decimal(self.quantidade_parcelas)
-        else:
+        # Se for parcelado e quantidade_parcelas > 1, calcular valor da parcela
+        if (self.tipo_pagamento_detalhe == 'parcelado' and 
+            self.quantidade_parcelas > 1 and 
+            self.valor > 0):
+            
+            # Calcular valor da parcela
+            self.valor_parcela = self.valor / self.quantidade_parcelas
+            
+            # Se esta é a PRIMEIRA parcela (original), ajustar seu próprio valor
+            if not self.e_parcela or self.parcela_atual == 1:
+                # A primeira parcela também deve ter o valor da parcela, não o total
+                self.valor = self.valor_parcela
+        
+        # Se for à vista, garantir que quantidade_parcelas seja 1
+        if self.tipo_pagamento_detalhe == 'avista':
             self.quantidade_parcelas = 1
+            self.parcela_atual = 1
             self.valor_parcela = self.valor
         
-        # Se for à vista e pago, data de vencimento = data de lançamento
-        if self.tipo_pagamento_detalhe == 'avista' and self.situacao == 'pago':
-            self.data_vencimento = self.data_lancamento
-        
         super().save(*args, **kwargs)
+
+    @property
+    def valor_total(self):
+        """
+        Retorna o valor total da despesa (valor da parcela * quantidade de parcelas)
+        """
+        if self.tipo_pagamento_detalhe == 'parcelado' and self.quantidade_parcelas > 1:
+            return self.valor_parcela * self.quantidade_parcelas
+        return self.valor
+
+    @property
+    def tem_parcelas_futuras(self):
+        """Verifica se existem parcelas futuras relacionadas"""
+        return self.parcelas_futuras.filter(situacao='pendente').exists()
     
     @property
-    def valor_mensal(self):
-        """Retorna o valor que deve ser considerado no mês atual"""
-        today = timezone.now().date()
-        if self.situacao == 'pago' and self.data_lancamento.month == today.month:
-            if self.tipo_pagamento_detalhe == 'avista':
-                return self.valor
-            else:
-                return self.valor_parcela
-        return Decimal('0.00')
+    def tem_ocorrencias_futuras(self):
+        """Verifica se existem ocorrências futuras relacionadas"""
+        return self.ocorrencias_futuras.filter(situacao='pendente').exists()
+    
+    @property
+    def total_parcelas(self):
+        """Retorna o total de parcelas (incluindo a atual)"""
+        if self.e_parcela:
+            return self.despesa_original.quantidade_parcelas
+        return self.quantidade_parcelas
+    
+    @property
+    def descricao_completa(self):
+        """Retorna descrição completa com informações de parcelamento/recorrência"""
+        descricao = self.nome
+        
+        if self.e_parcela:
+            descricao += f" (Parcela {self.parcela_atual}/{self.total_parcelas})"
+        elif self.quantidade_parcelas > 1:
+            descricao += f" ({self.parcela_atual}/{self.quantidade_parcelas})"
+        
+        if self.e_recorrente:
+            descricao += f" [Recorrente - {self.get_recorrente_display()}]"
+        elif self.recorrente != 'unica':
+            descricao += f" [Orig. Recorrente - {self.get_recorrente_display()}]"
+        
+        return descricao
 
 
 class Profile(BaseModel):
@@ -623,3 +654,10 @@ class Lembrete(BaseModel):
         indexes = [
             models.Index(fields=['user', 'data_limite']),
         ]
+
+    @property
+    def dias_para_vencer(self):
+        if self.concluido:
+            return 0
+        hoje = timezone.now().date()
+        return (self.data_limite - hoje).days

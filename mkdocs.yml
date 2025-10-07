@@ -1,14 +1,20 @@
-site_name: Documentação - Sistema de Gestão Financeira
+site_name: FinanceFlow
 theme:
   name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
   palette:
     - scheme: default
+      primary: 'blue'
+      accent: 'green'
       toggle:
-        icon: material/brightness-7
+        icon: material/lightbulb-outline
         name: Switch to dark mode
     - scheme: slate
+      primary: 'blue'
+      accent: 'green'
       toggle:
-        icon: material/brightness-4
+        icon: material/lightbulb
         name: Switch to light mode
   features:
     - navigation.tabs
@@ -21,28 +27,12 @@ theme:
     - content.code.annotation
     - content.code.copy
 nav:
-  - Home: index.md
-  - Instalação e Configuração:
-    - Pré-requisitos: installation/prerequisites.md
-    - Guia de Instalação: installation/setup.md
-    - Variáveis de Ambiente: installation/env-variables.md
-  - Arquitetura do Sistema:
-    - Estrutura de Apps: architecture/django-apps.md
-    - Modelos de Dados: architecture/models.md
-    - Choices e Constantes: architecture/choices.md
-  - Funcionalidades Core:
-    - Autenticação e Perfis: features/users-and-profiles.md
-    - Contas Bancárias: features/bank-accounts.md
-    - Entradas e Saídas: features/transactions.md
-    - Transferências: features/transfers.md
-  - Módulos Avançados:
-    - Painéis Analíticos: advanced/dashboard.md
-    - Lembretes: advanced/reminders.md
-    - Operações de Saque: advanced/loan-operations.md
-  - Desenvolvimento:
-    - APIs e Integração AJAX: development/api-ajax.md
-    - Testes Automatizados: development/testing.md
-    - Padrões e Convenções: development/conventions.md
-  - Guias e Referências:
-    - FAQ e Troubleshooting: guides/faq.md
-    - Changelog: guides/changelog.md
+  - Introdução: index.md
+  - Visão Geral: visao_geral.md
+  - Instalação: instalacao.md
+  - Uso: uso.md
+  - Funcionalidades: funcionalidades.md
+  - Tecnologias: tecnologias.md
+  - APIs: apis.md
+  - FAQ: faq.md
+  - Créditos: creditos.md

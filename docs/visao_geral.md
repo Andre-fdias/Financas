@@ -1,8 +1,6 @@
-# FinanceFlow
+# Visão Geral do Projeto
 
 FinanceFlow é uma aplicação web de controle financeiro pessoal e empresarial desenvolvida em Django, com interface moderna em Tailwind CSS.
-
-## Visão Geral
 
 - Gerenciamento de contas, receitas e despesas
 - Dashboard dinâmico de relatórios financeiros
@@ -10,13 +8,9 @@ FinanceFlow é uma aplicação web de controle financeiro pessoal e empresarial 
 - Visual moderno responsivo (light/dark mode)
 - Focado em segurança e usabilidade
 
-## Documentação
-
-A documentação completa (instalação, APIs, tutoriais e exemplos) está disponível em: **[Veja aqui](./docs/index.md)**
-
 ## Instalação Rápida
 
-```
+```bash
 git clone https://github.com/seuusuario/financeflow.git
 cd financeflow
 pip install -r requirements.txt
@@ -43,7 +37,3 @@ MIT License
 ## Créditos
 
 Desenvolvido por Nome do Autor.
-
----
-
-> Para detalhes completos, acesse a documentação oficial em `docs/` ou pelo link acima.

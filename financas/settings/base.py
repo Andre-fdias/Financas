@@ -1,3 +1,5 @@
+import sentry_sdk
+
 """
 Django settings for financas project.
 
@@ -12,6 +14,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+import sys
 import dj_database_url
 from decouple import config
 
@@ -30,6 +33,15 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1,localhost', cast=lambda v: [s.strip() for s in v.split(',')])
 
+SENTRY_DSN = config('SENTRY_DSN', default=None)
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=1.0,
+        enable_tracing=True,
+    )
+
 
 # Application definition
 
@@ -46,6 +58,8 @@ INSTALLED_APPS = [
     'theme',
     'django_htmx',
     'widget_tweaks',
+    'health_check',  # Adicione esta linha
+    'health_check.db',  # E esta para o DB check
    
 ]
 
@@ -95,6 +109,12 @@ DATABASES = {
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
     )
 }
+
+if 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
+    }
 
 
 # Password validation

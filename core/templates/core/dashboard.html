@@ -4,112 +4,185 @@
 {% block title %}Dashboard Financeiro{% endblock %}
 
 {% block extra_head %}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-        
-        /* Estilo principal para painéis com efeito de vidro (Glassmorphism) */
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    }
+    
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 16px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+    }
+
+    @supports not (backdrop-filter: blur(12px)) {
         .glass-panel {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+            background: rgba(255, 255, 255, 0.95);
         }
+    }
+    
+    .valor-positivo {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+    
+    .valor-negativo {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    }
 
-        /* Fallback para navegadores que não suportam backdrop-filter */
-        @supports not (backdrop-filter: blur(12px)) {
-            .glass-panel {
-                background: rgba(255, 255, 255, 0.95);
-            }
-        }
-        
-        /* Estilos para valores monetários positivos */
-        .valor-positivo {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 0.35rem 0.75rem;
-            border-radius: 12px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-        }
-        
-        /* Estilos para valores monetários negativos */
-        .valor-negativo {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            padding: 0.35rem 0.75rem;
-            border-radius: 12px;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-        }
+    .dark .valor-positivo {
+        background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+    }
+    
+    .dark .valor-negativo {
+        background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+    }
 
-        /* Ajustes para modo escuro */
-        .dark .valor-positivo {
-            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
-        }
-        
-        .dark .valor-negativo {
-            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-        }
+    .stats-card {
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    }
+    
+    .table-row {
+        transition: all 0.2s ease;
+    }
+    
+    .table-row:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+    }
+    
+    .card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    .dark .card-title {
+        color: #e5e7eb;
+    }
 
-        /* Estilo para cards de estatísticas, com transição de hover */
-        .stats-card {
-            transition: all 0.3s ease;
-        }
-        
-        .stats-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-        }
-        
-        /* Estilo para linhas de tabela, com transição de hover */
-        .table-row {
-            transition: all 0.2s ease;
-        }
-        
-        .table-row:hover {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
-        }
-        
-        /* Estilo para títulos de cards */
-        .card-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #374151;
-        }
-        .dark .card-title {
-            color: #e5e7eb;
-        }
+    .card-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        margin-top: 0.5rem;
+    }
 
-        /* Estilo para valores grandes em cards */
-        .card-value {
-            font-size: 2.25rem;
-            font-weight: 800;
-            margin-top: 0.5rem;
-        }
+    .chart-container {
+        height: 300px;
+        min-height: 300px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
 
-        /* Altura fixa para containers de gráficos */
-        .chart-container {
-            height: 300px;
-            min-height: 300px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-    </style>
+    #entradasCategoriaChart {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    .glass-panel:nth-child(6) {
+        border-left: 4px solid #10b981;
+    }
+
+    .chart-container canvas {
+        transition: opacity 0.3s ease;
+    }
+
+    .chart-container canvas:not(:has(~ .hidden)) {
+        opacity: 1;
+    }
+
+    .input-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+        background: white;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .filter-tag {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 1rem;
+        font-size: 0.875rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .filter-tag button {
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+        padding: 0;
+        margin-left: 0.25rem;
+    }
+
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 2s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
 
-    <!-- Seção do Cabeçalho - Usando o padrão glass-panel -->
+    <!-- Cabeçalho -->
     <div class="glass-panel p-6 mb-8">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
@@ -122,67 +195,255 @@
                 </p>
             </div>
             <div class="flex flex-wrap gap-3">
-                <!-- Botões ou ações rápidas podem ser adicionados aqui -->
+                <button id="exportReportBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center transition-all">
+                    <i class="fas fa-download mr-2"></i>
+                    Exportar Relatório
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Cards de dados principais - Seguindo o padrão stats-card do conta_list -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 stats-grid">
+    <!-- Sistema de Filtros -->
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-filter mr-3 text-indigo-600"></i>
+                Filtros do Dashboard
+            </h2>
+            
+            <div class="flex gap-3">
+                <button id="applyFiltersBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center transition-all">
+                    <i class="fas fa-check mr-2"></i>
+                    Aplicar Filtros
+                </button>
+                <button id="resetFiltersBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center transition-all">
+                    <i class="fas fa-redo mr-2"></i>
+                    Limpar Filtros
+                </button>
+                <button id="toggleFiltersBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center transition-all">
+                    <i class="fas fa-sliders-h mr-2"></i>
+                    Mostrar/Ocultar Filtros
+                </button>
+            </div>
+        </div>
+
+        <div id="filtersContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-300">
+            <!-- Filtro de Período -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-calendar-alt mr-2 text-blue-500"></i>
+                    Período
+                </label>
+                <select id="filterPeriodo" name="periodo" class="form-input">
+                    <option value="30">Últimos 30 dias</option>
+                    <option value="90">Últimos 3 meses</option>
+                    <option value="180">Últimos 6 meses</option>
+                    <option value="365">Último ano</option>
+                    <option value="custom">Personalizado</option>
+                </select>
+            </div>
+
+            <!-- Filtro de Data Inicial -->
+            <div class="input-group hidden" id="customDateStartGroup">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-calendar-day mr-2 text-green-500"></i>
+                    Data Inicial
+                </label>
+                <input type="date" id="filterDataInicial" name="data_inicial" class="form-input">
+            </div>
+
+            <!-- Filtro de Data Final -->
+            <div class="input-group hidden" id="customDateEndGroup">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-calendar-day mr-2 text-red-500"></i>
+                    Data Final
+                </label>
+                <input type="date" id="filterDataFinal" name="data_final" class="form-input">
+            </div>
+
+            <!-- Filtro de Tipo de Transação -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-exchange-alt mr-2 text-purple-500"></i>
+                    Tipo de Transação
+                </label>
+                <select id="filterTipoTransacao" name="tipo_transacao" class="form-input">
+                    <option value="todos">Todas as Transações</option>
+                    <option value="entradas">Apenas Receitas</option>
+                    <option value="saidas">Apenas Despesas</option>
+                </select>
+            </div>
+
+            <!-- Filtro de Conta Bancária -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-university mr-2 text-orange-500"></i>
+                    Conta Bancária
+                </label>
+                <select id="filterConta" name="conta" class="form-input">
+                    <option value="todas">Todas as Contas</option>
+                    {% for conta in contas_bancarias %}
+                    <option value="{{ conta.id }}">{{ conta.get_nome_banco_display }} - {{ conta.get_tipo_display }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro de Categoria de Despesas -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-tags mr-2 text-teal-500"></i>
+                    Categoria (Despesas)
+                </label>
+                <select id="filterCategoria" name="categoria" class="form-input">
+                    <option value="todas">Todas as Categorias</option>
+                    {% for categoria in categorias_choices %}
+                    <option value="{{ categoria.0 }}">{{ categoria.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro de Forma de Recebimento -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-hand-holding-usd mr-2 text-green-500"></i>
+                    Forma de Recebimento
+                </label>
+                <select id="filterFormaRecebimento" name="forma_recebimento" class="form-input">
+                    <option value="todas">Todas as Formas</option>
+                    {% for forma in FORMA_RECEBIMENTO_CHOICES %}
+                    <option value="{{ forma.0 }}">{{ forma.1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro de Valor Mínimo -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-arrow-up mr-2 text-blue-500"></i>
+                    Valor Mínimo
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-500">R$</span>
+                    </div>
+                    <input type="text" id="filterValorMinimo" name="valor_minimo" class="form-input pl-10" placeholder="0,00">
+                </div>
+            </div>
+
+            <!-- Filtro de Valor Máximo -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-arrow-down mr-2 text-red-500"></i>
+                    Valor Máximo
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-500">R$</span>
+                    </div>
+                    <input type="text" id="filterValorMaximo" name="valor_maximo" class="form-input pl-10" placeholder="0,00">
+                </div>
+            </div>
+
+            <!-- Filtro de Status -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-check-circle mr-2 text-yellow-500"></i>
+                    Status (Despesas)
+                </label>
+                <select id="filterStatus" name="status" class="form-input">
+                    <option value="todos">Todos os Status</option>
+                    <option value="pago">Pago</option>
+                    <option value="pendente">Pendente</option>
+                </select>
+            </div>
+
+            <!-- Filtro de Recorrência -->
+            <div class="input-group">
+                <label class="form-label flex items-center">
+                    <i class="fas fa-redo mr-2 text-purple-500"></i>
+                    Recorrência
+                </label>
+                <select id="filterRecorrencia" name="recorrencia" class="form-input">
+                    <option value="todas">Todas</option>
+                    <option value="unica">Única</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Resumo dos Filtros Ativos -->
+        <div id="activeFiltersSummary" class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hidden">
+            <h3 class="font-semibold text-blue-800 dark:text-blue-200 mb-2 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>
+                Filtros Ativos:
+            </h3>
+            <div id="filtersList" class="flex flex-wrap gap-2"></div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden glass-panel p-12 mb-8 text-center">
+        <div class="loading-spinner mx-auto mb-4"></div>
+        <p class="text-lg text-gray-600 dark:text-gray-300">Carregando dados...</p>
+    </div>
+
+    <!-- Cards Principais -->
+    <div id="mainCards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 stats-grid">
         <!-- Saldo Geral -->
         <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
             <div class="flex items-center justify-between">
                 <span class="card-title text-gray-800 dark:text-gray-200">Saldo Geral</span>
                 <i class="fas fa-balance-scale text-3xl text-blue-500"></i>
             </div>
-            <p id="saldoGeral" class="card-value"></p>
+            <p id="saldoGeral" class="card-value text-blue-600">R$ 0,00</p>
             <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
                 <i class="fas fa-info-circle mr-1"></i>
                 <span>Visão consolidada das suas finanças</span>
             </div>
         </div>
 
-        <!-- Receitas do Mês -->
+        <!-- Receitas do Período -->
         <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
             <div class="flex items-center justify-between">
-                <span class="card-title text-gray-800 dark:text-gray-200">Receitas do Mês</span>
+                <span class="card-title text-gray-800 dark:text-gray-200">Receitas do Período</span>
                 <i class="fas fa-arrow-up text-3xl text-green-500"></i>
             </div>
-            <p id="entradasMes" class="card-value text-green-600"></p>
+            <p id="entradasMes" class="card-value text-green-600">R$ 0,00</p>
             <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                <span id="variacaoReceitas" class="font-medium mr-1"></span> vs mês anterior
+                <span id="variacaoReceitas" class="font-medium mr-1">+0%</span> vs período anterior
             </div>
         </div>
 
-        <!-- Despesas do Mês -->
+        <!-- Despesas do Período -->
         <div class="glass-panel p-6 stats-card border-l-4 border-red-500">
             <div class="flex items-center justify-between">
-                <span class="card-title text-gray-800 dark:text-gray-200">Despesas do Mês</span>
+                <span class="card-title text-gray-800 dark:text-gray-200">Despesas do Período</span>
                 <i class="fas fa-arrow-down text-3xl text-red-500"></i>
             </div>
-            <p id="saidasMes" class="card-value text-red-600"></p>
+            <p id="saidasMes" class="card-value text-red-600">R$ 0,00</p>
             <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
-                <span id="variacaoDespesas" class="font-medium mr-1"></span> vs mês anterior
+                <span id="variacaoDespesas" class="font-medium mr-1">+0%</span> vs período anterior
             </div>
         </div>
 
-        <!-- Saldo em Poupanças (Reserva de Emergência Simples) -->
+        <!-- Reserva de Emergência -->
         <div class="glass-panel p-6 stats-card border-l-4 border-purple-500">
             <div class="flex items-center justify-between">
                 <span class="card-title text-gray-800 dark:text-gray-200">Reserva de Emergência</span>
                 <i class="fas fa-shield-alt text-3xl text-purple-500"></i>
             </div>
-            <p id="saldoPoupancas" class="card-value"></p>
+            <p id="saldoPoupancas" class="card-value text-purple-600">R$ 0,00</p>
             <div class="mt-4 text-sm text-gray-600 dark:text-gray-400 flex items-center">
                 <i class="fas fa-target mr-1"></i>
-                <span id="metaReserva" class="ml-1"></span>
+                <span id="metaReserva" class="ml-1">Meta: 6 meses (R$ 0,00)</span>
             </div>
         </div>
     </div>
 
-    <!-- Gráficos Principais - Cada gráfico em seu próprio glass-panel -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <!-- Gráfico de Receitas vs Despesas Mensais -->
+    <!-- Gráficos Principais -->
+    <div id="chartsSection" class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <!-- Receitas vs Despesas Mensais -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-chart-bar mr-2 text-blue-500"></i>
@@ -193,7 +454,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Saldo Acumulado -->
+        <!-- Saldo Acumulado -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-chart-area mr-2 text-indigo-500"></i>
@@ -204,7 +465,7 @@
             </div>
         </div>
         
-        <!-- Gráfico de Sazonalidade -->
+        <!-- Sazonalidade -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-wave-square mr-2 text-purple-500"></i>
@@ -215,7 +476,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Projeção Futura -->
+        <!-- Projeção Futura -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-rocket mr-2 text-pink-500"></i>
@@ -226,7 +487,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Despesas por Categoria -->
+        <!-- Despesas por Categoria -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-tags mr-2 text-orange-500"></i>
@@ -237,7 +498,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Receitas por Categoria (ou Forma de Recebimento) -->
+        <!-- Receitas por Categoria -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-hand-holding-usd mr-2 text-teal-500"></i>
@@ -246,9 +507,13 @@
             <div class="chart-container">
                 <canvas id="entradasCategoriaChart"></canvas>
             </div>
+            <div id="entradasCategoriaFallback" class="hidden text-center text-gray-500 dark:text-gray-400 mt-4">
+                <i class="fas fa-chart-pie text-4xl mb-2"></i>
+                <p>Nenhuma receita registrada neste período</p>
+            </div>
         </div>
-        
-        <!-- Gráfico de Saldos por Conta Bancária -->
+
+        <!-- Saldos por Conta Bancária -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-university mr-2 text-blue-400"></i>
@@ -259,7 +524,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Despesas Fixas vs Variáveis -->
+        <!-- Despesas Fixas vs Variáveis -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-receipt mr-2 text-yellow-500"></i>
@@ -270,7 +535,7 @@
             </div>
         </div>
 
-        <!-- Gráfico de Status de Pagamentos -->
+        <!-- Status de Pagamentos -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-check-circle mr-2 text-green-500"></i>
@@ -281,7 +546,7 @@
             </div>
         </div>
         
-        <!-- Gráfico de Sugestão de Alocação de Investimentos -->
+        <!-- Alocação de Investimentos -->
         <div class="glass-panel p-6">
             <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
                 <i class="fas fa-chart-pie mr-2 text-gray-500"></i>
@@ -296,7 +561,7 @@
         </div>
     </div>
 
-    <!-- Seção de Reserva de Emergência Detalhada - Usando o padrão glass-panel -->
+    <!-- Seção de Reserva de Emergência -->
     <div class="glass-panel p-6 mt-4 mb-8">
         <div class="flex items-center justify-between mb-4">
             <span class="card-title text-gray-800 dark:text-gray-200">Reserva de Emergência</span>
@@ -322,11 +587,11 @@
         <!-- Meta Ideal -->
         <div class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div class="flex justify-between items-center mb-1">
-                <span class="text-sm font-medium">Meta Ideal (6 meses):</span>
-                <span id="reservaEmergenciaIdeal" class="text-lg font-bold text-blue-600"></span>
+                <span class="text-sm font-medium">Meta Ideal:</span>
+                <span id="reservaEmergenciaIdeal" class="text-lg font-bold text-blue-600">R$ 0,00</span>
             </div>
             <div class="text-xs text-gray-600 dark:text-gray-400">
-                Média: <span id="despesaMensalMedia"></span>/mês
+                Média: <span id="despesaMensalMedia">R$ 0,00</span>/mês
             </div>
         </div>
         
@@ -334,15 +599,15 @@
         <div class="mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
             <div class="flex justify-between items-center">
                 <span class="text-sm font-medium">Saldo em Poupanças:</span>
-                <span id="saldoAtualPoupancas" class="text-lg font-bold"></span>
+                <span id="saldoAtualPoupancas" class="text-lg font-bold">R$ 0,00</span>
             </div>
         </div>
         
         <!-- Diferença -->
         <div class="mb-3 p-3 rounded-lg" id="diferencaReservaPanel">
             <div class="flex justify-between items-center">
-                <span id="diferencaLabel" class="text-sm font-medium"></span>
-                <span id="valorFaltante" class="text-lg font-bold"></span>
+                <span id="diferencaLabel" class="text-sm font-medium">Falta:</span>
+                <span id="valorFaltante" class="text-lg font-bold">R$ 0,00</span>
             </div>
         </div>
         
@@ -350,10 +615,10 @@
         <div class="mb-3">
             <div class="flex justify-between items-center mb-1">
                 <span class="text-sm font-medium dark:text-gray-300">Progresso:</span>
-                <span id="percentualAtingido" class="text-sm font-bold"></span>
+                <span id="percentualAtingido" class="text-sm font-bold">0%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                <div id="progressBar" class="h-2 rounded-full"></div>
+                <div id="progressBar" class="h-2 rounded-full bg-blue-500" style="width: 0%"></div>
             </div>
         </div>
         
@@ -363,7 +628,7 @@
                 <span class="text-sm font-medium dark:text-gray-300">
                     <i class="fas fa-clock mr-1 text-gray-600 dark:text-gray-400"></i>Previsão para atingir:
                 </span>
-                <div id="tempoProjecao" class="mt-1 text-md font-bold dark:text-white"></div>
+                <div id="tempoProjecao" class="mt-1 text-md font-bold dark:text-white">N/A</div>
                 <div class="text-xs text-gray-600 mt-1 dark:text-gray-400">
                     Baseado na sua poupança mensal estimada
                 </div>
@@ -373,7 +638,7 @@
         <!-- Status -->
         <div id="statusReservaPanel" class="text-center p-2 rounded-lg">
             <i id="statusIcon" class="fas mr-1"></i>
-            <span id="statusText" class="text-lg font-bold"></span>
+            <span id="statusText" class="text-lg font-bold">0% conquistado</span>
         </div>
     </div>
 
@@ -499,7 +764,7 @@
         </p>
     </div>
 
-    <!-- Tabela de Últimas Transações - Seguindo o padrão de tabela do conta_list -->
+    <!-- Últimas Transações -->
     <div class="glass-panel overflow-hidden">
         <div class="p-6 border-b border-gray-200 dark:border-gray-700">
             <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
@@ -530,7 +795,11 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700" id="ultimasTransacoesTable">
-                    <!-- Conteúdo será preenchido via JavaScript -->
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Nenhuma transação encontrada
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -538,12 +807,16 @@
 </div>
 {% endblock %}
 
+
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Funções globais para formatar moeda e porcentagem
+    // ================================================================
+    // FUNÇÕES GLOBAIS DE FORMATAÇÃO
+    // ================================================================
+    
     function formatCurrency(value) {
-        if (value === null || value === undefined) return 'R$ 0,00';
+        if (value === null || value === undefined || isNaN(value)) return 'R$ 0,00';
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL',
@@ -553,67 +826,420 @@
     }
 
     function formatPercent(value) {
-        if (value === null || value === undefined) return '0%';
+        if (value === null || value === undefined || isNaN(value)) return '0%';
         return `${value.toFixed(1)}%`;
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        try {
-            const contextData = JSON.parse('{{ dados_graficos_json|escapejs }}');
-            console.log('Dados carregados:', contextData);
-            
-            // Preencher os cards principais primeiro
-            fillMainCards(contextData);
-            
-            // Aguardar um pouco para garantir que todos os elementos estejam renderizados
-            setTimeout(function() {
-                initializeCharts(contextData);
-            }, 100);
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-        }
-    });
+    // ================================================================
+    // SISTEMA DE FILTROS
+    // ================================================================
 
-    function fillMainCards(contextData) {
-        // Preencher os cards principais
-        if (document.getElementById('saldoGeral')) {
-            document.getElementById('saldoGeral').textContent = formatCurrency(contextData.saldo_geral);
-            const saldoGeralEl = document.getElementById('saldoGeral');
-            if (saldoGeralEl) {
-                if (contextData.saldo_geral >= 0) {
-                    saldoGeralEl.classList.add('text-green-600');
-                    saldoGeralEl.classList.remove('text-red-600');
+    class DashboardFilters {
+        constructor() {
+            this.isFiltersVisible = true;
+            this.activeFilters = {};
+            this.initializeElements();
+            this.bindEvents();
+            this.initializeDates();
+            this.preencherFiltrosAtuais();
+        }
+
+        initializeElements() {
+            this.filtersContainer = document.getElementById('filtersContainer');
+            this.toggleFiltersBtn = document.getElementById('toggleFiltersBtn');
+            this.applyFiltersBtn = document.getElementById('applyFiltersBtn');
+            this.resetFiltersBtn = document.getElementById('resetFiltersBtn');
+            this.filterPeriodo = document.getElementById('filterPeriodo');
+            this.customDateStartGroup = document.getElementById('customDateStartGroup');
+            this.customDateEndGroup = document.getElementById('customDateEndGroup');
+            this.activeFiltersSummary = document.getElementById('activeFiltersSummary');
+            this.filtersList = document.getElementById('filtersList');
+            this.valorMinimoInput = document.getElementById('filterValorMinimo');
+            this.valorMaximoInput = document.getElementById('filterValorMaximo');
+        }
+
+        bindEvents() {
+            if (this.toggleFiltersBtn) {
+                this.toggleFiltersBtn.addEventListener('click', () => this.toggleFilters());
+            }
+            if (this.applyFiltersBtn) {
+                this.applyFiltersBtn.addEventListener('click', () => this.applyFilters());
+            }
+            if (this.resetFiltersBtn) {
+                this.resetFiltersBtn.addEventListener('click', () => this.resetFilters());
+            }
+            if (this.filterPeriodo) {
+                this.filterPeriodo.addEventListener('change', () => this.toggleCustomDateFields());
+            }
+            if (this.valorMinimoInput) {
+                this.valorMinimoInput.addEventListener('input', () => this.formatarMoeda(this.valorMinimoInput));
+            }
+            if (this.valorMaximoInput) {
+                this.valorMaximoInput.addEventListener('input', () => this.formatarMoeda(this.valorMaximoInput));
+            }
+        }
+
+        initializeDates() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            
+            if (!document.getElementById('filterDataFinal').value) {
+                document.getElementById('filterDataFinal').value = today.toISOString().split('T')[0];
+            }
+            if (!document.getElementById('filterDataInicial').value) {
+                document.getElementById('filterDataInicial').value = thirtyDaysAgo.toISOString().split('T')[0];
+            }
+        }
+
+        toggleFilters() {
+            this.isFiltersVisible = !this.isFiltersVisible;
+            if (this.isFiltersVisible) {
+                this.filtersContainer.classList.remove('hidden');
+                this.toggleFiltersBtn.innerHTML = '<i class="fas fa-sliders-h mr-2"></i>Ocultar Filtros';
+            } else {
+                this.filtersContainer.classList.add('hidden');
+                this.toggleFiltersBtn.innerHTML = '<i class="fas fa-sliders-h mr-2"></i>Mostrar Filtros';
+            }
+        }
+
+        toggleCustomDateFields() {
+            if (this.filterPeriodo.value === 'custom') {
+                this.customDateStartGroup.classList.remove('hidden');
+                this.customDateEndGroup.classList.remove('hidden');
+            } else {
+                this.customDateStartGroup.classList.add('hidden');
+                this.customDateEndGroup.classList.add('hidden');
+            }
+        }
+
+        formatarMoeda(input) {
+            if (!input) return;
+            let valor = input.value.replace(/\D/g, '');
+            if (valor === '') {
+                input.value = '0,00';
+                return;
+            }
+            while (valor.length < 3) {
+                valor = '0' + valor;
+            }
+            const reais = valor.slice(0, -2);
+            const centavos = valor.slice(-2);
+            const reaisFormatado = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            input.value = reaisFormatado + ',' + centavos;
+        }
+
+        collectFilters() {
+            const filters = {
+                periodo: document.getElementById('filterPeriodo').value,
+                data_inicial: document.getElementById('filterDataInicial').value,
+                data_final: document.getElementById('filterDataFinal').value,
+                tipo_transacao: document.getElementById('filterTipoTransacao').value,
+                conta: document.getElementById('filterConta').value,
+                categoria: document.getElementById('filterCategoria').value,
+                forma_recebimento: document.getElementById('filterFormaRecebimento').value,
+                valor_minimo: document.getElementById('filterValorMinimo').value,
+                valor_maximo: document.getElementById('filterValorMaximo').value,
+                status: document.getElementById('filterStatus').value,
+                recorrencia: document.getElementById('filterRecorrencia').value
+            };
+
+            Object.keys(filters).forEach(key => {
+                if (!filters[key] || filters[key] === 'todas' || filters[key] === 'todos') {
+                    delete filters[key];
+                }
+            });
+
+            return filters;
+        }
+
+        updateActiveFiltersSummary(filters) {
+            this.activeFilters = filters;
+            
+            if (Object.keys(filters).length === 0) {
+                this.activeFiltersSummary.classList.add('hidden');
+                return;
+            }
+
+            this.activeFiltersSummary.classList.remove('hidden');
+            this.filtersList.innerHTML = '';
+
+            const filterLabels = {
+                periodo: 'Período',
+                data_inicial: 'Data Inicial',
+                data_final: 'Data Final',
+                tipo_transacao: 'Tipo de Transação',
+                conta: 'Conta Bancária',
+                categoria: 'Categoria',
+                forma_recebimento: 'Forma de Recebimento',
+                valor_minimo: 'Valor Mínimo',
+                valor_maximo: 'Valor Máximo',
+                status: 'Status',
+                recorrencia: 'Recorrência'
+            };
+
+            const periodos = {
+                '30': 'Últimos 30 dias',
+                '90': 'Últimos 3 meses',
+                '180': 'Últimos 6 meses',
+                '365': 'Último ano',
+                'custom': 'Personalizado'
+            };
+
+            Object.keys(filters).forEach(key => {
+                if (filters[key]) {
+                    const filterTag = document.createElement('div');
+                    filterTag.className = 'filter-tag';
+                    
+                    let value = filters[key];
+                    if (key === 'periodo') {
+                        value = periodos[value] || value;
+                    }
+
+                    filterTag.innerHTML = `
+                        ${filterLabels[key]}: ${value}
+                        <button type="button" onclick="dashboardFilters.removeFilter('${key}')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    this.filtersList.appendChild(filterTag);
+                }
+            });
+        }
+
+        removeFilter(filterKey) {
+            const elementId = `filter${filterKey.charAt(0).toUpperCase() + filterKey.slice(1)}`;
+            const inputElement = document.getElementById(elementId);
+            
+            if (inputElement) {
+                if (inputElement.type === 'select-one') {
+                    const defaultOption = inputElement.querySelector('option[value="todas"], option[value="todos"]');
+                    if (defaultOption) {
+                        inputElement.value = defaultOption.value;
+                    } else {
+                        inputElement.selectedIndex = 0;
+                    }
                 } else {
-                    saldoGeralEl.classList.add('text-red-600');
-                    saldoGeralEl.classList.remove('text-green-600');
+                    inputElement.value = '';
+                }
+            }
+            this.applyFilters();
+        }
+
+        applyFilters() {
+            this.showLoading(true);
+            
+            const filters = this.collectFilters();
+            this.updateActiveFiltersSummary(filters);
+            
+            const params = new URLSearchParams();
+            
+            Object.keys(filters).forEach(key => {
+                if (filters[key] && filters[key] !== '' && filters[key] !== 'todas' && filters[key] !== 'todos') {
+                    params.append(key, filters[key]);
+                }
+            });
+            
+            const mesesMetaSelect = document.getElementById('meses-meta-select');
+            if (mesesMetaSelect && mesesMetaSelect.value !== '6') {
+                params.append('meses_meta', mesesMetaSelect.value);
+            }
+            
+            const url = `${window.location.pathname}?${params.toString()}`;
+            
+            this.applyFiltersBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Aplicando...';
+            this.applyFiltersBtn.disabled = true;
+            
+            setTimeout(() => {
+                window.location.href = url;
+            }, 500);
+        }
+
+        resetFilters() {
+            document.querySelectorAll('#filtersContainer select').forEach(select => {
+                const defaultOption = select.querySelector('option[value="todas"], option[value="todos"]');
+                if (defaultOption) {
+                    select.value = defaultOption.value;
+                } else {
+                    select.selectedIndex = 0;
+                }
+            });
+            
+            document.querySelectorAll('#filtersContainer input').forEach(input => {
+                if (input.type === 'date') {
+                    if (input.id === 'filterDataFinal') {
+                        input.value = new Date().toISOString().split('T')[0];
+                    } else if (input.id === 'filterDataInicial') {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        input.value = thirtyDaysAgo.toISOString().split('T')[0];
+                    }
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            document.getElementById('filterPeriodo').value = '30';
+            this.customDateStartGroup.classList.add('hidden');
+            this.customDateEndGroup.classList.add('hidden');
+            
+            this.applyFilters();
+        }
+
+        preencherFiltrosAtuais() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            const filtros = [
+                'periodo', 'tipo_transacao', 'conta', 'categoria', 'forma_recebimento', 
+                'status', 'recorrencia', 'data_inicial', 'data_final', 'valor_minimo', 'valor_maximo'
+            ];
+            
+            filtros.forEach(filtro => {
+                const valor = urlParams.get(filtro);
+                const elemento = document.getElementById(`filter${filtro.charAt(0).toUpperCase() + filtro.slice(1)}`);
+                if (elemento && valor) {
+                    elemento.value = valor;
+                    
+                    if (filtro === 'periodo' && valor === 'custom') {
+                        this.customDateStartGroup.classList.remove('hidden');
+                        this.customDateEndGroup.classList.remove('hidden');
+                    }
+                }
+            });
+            
+            const mesesMeta = urlParams.get('meses_meta');
+            const mesesMetaSelect = document.getElementById('meses-meta-select');
+            if (mesesMetaSelect && mesesMeta) {
+                mesesMetaSelect.value = mesesMeta;
+            }
+            
+            if (urlParams.toString()) {
+                const filters = this.collectFilters();
+                this.updateActiveFiltersSummary(filters);
+            }
+        }
+
+        showLoading(show) {
+            const loadingState = document.getElementById('loadingState');
+            const mainCards = document.getElementById('mainCards');
+            const chartsSection = document.getElementById('chartsSection');
+            
+            if (show) {
+                loadingState.classList.remove('hidden');
+                mainCards.classList.add('hidden');
+                chartsSection.classList.add('hidden');
+            } else {
+                loadingState.classList.add('hidden');
+                mainCards.classList.remove('hidden');
+                chartsSection.classList.remove('hidden');
+            }
+        }
+
+        showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 transform transition-transform duration-300 ${
+                type === 'success' ? 'bg-green-500 text-white' :
+                type === 'error' ? 'bg-red-500 text-white' :
+                'bg-blue-500 text-white'
+            }`;
+            notification.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'info'}-circle mr-2"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    }
+
+    // ================================================================
+    // SISTEMA DE GRÁFICOS E DASHBOARD
+    // ================================================================
+
+    class DashboardCharts {
+        constructor() {
+            this.charts = {};
+        }
+
+        initialize() {
+            try {
+                const contextData = JSON.parse('{{ dados_graficos_json|escapejs }}');
+                console.log('Dados carregados:', contextData);
+                
+                this.fillMainCards(contextData);
+                
+                setTimeout(() => {
+                    this.initializeCharts(contextData);
+                }, 100);
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+            }
+        }
+
+        fillMainCards(contextData) {
+            this.updateCard('saldoGeral', contextData.saldo_geral, true);
+            this.updateCard('entradasMes', contextData.entradas_mes);
+            this.updateCard('saidasMes', contextData.saidas_mes);
+            
+            this.updateVariation('variacaoReceitas', contextData.variacao_receitas);
+            this.updateVariation('variacaoDespesas', contextData.variacao_despesas, true);
+
+            this.renderReservaEmergencia(contextData, contextData.meses_meta || 6);
+            this.fillHealthIndicators(contextData);
+            this.fillScenarioSimulations(contextData);
+            this.fillRiskAnalysis(contextData);
+            this.fillLatestTransactions(contextData);
+        }
+
+        updateCard(elementId, value, isSaldo = false) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            element.textContent = formatCurrency(value);
+            
+            if (isSaldo) {
+                if (value >= 0) {
+                    element.classList.add('text-green-600');
+                    element.classList.remove('text-red-600');
+                } else {
+                    element.classList.add('text-red-600');
+                    element.classList.remove('text-green-600');
                 }
             }
         }
 
-        if (document.getElementById('entradasMes')) {
-            document.getElementById('entradasMes').textContent = formatCurrency(contextData.entradas_mes);
+        updateVariation(elementId, value, isInverted = false) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const isPositive = isInverted ? value <= 0 : value >= 0;
+            element.textContent = `${value >= 0 ? '+' : ''}${formatPercent(value)}`;
+            element.className = `font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`;
         }
 
-        if (document.getElementById('variacaoReceitas')) {
-            const variacaoReceitasEl = document.getElementById('variacaoReceitas');
-            variacaoReceitasEl.textContent = `${contextData.variacao_receitas >= 0 ? '+' : ''}${formatPercent(contextData.variacao_receitas)}`;
-            variacaoReceitasEl.className = 'font-medium ' + (contextData.variacao_receitas >= 0 ? 'text-green-600' : 'text-red-600');
+        initializeCharts(contextData) {
+            if (!this.checkCanvasElements()) {
+                setTimeout(() => {
+                    if (this.checkCanvasElements()) {
+                        this.createAllCharts(contextData);
+                    }
+                }, 500);
+                return;
+            }
+            this.createAllCharts(contextData);
         }
 
-        if (document.getElementById('saidasMes')) {
-            document.getElementById('saidasMes').textContent = formatCurrency(contextData.saidas_mes);
-        }
-
-        if (document.getElementById('variacaoDespesas')) {
-            const variacaoDespesasEl = document.getElementById('variacaoDespesas');
-            variacaoDespesasEl.textContent = `${contextData.variacao_despesas >= 0 ? '+' : ''}${formatPercent(contextData.variacao_despesas)}`;
-            variacaoDespesasEl.className = 'font-medium ' + (contextData.variacao_despesas <= 0 ? 'text-green-600' : 'text-red-600');
-        }
-    }
-
-    function initializeCharts(contextData) {
-        // Verificar se os elementos canvas existem antes de tentar criar os gráficos
-        function checkCanvasElements() {
+        checkCanvasElements() {
             const canvasIds = [
                 'transacoesMensaisChart', 'saldoAcumuladoChart', 'sazonalidadeChart',
                 'projecaoSaldoChart', 'saidasCategoriaChart', 'entradasCategoriaChart',
@@ -622,752 +1248,480 @@
                 'alocacaoInvestimentosChart'
             ];
             
-            let allExist = true;
-            canvasIds.forEach(id => {
-                if (!document.getElementById(id)) {
-                    console.error(`Elemento não encontrado: ${id}`);
-                    allExist = false;
-                }
-            });
+            return canvasIds.every(id => !!document.getElementById(id));
+        }
+
+        createAllCharts(contextData) {
+            console.log('Criando todos os gráficos...');
             
-            return allExist;
-        }
-
-        if (!checkCanvasElements()) {
-            console.error('Alguns elementos canvas não foram encontrados. Verificando novamente em 500ms...');
-            setTimeout(function() {
-                if (checkCanvasElements()) {
-                    createAllCharts(contextData);
-                } else {
-                    console.error('Ainda não foi possível encontrar todos os elementos canvas.');
-                }
-            }, 500);
-            return;
-        }
-
-        createAllCharts(contextData);
-    }
-
-    function createAllCharts(contextData) {
-        console.log('Criando todos os gráficos...');
-        
-        // Configuração comum para os gráficos
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'top',
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.dataset.label || context.label}: ${formatCurrency(context.raw)}`
+                        }
+                    }
                 },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label || context.label}: ${formatCurrency(context.raw)}`;
-                        }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (value) => formatCurrency(value) }
                     }
                 }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return formatCurrency(value);
-                        }
+            };
+
+            // Gráfico 1: Receitas vs Despesas
+            this.createBarChart('transacoesMensaisChart', {
+                labels: contextData.meses_labels,
+                datasets: [
+                    {
+                        label: 'Receitas',
+                        data: contextData.receitas_mensais_data,
+                        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                        borderRadius: 5
+                    },
+                    {
+                        label: 'Despesas',
+                        data: contextData.despesas_mensais_data,
+                        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                        borderRadius: 5
                     }
-                }
-            }
-        };
+                ]
+            }, chartOptions);
 
-        // ===== GRÁFICO 1: RECEITAS VS DESPESAS MENSAIS =====
-        if (document.getElementById('transacoesMensaisChart') && contextData.meses_labels) {
-            try {
-                new Chart(document.getElementById('transacoesMensaisChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: contextData.meses_labels,
-                        datasets: [
-                            {
-                                label: 'Receitas',
-                                data: contextData.receitas_mensais_data,
-                                backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                                borderRadius: 5
-                            },
-                            {
-                                label: 'Despesas',
-                                data: contextData.despesas_mensais_data,
-                                backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                                borderRadius: 5
-                            }
-                        ]
-                    },
-                    options: chartOptions
-                });
-                console.log('Gráfico 1 criado: Receitas vs Despesas');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 1:', error);
-            }
-        }
+            // Gráfico 2: Saldo Acumulado
+            this.createLineChart('saldoAcumuladoChart', {
+                labels: contextData.meses_labels,
+                datasets: [{
+                    label: 'Saldo Acumulado',
+                    data: contextData.saldo_acumulado_data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            }, chartOptions);
 
-        // ===== GRÁFICO 2: SALDO ACUMULADO =====
-        if (document.getElementById('saldoAcumuladoChart') && contextData.meses_labels) {
-            try {
-                new Chart(document.getElementById('saldoAcumuladoChart'), {
-                    type: 'line',
-                    data: {
-                        labels: contextData.meses_labels,
-                        datasets: [{
-                            label: 'Saldo Acumulado',
-                            data: contextData.saldo_acumulado_data,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                            fill: true,
-                            tension: 0.4
-                        }]
-                    },
-                    options: chartOptions
-                });
-                console.log('Gráfico 2 criado: Saldo Acumulado');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 2:', error);
-            }
-        }
+            // Gráfico 3: Sazonalidade
+            this.createLineChart('sazonalidadeChart', {
+                labels: contextData.sazonalidade_labels,
+                datasets: [{
+                    label: 'Saldo Líquido Mensal',
+                    data: contextData.sazonalidade_values,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            }, chartOptions);
 
-        // ===== GRÁFICO 3: SAZONALIDADE =====
-        if (document.getElementById('sazonalidadeChart') && contextData.sazonalidade_labels) {
-            try {
-                new Chart(document.getElementById('sazonalidadeChart'), {
-                    type: 'line',
-                    data: {
-                        labels: contextData.sazonalidade_labels,
-                        datasets: [{
-                            label: 'Saldo Líquido Mensal',
-                            data: contextData.sazonalidade_values,
-                            borderColor: '#8b5cf6',
-                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
-                            fill: true,
-                            tension: 0.3
-                        }]
+            // Gráfico 4: Projeção
+            this.createLineChart('projecaoSaldoChart', {
+                labels: contextData.projecao_labels,
+                datasets: [
+                    {
+                        label: 'Projeção Receitas',
+                        data: contextData.projecao_receitas,
+                        borderColor: '#22c55e',
+                        borderDash: [5, 5],
+                        tension: 0.3
                     },
-                    options: chartOptions
-                });
-                console.log('Gráfico 3 criado: Sazonalidade');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 3:', error);
-            }
-        }
-
-        // ===== GRÁFICO 4: PROJEÇÃO FUTURA =====
-        if (document.getElementById('projecaoSaldoChart') && contextData.projecao_labels) {
-            try {
-                new Chart(document.getElementById('projecaoSaldoChart'), {
-                    type: 'line',
-                    data: {
-                        labels: contextData.projecao_labels,
-                        datasets: [
-                            {
-                                label: 'Projeção Receitas',
-                                data: contextData.projecao_receitas,
-                                borderColor: '#22c55e',
-                                borderDash: [5, 5],
-                                tension: 0.3
-                            },
-                            {
-                                label: 'Projeção Despesas',
-                                data: contextData.projecao_despesas,
-                                borderColor: '#ef4444',
-                                borderDash: [5, 5],
-                                tension: 0.3
-                            },
-                            {
-                                label: 'Projeção Saldo',
-                                data: contextData.projecao_saldo,
-                                borderColor: '#3b82f6',
-                                tension: 0.3,
-                                fill: true,
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)'
-                            }
-                        ]
+                    {
+                        label: 'Projeção Despesas',
+                        data: contextData.projecao_despesas,
+                        borderColor: '#ef4444',
+                        borderDash: [5, 5],
+                        tension: 0.3
                     },
-                    options: chartOptions
-                });
-                console.log('Gráfico 4 criado: Projeção Futura');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 4:', error);
-            }
-        }
-
-        // ===== GRÁFICO 5: DESPESAS POR CATEGORIA =====
-        if (document.getElementById('saidasCategoriaChart') && contextData.categorias_despesas_labels) {
-            try {
-                new Chart(document.getElementById('saidasCategoriaChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: contextData.categorias_despesas_labels,
-                        datasets: [{
-                            data: contextData.categorias_despesas_data,
-                            backgroundColor: [
-                                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#a855f7',
-                                '#6b7280', '#dc2626', '#d946ef', '#fbbf24', '#2dd4bf', '#a3e635'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${formatCurrency(context.raw)}`;
-                                    }
-                                }
-                            }
-                        }
+                    {
+                        label: 'Projeção Saldo',
+                        data: contextData.projecao_saldo,
+                        borderColor: '#3b82f6',
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)'
                     }
-                });
-                console.log('Gráfico 5 criado: Despesas por Categoria');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 5:', error);
-            }
-        }
+                ]
+            }, chartOptions);
 
-        // ===== GRÁFICO 6: RECEITAS POR CATEGORIA =====
-        if (document.getElementById('entradasCategoriaChart') && contextData.categorias_receitas_labels) {
-            try {
-                new Chart(document.getElementById('entradasCategoriaChart'), {
-                    type: 'pie',
-                    data: {
-                        labels: contextData.categorias_receitas_labels,
-                        datasets: [{
-                            data: contextData.categorias_receitas_values,
-                            backgroundColor: [
-                                '#22c55e', '#3b82f6', '#f59e0b', '#10b981', '#6b7280', '#d946ef'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${formatCurrency(context.raw)}`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Gráfico 6 criado: Receitas por Categoria');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 6:', error);
-            }
-        }
+            // Gráfico 5: Despesas por Categoria
+            this.createDoughnutChart('saidasCategoriaChart', {
+                labels: contextData.categorias_despesas_labels,
+                datasets: [{
+                    data: contextData.categorias_despesas_data,
+                    backgroundColor: [
+                        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#a855f7',
+                        '#6b7280', '#dc2626', '#d946ef', '#fbbf24', '#2dd4bf', '#a3e635'
+                    ]
+                }]
+            });
 
-        // ===== GRÁFICO 7: SALDOS POR CONTA BANCÁRIA =====
-        if (document.getElementById('saldoContasChart') && contextData.saldo_contas_labels) {
-            try {
-                new Chart(document.getElementById('saldoContasChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: contextData.saldo_contas_labels,
-                        datasets: [{
-                            label: 'Saldo',
-                            data: contextData.saldo_contas_values,
-                            backgroundColor: contextData.saldo_contas_values.map(value => 
-                                value >= 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
-                            borderRadius: 5
-                        }]
-                    },
-                    options: chartOptions
-                });
-                console.log('Gráfico 7 criado: Saldos por Conta');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 7:', error);
-            }
-        }
+            // Gráfico 6: Receitas por Categoria
+            this.createPieChart('entradasCategoriaChart', {
+                labels: contextData.categorias_receitas_labels,
+                datasets: [{
+                    data: contextData.categorias_receitas_values,
+                    backgroundColor: [
+                        '#22c55e', '#3b82f6', '#f59e0b', '#10b981', 
+                        '#6b7280', '#d946ef', '#84cc16', '#06b6d4',
+                        '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    hoverOffset: 15
+                }]
+            });
 
-        // ===== GRÁFICO 8: DESPESAS FIXAS VS VARIÁVEIS =====
-        if (document.getElementById('despesasFixasVariaveisChart')) {
-            try {
-                new Chart(document.getElementById('despesasFixasVariaveisChart'), {
-                    type: 'pie',
-                    data: {
-                        labels: ['Despesas Fixas', 'Despesas Variáveis'],
-                        datasets: [{
-                            data: [contextData.despesas_fixas, contextData.despesas_variaveis],
-                            backgroundColor: ['#a855f7', '#fcd34d']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${formatCurrency(context.raw)}`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Gráfico 8 criado: Fixas vs Variáveis');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 8:', error);
-            }
-        }
+            // Gráfico 7: Saldos por Conta
+            this.createBarChart('saldoContasChart', {
+                labels: contextData.saldo_contas_labels,
+                datasets: [{
+                    label: 'Saldo',
+                    data: contextData.saldo_contas_values,
+                    backgroundColor: contextData.saldo_contas_values.map(value => 
+                        value >= 0 ? 'rgba(59, 130, 246, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
+                    borderRadius: 5
+                }]
+            }, chartOptions);
 
-        // ===== GRÁFICO 9: STATUS DE PAGAMENTOS =====
-        if (document.getElementById('statusPagamentosChart')) {
-            try {
-                new Chart(document.getElementById('statusPagamentosChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['Pagos', 'Pendentes'],
-                        datasets: [{
-                            data: [contextData.pagos_total, contextData.pendentes_total],
-                            backgroundColor: ['#10b981', '#f59e0b']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${formatCurrency(context.raw)}`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                console.log('Gráfico 9 criado: Status de Pagamentos');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 9:', error);
-            }
-        }
+            // Gráfico 8: Fixas vs Variáveis
+            this.createPieChart('despesasFixasVariaveisChart', {
+                labels: ['Despesas Fixas', 'Despesas Variáveis'],
+                datasets: [{
+                    data: [contextData.despesas_fixas, contextData.despesas_variaveis],
+                    backgroundColor: ['#a855f7', '#fcd34d']
+                }]
+            });
 
-        // ===== GRÁFICO 10: GASTOS POR DIA DA SEMANA =====
-        if (document.getElementById('gastosPorDiaChart') && contextData.analise_comportamental) {
-            try {
+            // Gráfico 9: Status Pagamentos
+            this.createDoughnutChart('statusPagamentosChart', {
+                labels: ['Pagos', 'Pendentes'],
+                datasets: [{
+                    data: [contextData.pagos_total, contextData.pendentes_total],
+                    backgroundColor: ['#10b981', '#f59e0b']
+                }]
+            });
+
+            // Gráfico 10: Gastos por Dia
+            if (contextData.analise_comportamental) {
                 const gastosPorDiaLabels = Object.keys(contextData.analise_comportamental.gastos_por_dia);
                 const gastosPorDiaValues = Object.values(contextData.analise_comportamental.gastos_por_dia);
                 
-                new Chart(document.getElementById('gastosPorDiaChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: gastosPorDiaLabels,
-                        datasets: [{
-                            label: 'Gastos por Dia',
-                            data: gastosPorDiaValues,
-                            backgroundColor: 'rgba(99, 102, 241, 0.8)',
-                            borderRadius: 5
-                        }]
-                    },
-                    options: chartOptions
-                });
-                console.log('Gráfico 10 criado: Gastos por Dia');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 10:', error);
+                this.createBarChart('gastosPorDiaChart', {
+                    labels: gastosPorDiaLabels,
+                    datasets: [{
+                        label: 'Gastos por Dia',
+                        data: gastosPorDiaValues,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderRadius: 5
+                    }]
+                }, chartOptions);
             }
-        }
 
-        // ===== GRÁFICO 11: CATEGORIAS COMPORTAMENTAIS =====
-        if (document.getElementById('categoriasComportamentoChart') && contextData.analise_comportamental) {
-            try {
+            // Gráfico 11: Categorias Comportamentais
+            if (contextData.analise_comportamental) {
                 const catComportamentoLabels = Object.keys(contextData.analise_comportamental.categorias_comportamento);
                 const catComportamentoValues = Object.values(contextData.analise_comportamental.categorias_comportamento);
                 
-                new Chart(document.getElementById('categoriasComportamentoChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: catComportamentoLabels,
-                        datasets: [{
-                            data: catComportamentoValues,
-                            backgroundColor: ['#3b82f6', '#f59e0b', '#10b981']
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${formatCurrency(context.raw)}`;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                this.createDoughnutChart('categoriasComportamentoChart', {
+                    labels: catComportamentoLabels,
+                    datasets: [{
+                        data: catComportamentoValues,
+                        backgroundColor: ['#3b82f6', '#f59e0b', '#10b981']
+                    }]
                 });
-                console.log('Gráfico 11 criado: Categorias Comportamentais');
-            } catch (error) {
-                console.error('Erro ao criar gráfico 11:', error);
             }
-        }
 
-        // ===== GRÁFICO 12: GASTOS POR HORA DO DIA =====
-        if (document.getElementById('gastosPorHoraChart') && contextData.analise_comportamental) {
-            try {
+            // Gráfico 12: Gastos por Hora
+            if (contextData.analise_comportamental) {
                 const gastosPorHoraLabels = Object.keys(contextData.analise_comportamental.gastos_por_hora_dia);
                 const gastosPorHoraValues = Object.values(contextData.analise_comportamental.gastos_por_hora_dia);
                 
-                new Chart(document.getElementById('gastosPorHoraChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: gastosPorHoraLabels,
-                        datasets: [{
-                            label: 'Gastos por Hora',
-                            data: gastosPorHoraValues,
-                            backgroundColor: 'rgba(236, 72, 153, 0.8)',
-                            borderRadius: 5
-                        }]
-                    },
-                    options: chartOptions
+                this.createBarChart('gastosPorHoraChart', {
+                    labels: gastosPorHoraLabels,
+                    datasets: [{
+                        label: 'Gastos por Hora',
+                        data: gastosPorHoraValues,
+                        backgroundColor: 'rgba(236, 72, 153, 0.8)',
+                        borderRadius: 5
+                    }]
+                }, chartOptions);
+            }
+
+            // Gráfico 13: Alocação Investimentos
+            if (contextData.otimizacao_investimentos) {
+                this.createDoughnutChart('alocacaoInvestimentosChart', {
+                    labels: contextData.otimizacao_investimentos.alocacao_labels,
+                    datasets: [{
+                        data: contextData.otimizacao_investimentos.alocacao_values,
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
+                    }]
                 });
-                console.log('Gráfico 12 criado: Gastos por Hora');
+            }
+
+            console.log('✅ Todos os gráficos criados com sucesso!');
+        }
+
+        createBarChart(canvasId, data, options) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            try {
+                this.charts[canvasId] = new Chart(canvas, {
+                    type: 'bar',
+                    data: data,
+                    options: options
+                });
             } catch (error) {
-                console.error('Erro ao criar gráfico 12:', error);
+                console.error(`Erro ao criar gráfico ${canvasId}:`, error);
             }
         }
 
-        // ===== GRÁFICO 13: ALOCAÇÃO DE INVESTIMENTOS =====
-        if (document.getElementById('alocacaoInvestimentosChart') && contextData.otimizacao_investimentos) {
+        createLineChart(canvasId, data, options) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
             try {
-                new Chart(document.getElementById('alocacaoInvestimentosChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: contextData.otimizacao_investimentos.alocacao_labels,
-                        datasets: [{
-                            data: contextData.otimizacao_investimentos.alocacao_values,
-                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
-                        }]
-                    },
+                this.charts[canvasId] = new Chart(canvas, {
+                    type: 'line',
+                    data: data,
+                    options: options
+                });
+            } catch (error) {
+                console.error(`Erro ao criar gráfico ${canvasId}:`, error);
+            }
+        }
+
+        createPieChart(canvasId, data) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            try {
+                this.charts[canvasId] = new Chart(canvas, {
+                    type: 'pie',
+                    data: data,
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            legend: { 
-                                position: 'right'
-                            },
+                            legend: { position: 'right' },
                             tooltip: {
                                 callbacks: {
-                                    label: function(context) {
-                                        return `${context.label}: ${context.raw}%`;
+                                    label: (context) => {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${label}: ${formatCurrency(value)} (${percentage}%)`;
                                     }
                                 }
                             }
                         }
                     }
                 });
-                console.log('Gráfico 13 criado: Alocação de Investimentos');
             } catch (error) {
-                console.error('Erro ao criar gráfico 13:', error);
+                console.error(`Erro ao criar gráfico ${canvasId}:`, error);
             }
         }
 
-        console.log('✅ Processo de criação de gráficos concluído!');
-    }
-
-        function fillMainCards(contextData) {
-        // Preencher os cards principais
-        if (document.getElementById('saldoGeral')) {
-            document.getElementById('saldoGeral').textContent = formatCurrency(contextData.saldo_geral);
-            const saldoGeralEl = document.getElementById('saldoGeral');
-            if (saldoGeralEl) {
-                if (contextData.saldo_geral >= 0) {
-                    saldoGeralEl.classList.add('text-green-600');
-                    saldoGeralEl.classList.remove('text-red-600');
-                } else {
-                    saldoGeralEl.classList.add('text-red-600');
-                    saldoGeralEl.classList.remove('text-green-600');
-                }
-            }
-        }
-
-        if (document.getElementById('entradasMes')) {
-            document.getElementById('entradasMes').textContent = formatCurrency(contextData.entradas_mes);
-        }
-
-        if (document.getElementById('variacaoReceitas')) {
-            const variacaoReceitasEl = document.getElementById('variacaoReceitas');
-            variacaoReceitasEl.textContent = `${contextData.variacao_receitas >= 0 ? '+' : ''}${formatPercent(contextData.variacao_receitas)}`;
-            variacaoReceitasEl.className = 'font-medium ' + (contextData.variacao_receitas >= 0 ? 'text-green-600' : 'text-red-600');
-        }
-
-        if (document.getElementById('saidasMes')) {
-            document.getElementById('saidasMes').textContent = formatCurrency(contextData.saidas_mes);
-        }
-
-        if (document.getElementById('variacaoDespesas')) {
-            const variacaoDespesasEl = document.getElementById('variacaoDespesas');
-            variacaoDespesasEl.textContent = `${contextData.variacao_despesas >= 0 ? '+' : ''}${formatPercent(contextData.variacao_despesas)}`;
-            variacaoDespesasEl.className = 'font-medium ' + (contextData.variacao_despesas <= 0 ? 'text-green-600' : 'text-red-600');
-        }
-
-        // PREENCHER RESERVA DE EMERGÊNCIA
-        renderReservaEmergencia(contextData, contextData.meses_meta || 6);
-        
-        // PREENCHER INDICADORES DE SAÚDE FINANCEIRA
-        fillHealthIndicators(contextData);
-        
-        // PREENCHER SIMULAÇÕES DE CENÁRIOS
-        fillScenarioSimulations(contextData);
-        
-        // PREENCHER ANÁLISE DE RISCOS
-        fillRiskAnalysis(contextData);
-        
-        // PREENCHER ÚLTIMAS TRANSAÇÕES
-        fillLatestTransactions(contextData);
-    }
-
-    function renderReservaEmergencia(contextData, mesesMeta = 6) {
-        const despesaMensalMedia = contextData.despesa_mensal_media || 0;
-        const saldoPoupancas = contextData.saldo_poupancas || 0;
-        const reservaEmergenciaIdeal = despesaMensalMedia * mesesMeta;
-        const valorFaltante = Math.max(0, reservaEmergenciaIdeal - saldoPoupancas);
-        const percentualAtingido = reservaEmergenciaIdeal > 0 ? 
-            Math.min((saldoPoupancas / reservaEmergenciaIdeal * 100), 100) : 0;
-
-        // Card resumido
-        if (document.getElementById('saldoPoupancas')) {
-            const saldoPoupancasEl = document.getElementById('saldoPoupancas');
-            saldoPoupancasEl.textContent = formatCurrency(saldoPoupancas);
-            saldoPoupancasEl.className = `card-value ${saldoPoupancas >= reservaEmergenciaIdeal ? 'text-green-600' : 'text-yellow-600'}`;
-        }
-
-        if (document.getElementById('metaReserva')) {
-            document.getElementById('metaReserva').textContent = `Meta: ${mesesMeta} meses (${formatCurrency(reservaEmergenciaIdeal)})`;
-        }
-
-        // Detalhado
-        if (document.getElementById('meses-meta-select')) {
-            document.getElementById('meses-meta-select').value = mesesMeta;
-        }
-
-        if (document.getElementById('reservaEmergenciaIdeal')) {
-            document.getElementById('reservaEmergenciaIdeal').textContent = formatCurrency(reservaEmergenciaIdeal);
-        }
-
-        if (document.getElementById('despesaMensalMedia')) {
-            document.getElementById('despesaMensalMedia').textContent = formatCurrency(despesaMensalMedia);
-        }
-
-        if (document.getElementById('saldoAtualPoupancas')) {
-            const saldoAtualEl = document.getElementById('saldoAtualPoupancas');
-            saldoAtualEl.textContent = formatCurrency(saldoPoupancas);
-            saldoAtualEl.className = `text-lg font-bold ${saldoPoupancas >= reservaEmergenciaIdeal ? 'text-green-600' : 'text-yellow-600'}`;
-        }
-
-        const diferencaLabel = document.getElementById('diferencaLabel');
-        const valorFaltanteEl = document.getElementById('valorFaltante');
-        const diferencaPanel = document.getElementById('diferencaReservaPanel');
-
-        if (diferencaLabel && valorFaltanteEl && diferencaPanel) {
-            if (valorFaltante > 0) {
-                diferencaLabel.textContent = 'Falta:';
-                valorFaltanteEl.textContent = `- ${formatCurrency(valorFaltante)}`;
-                valorFaltanteEl.className = 'text-lg font-bold text-yellow-600';
-                diferencaPanel.className = 'mb-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg';
-                
-                if (document.getElementById('projecaoTempoPanel')) {
-                    document.getElementById('projecaoTempoPanel').style.display = 'block';
-                }
-
-                // Simulação de tempo para atingir a meta
-                if (document.getElementById('tempoProjecao')) {
-                    const poupancaMensal = (contextData.entradas_mes || 0) - (contextData.saidas_mes || 0);
-                    let tempoProjecaoText = 'N/A';
-                    if (poupancaMensal > 0) {
-                        const mesesParaAtingir = valorFaltante / poupancaMensal;
-                        tempoProjecaoText = `${Math.ceil(mesesParaAtingir)} meses`;
+        createDoughnutChart(canvasId, data) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            try {
+                this.charts[canvasId] = new Chart(canvas, {
+                    type: 'doughnut',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${formatCurrency(context.raw)}`
+                                }
+                            }
+                        }
                     }
-                    document.getElementById('tempoProjecao').textContent = tempoProjecaoText;
-                }
-            } else {
-                diferencaLabel.textContent = 'Excedente:';
-                valorFaltanteEl.textContent = `+ ${formatCurrency(Math.abs(valorFaltante))}`;
-                valorFaltanteEl.className = 'text-lg font-bold text-green-600';
-                diferencaPanel.className = 'mb-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg';
-                
-                if (document.getElementById('projecaoTempoPanel')) {
-                    document.getElementById('projecaoTempoPanel').style.display = 'none';
-                }
+                });
+            } catch (error) {
+                console.error(`Erro ao criar gráfico ${canvasId}:`, error);
             }
         }
 
-        if (document.getElementById('percentualAtingido')) {
-            document.getElementById('percentualAtingido').textContent = formatPercent(percentualAtingido);
-            document.getElementById('percentualAtingido').className = `text-sm font-bold ${percentualAtingido >= 100 ? 'text-green-600' : 'text-blue-600'}`;
-        }
+        renderReservaEmergencia(contextData, mesesMeta = 6) {
+            const despesaMensalMedia = contextData.despesa_mensal_media || 0;
+            const saldoPoupancas = contextData.saldo_poupancas || 0;
+            const reservaEmergenciaIdeal = despesaMensalMedia * mesesMeta;
+            const valorFaltante = Math.max(0, reservaEmergenciaIdeal - saldoPoupancas);
+            const percentualAtingido = reservaEmergenciaIdeal > 0 ? 
+                Math.min((saldoPoupancas / reservaEmergenciaIdeal * 100), 100) : 0;
 
-        if (document.getElementById('progressBar')) {
+            this.updateElementText('reservaEmergenciaIdeal', formatCurrency(reservaEmergenciaIdeal));
+            this.updateElementText('despesaMensalMedia', formatCurrency(despesaMensalMedia));
+            this.updateElementText('saldoAtualPoupancas', formatCurrency(saldoPoupancas));
+            this.updateElementText('valorFaltante', valorFaltante > 0 ? `- ${formatCurrency(valorFaltante)}` : `+ ${formatCurrency(Math.abs(valorFaltante))}`);
+            this.updateElementText('percentualAtingido', formatPercent(percentualAtingido));
+
             const progressBar = document.getElementById('progressBar');
-            progressBar.style.width = `${percentualAtingido}%`;
-            progressBar.className = `h-2 rounded-full ${percentualAtingido >= 100 ? 'bg-green-500' : 'bg-blue-500'}`;
-        }
+            if (progressBar) {
+                progressBar.style.width = `${percentualAtingido}%`;
+                progressBar.className = `h-2 rounded-full ${percentualAtingido >= 100 ? 'bg-green-500' : 'bg-blue-500'}`;
+            }
 
-        const statusReservaPanel = document.getElementById('statusReservaPanel');
-        const statusIcon = document.getElementById('statusIcon');
-        const statusText = document.getElementById('statusText');
+            const diferencaPanel = document.getElementById('diferencaReservaPanel');
+            if (diferencaPanel) {
+                diferencaPanel.className = `mb-3 p-3 rounded-lg ${valorFaltante > 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-green-50 dark:bg-green-900/20'}`;
+            }
 
-        if (statusReservaPanel && statusIcon && statusText) {
-            if (percentualAtingido >= 100) {
-                statusReservaPanel.className = 'text-center p-2 rounded-lg bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200';
-                statusIcon.className = 'fas fa-check-circle mr-1';
-                statusText.textContent = `Meta de ${mesesMeta} meses atingida!`;
-            } else {
-                statusReservaPanel.className = 'text-center p-2 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200';
-                statusIcon.className = 'fas fa-running mr-1';
-                statusText.textContent = `${percentualAtingido.toFixed(1)}% conquistado`;
+            const diferencaLabel = document.getElementById('diferencaLabel');
+            if (diferencaLabel) {
+                diferencaLabel.textContent = valorFaltante > 0 ? 'Falta:' : 'Excedente:';
+            }
+
+            const mesesMetaSelect = document.getElementById('meses-meta-select');
+            if (mesesMetaSelect) {
+                mesesMetaSelect.addEventListener('change', () => {
+                    this.renderReservaEmergencia(contextData, parseInt(mesesMetaSelect.value));
+                });
             }
         }
 
-        // Listener para o seletor de meses da meta de reserva
-        const mesesMetaSelect = document.getElementById('meses-meta-select');
-        if (mesesMetaSelect) {
-            mesesMetaSelect.addEventListener('change', function() {
-                renderReservaEmergencia(contextData, parseInt(this.value));
+        updateElementText(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (element) element.textContent = text;
+        }
+
+        fillHealthIndicators(contextData) {
+            const indicadores = contextData.indicadores || {};
+            this.updateElementText('liquidezCorrente', formatPercent(indicadores.liquidez_corrente || 0));
+            this.updateElementText('margemSeguranca', formatPercent(indicadores.margem_seguranca || 0));
+            this.updateElementText('endividamento', formatPercent(indicadores.endividamento || 0));
+            this.updateElementText('poupancaMensal', formatCurrency(indicadores.poupanca_mensal || 0));
+            this.updateElementText('reservaEmergenciaIdealIndicador', formatCurrency(indicadores.reserva_emergencia_ideal || 0));
+            this.updateElementText('nivelRisco', contextData.analise_riscos?.nivel_risco || 'Baixo');
+        }
+
+        fillScenarioSimulations(contextData) {
+            const simulacoes = contextData.simulacoes || {};
+            this.updateElementText('aumentoDespesas', formatCurrency(simulacoes.aumento_10_despesas || 0));
+            this.updateElementText('reducaoDespesas', formatCurrency(simulacoes.reducao_10_despesas || 0));
+            this.updateElementText('aumentoReceitas', formatCurrency(simulacoes.aumento_10_receitas || 0));
+            this.updateElementText('reducaoReceitas', formatCurrency(simulacoes.reducao_10_receitas || 0));
+            this.updateElementText('impactoInflacao', formatCurrency(simulacoes.impacto_inflacao_5 || 0));
+        }
+
+        fillRiskAnalysis(contextData) {
+            const analiseRiscos = contextData.analise_riscos || {};
+            this.updateElementText('concentracaoRisco', formatPercent(analiseRiscos.concentracao_risco || 0));
+            
+            const saldoPoupancas = contextData.saldo_poupancas || 0;
+            const reservaIdeal = analiseRiscos.reserva_ideal || 0;
+            this.updateElementText('reservaIdealCoberta', `${formatCurrency(saldoPoupancas)} / ${formatCurrency(reservaIdeal)}`);
+            this.updateElementText('nivelRiscoTexto', analiseRiscos.nivel_risco || 'Baixo');
+        }
+
+        fillLatestTransactions(contextData) {
+            const tbody = document.getElementById('ultimasTransacoesTable');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            const transacoes = contextData.ultimas_transacoes || [];
+            
+            if (transacoes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                            Nenhuma transação encontrada
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            transacoes.forEach(transacao => {
+                const valorClass = transacao.valor >= 0 ? 'valor-positivo' : 'valor-negativo';
+                const row = document.createElement('tr');
+                row.className = 'table-row';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${new Date(transacao.data).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${transacao.descricao || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="${valorClass}">${formatCurrency(transacao.valor)}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${transacao.categoria || 'N/A'}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                        ${transacao.conta || 'N/A'}
+                    </td>
+                `;
+                tbody.appendChild(row);
             });
         }
     }
 
-    function fillHealthIndicators(contextData) {
-        const indicadores = contextData.indicadores || {};
+    // ================================================================
+    // VERIFICAÇÃO DO GRÁFICO DE RECEITAS
+    // ================================================================
+
+    function checkReceitasChart() {
+        const canvas = document.getElementById('entradasCategoriaChart');
+        const fallback = document.getElementById('entradasCategoriaFallback');
         
-        if (document.getElementById('liquidezCorrente')) {
-            document.getElementById('liquidezCorrente').textContent = formatPercent(indicadores.liquidez_corrente || 0);
-        }
+        if (!canvas || !fallback) return;
         
-        if (document.getElementById('margemSeguranca')) {
-            document.getElementById('margemSeguranca').textContent = formatPercent(indicadores.margem_seguranca || 0);
-        }
-        
-        if (document.getElementById('endividamento')) {
-            document.getElementById('endividamento').textContent = formatPercent(indicadores.endividamento || 0);
-        }
-        
-        if (document.getElementById('poupancaMensal')) {
-            document.getElementById('poupancaMensal').textContent = formatCurrency(indicadores.poupanca_mensal || 0);
-        }
-        
-        if (document.getElementById('reservaEmergenciaIdealIndicador')) {
-            document.getElementById('reservaEmergenciaIdealIndicador').textContent = formatCurrency(indicadores.reserva_emergencia_ideal || 0);
-        }
-        
-        if (document.getElementById('nivelRisco')) {
-            document.getElementById('nivelRisco').textContent = contextData.analise_riscos?.nivel_risco || 'Baixo';
-        }
+        const checkInterval = setInterval(() => {
+            if (canvas.offsetParent !== null) {
+                const context = canvas.getContext('2d');
+                try {
+                    const imageData = context.getImageData(0, 0, 1, 1);
+                    const hasData = imageData.data[3] !== 0;
+                    
+                    fallback.classList.toggle('hidden', hasData);
+                    clearInterval(checkInterval);
+                } catch (error) {
+                    fallback.classList.remove('hidden');
+                    clearInterval(checkInterval);
+                }
+            }
+        }, 1000);
     }
 
-    function fillScenarioSimulations(contextData) {
-        const simulacoes = contextData.simulacoes || {};
-        
-        if (document.getElementById('aumentoDespesas')) {
-            document.getElementById('aumentoDespesas').textContent = formatCurrency(simulacoes.aumento_10_despesas || 0);
-        }
-        
-        if (document.getElementById('reducaoDespesas')) {
-            document.getElementById('reducaoDespesas').textContent = formatCurrency(simulacoes.reducao_10_despesas || 0);
-        }
-        
-        if (document.getElementById('aumentoReceitas')) {
-            document.getElementById('aumentoReceitas').textContent = formatCurrency(simulacoes.aumento_10_receitas || 0);
-        }
-        
-        if (document.getElementById('reducaoReceitas')) {
-            document.getElementById('reducaoReceitas').textContent = formatCurrency(simulacoes.reducao_10_receitas || 0);
-        }
-        
-        if (document.getElementById('impactoInflacao')) {
-            document.getElementById('impactoInflacao').textContent = formatCurrency(simulacoes.impacto_inflacao_5 || 0);
-        }
-    }
+    // ================================================================
+    // INICIALIZAÇÃO
+    // ================================================================
 
-    function fillRiskAnalysis(contextData) {
-        const analiseRiscos = contextData.analise_riscos || {};
-        
-        if (document.getElementById('concentracaoRisco')) {
-            document.getElementById('concentracaoRisco').textContent = formatPercent(analiseRiscos.concentracao_risco || 0);
-        }
-        
-        if (document.getElementById('reservaIdealCoberta')) {
-            const saldoPoupancas = contextData.saldo_poupancas || 0;
-            const reservaIdeal = analiseRiscos.reserva_ideal || 0;
-            document.getElementById('reservaIdealCoberta').textContent = 
-                `${formatCurrency(saldoPoupancas)} / ${formatCurrency(reservaIdeal)}`;
-        }
-        
-        if (document.getElementById('nivelRiscoTexto')) {
-            document.getElementById('nivelRiscoTexto').textContent = analiseRiscos.nivel_risco || 'Baixo';
-        }
-    }
+    let dashboardFilters;
+    let dashboardCharts;
 
-  function fillLatestTransactions(contextData) {
-    const ultimasTransacoesTableBody = document.getElementById('ultimasTransacoesTable');
-    if (!ultimasTransacoesTableBody) return;
-    
-    ultimasTransacoesTableBody.innerHTML = '';
-
-    const transacoes = contextData.ultimas_transacoes || [];
-    
-    if (transacoes.length === 0) {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                Nenhuma transação encontrada
-            </td>
-        `;
-        ultimasTransacoesTableBody.appendChild(row);
-        return;
-    }
-
-    transacoes.forEach(transacao => {
-        const row = document.createElement('tr');
-        row.classList.add('table-row');
-        const valorClass = transacao.valor >= 0 ? 'valor-positivo' : 'valor-negativo';
+    document.addEventListener('DOMContentLoaded', function() {
+        dashboardFilters = new DashboardFilters();
+        dashboardCharts = new DashboardCharts();
+        dashboardCharts.initialize();
+        checkReceitasChart();
         
-        row.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                ${new Date(transacao.data).toLocaleDateString('pt-BR')}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                ${transacao.descricao || 'N/A'}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="${valorClass}">${formatCurrency(transacao.valor)}</span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                ${transacao.categoria || 'N/A'}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                ${transacao.conta || 'N/A'}
-            </td>
-        `;
-        ultimasTransacoesTableBody.appendChild(row);
+        window.dashboardFilters = dashboardFilters;
+
+        // Exportar relatório
+        const exportBtn = document.getElementById('exportReportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                const filters = dashboardFilters.collectFilters();
+                const params = new URLSearchParams(filters);
+                params.append('export', 'pdf');
+                window.open(`${window.location.pathname}?${params.toString()}`, '_blank');
+            });
+        }
     });
-}
+
 </script>
 {% endblock %}

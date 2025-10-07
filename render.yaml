@@ -1,16 +1,18 @@
 databases:
   - name: financas-db
-    plan: starter # Plano gratuito, pode ser alterado depois
+    plan: free  # Mudei para free (plano gratuito)
 
 services:
   # Serviço da Aplicação Web Django
   - type: web
     name: financas-web
-    plan: starter # Plano gratuito
-    env: docker # Especifica que vamos usar o Dockerfile
-    dockerfilePath: ./Dockerfile
-    healthCheck:
-      path: / # Render irá checar se a aplicação está respondendo nesta rota
+    plan: free  # Mudei para free
+    env: python  # Mudei de docker para python
+    buildCommand: |
+      pip install -r requirements.txt
+      python manage.py collectstatic --noinput
+    startCommand: gunicorn financas.wsgi:application
+    healthCheckPath: /
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -19,11 +21,13 @@ services:
       - key: DJANGO_SETTINGS_MODULE
         value: financas.settings.production
       - key: SECRET_KEY
-        generateValue: true # Render irá gerar uma secret key segura
+        generateValue: true
       - key: WEB_CONCURRENCY
-        value: 4 # Número de workers Gunicorn, bom para o plano starter
+        value: 2  # Reduzi para 2 no plano free
       - key: PYTHONUNBUFFERED
         value: 1
       - key: ALLOWED_HOSTS
-        value: ${RENDER_EXTERNAL_HOSTNAME}
-    autoDeploy: true # Ativa o deploy automático a cada push na branch principal
+        value: .onrender.com
+      - key: DEBUG
+        value: "False"
+    autoDeploy: true

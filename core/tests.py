@@ -1,263 +1,202 @@
-from django.test import TestCase
-from django.contrib.auth.models import User
+
+import pytest
 from django.urls import reverse
 from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+from core.models import ContaBancaria, Entrada, Saida, Transferencia, Profile
+from core.factories import UserFactory, ContaBancariaFactory, EntradaFactory, SaidaFactory
 
-from .models import ContaBancaria, Entrada, Saida, Transferencia, Profile
+pytestmark = pytest.mark.django_db
 
-class CoreViewsTestCase(TestCase):
-    def setUp(self):
-        """
-        Configuração inicial para os testes. Cria um usuário e faz login.
-        """
-        self.user = User.objects.create_user(username='testuser', password='testpassword')
-        self.client.login(username='testuser', password='testpassword')
-        
-        self.conta_origem = ContaBancaria.objects.create(
-            proprietario=self.user,
-            nome_banco='itau',
-            tipo='corrente',
-            agencia='1234',
-            numero_conta='56789-0',
-            saldo_atual=Decimal('1000.00')
-        )
-        
-        self.conta_destino = ContaBancaria.objects.create(
-            proprietario=self.user,
-            nome_banco='nubank',
-            tipo='poupanca',
-            agencia='0001',
-            numero_conta='11223-3',
-            saldo_atual=Decimal('500.00')
-        )
+# Tests for Views
+def test_dashboard_view_authenticated(client, django_user_model):
+    user = UserFactory()
+    client.force_login(user)
+    response = client.get(reverse('core:dashboard'))
+    assert response.status_code == 200
+    assert 'core/dashboard.html' in [t.name for t in response.templates]
 
-    def test_dashboard_view_authenticated(self):
-        """
-        Verifica se a view do dashboard está acessível para um usuário logado.
-        """
-        response = self.client.get(reverse('core:dashboard'))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'core/dashboard.html')
+def test_unauthenticated_access_redirects_to_login(client):
+    response = client.get(reverse('core:dashboard'))
+    assert response.status_code == 302
+    assert response.url == f"{reverse('core:login')}?next={reverse('core:dashboard')}"
 
-    def test_unauthenticated_access_redirects_to_login(self):
-        """
-        Verifica se um usuário não logado é redirecionado para a página de login.
-        """
-        self.client.logout()
-        response = self.client.get(reverse('core:dashboard'))
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, f"{reverse('core:login')}?next={reverse('core:dashboard')}")
+def test_conta_list_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta1 = ContaBancariaFactory(proprietario=user)
+    conta2 = ContaBancariaFactory(proprietario=user)
+    response = client.get(reverse('core:conta_list'))
+    assert response.status_code == 200
+    assert response.context['contas'].count() == 2
+    assert conta1 in response.context['contas']
+    assert conta2 in response.context['contas']
 
-    def test_conta_list_view(self):
-        """
-        Testa se a lista de contas é renderizada corretamente.
-        """
-        response = self.client.get(reverse('core:conta_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.conta_origem.get_nome_banco_display())
-        self.assertContains(response, self.conta_destino.get_nome_banco_display())
+def test_entrada_list_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    entrada = EntradaFactory(usuario=user, conta_bancaria=conta)
+    response = client.get(reverse('core:entrada_list'))
+    assert response.status_code == 200
+    assert entrada in response.context['entradas']
 
-    def test_entrada_list_view(self):
-        """
-        Testa se a lista de entradas é renderizada corretamente.
-        """
-        Entrada.objects.create(
-            usuario=self.user,
-            conta_bancaria=self.conta_origem,
-            nome='Salário',
-            valor=Decimal('500.00'),
-            data=timezone.now().date()
-        )
-        response = self.client.get(reverse('core:entrada_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Salário')
+def test_saida_list_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    saida = SaidaFactory(usuario=user, conta_bancaria=conta)
+    response = client.get(reverse('core:saida_list'))
+    assert response.status_code == 200
+    assert saida in response.context['saidas']
 
-    def test_saida_list_view(self):
-        """
-        Testa se a lista de saídas é renderizada corretamente.
-        """
-        Saida.objects.create(
-            usuario=self.user,
-            conta_bancaria=self.conta_origem,
-            nome='Aluguel',
-            valor=Decimal('300.00'),
-            data_lancamento=timezone.now().date(),
-            data_vencimento=timezone.now().date()
-        )
-        response = self.client.get(reverse('core:saida_list'))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Aluguel')
+def test_create_entrada_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    data = {
+        'conta_bancaria': conta.pk,
+        'nome': 'Salario',
+        'valor': '150.00',
+        'data': timezone.now().date().strftime('%Y-%m-%d'),
+        'forma_recebimento': 'pix',
+    }
+    response = client.post(reverse('core:entrada_create'), data)
+    assert response.status_code == 302
+    assert response.url == reverse('core:entrada_list')
+    assert Entrada.objects.filter(nome='Salario').exists()
 
-    def test_create_entrada_view(self):
-        """
-        Testa a criação de uma nova entrada via POST request.
-        """
-        entradas_count_before = Entrada.objects.count()
-        response = self.client.post(reverse('core:entrada_create'), {
-            'conta_bancaria': self.conta_origem.pk,
-            'nome': 'Freelance',
-            'valor': '150.00',
-            'data': timezone.now().date().strftime('%Y-%m-%d'),
-            'forma_recebimento': 'pix',
-        })
-        self.assertEqual(response.status_code, 302) # Deve redirecionar após sucesso
-        self.assertRedirects(response, reverse('core:entrada_list'))
-        self.assertEqual(Entrada.objects.count(), entradas_count_before + 1)
-        self.assertTrue(Entrada.objects.filter(nome='Freelance').exists())
+def test_create_saida_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    data = {
+        'conta_bancaria': conta.pk,
+        'nome': 'Aluguel',
+        'valor': '250.00',
+        'valor_parcela': '250.00',
+        'data_lancamento': timezone.now().date().strftime('%Y-%m-%d'),
+        'data_vencimento': timezone.now().date().strftime('%Y-%m-%d'),
+        'forma_pagamento': 'cartao_debito',
+        'situacao': 'pago',
+        'tipo_pagamento_detalhe': 'avista',
+        'recorrente': 'unica',
+        'quantidade_parcelas': 1
+    }
+    response = client.post(reverse('core:saida_create'), data)
+    assert response.status_code == 302
+    assert response.url == reverse('core:saida_list')
+    assert Saida.objects.filter(nome='Aluguel').exists()
 
-    def test_create_saida_view(self):
-        """
-        Testa a criação de uma nova saída via POST request.
-        """
-        saidas_count_before = Saida.objects.count()
-        response = self.client.post(reverse('core:saida_create'), {
-            'conta_bancaria': self.conta_origem.pk,
-            'nome': 'Supermercado',
-            'valor': '250.00',
-            'data_lancamento': timezone.now().date().strftime('%Y-%m-%d'),
-            'data_vencimento': timezone.now().date().strftime('%Y-%m-%d'),
-            'forma_pagamento': 'debito',
-            'situacao': 'pago',
-            'tipo_pagamento_detalhe': 'avista',
-            'recorrente': 'unica',
-            'quantidade_parcelas': 1
-        })
-        self.assertEqual(response.status_code, 302)
-        self.assertRedirects(response, reverse('core:saida_list'))
-        self.assertEqual(Saida.objects.count(), saidas_count_before + 1)
-        self.assertTrue(Saida.objects.filter(nome='Supermercado').exists())
+def test_entrada_update_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    entrada = EntradaFactory(usuario=user, conta_bancaria=conta, nome='Old Name')
+    data = {
+        'conta_bancaria': conta.pk,
+        'nome': 'New Name',
+        'valor': '200.00',
+        'data': timezone.now().date().strftime('%Y-%m-%d'),
+        'forma_recebimento': 'pix',
+    }
+    response = client.post(reverse('core:entrada_update', kwargs={'pk': entrada.pk}), data)
+    assert response.status_code == 302
+    assert response.url == reverse('core:entrada_list')
+    entrada.refresh_from_db()
+    assert entrada.nome == 'New Name'
 
+def test_saida_update_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    conta = ContaBancariaFactory(proprietario=user)
+    saida = SaidaFactory(usuario=user, conta_bancaria=conta, nome='Old Name')
+    data = {
+        'conta_bancaria': conta.pk,
+        'nome': 'New Name',
+        'valor': '300.00',
+        'valor_parcela': '300.00',
+        'data_lancamento': timezone.now().date().strftime('%Y-%m-%d'),
+        'data_vencimento': timezone.now().date().strftime('%Y-%m-%d'),
+        'forma_pagamento': 'cartao_credito',
+        'situacao': 'pendente',
+        'tipo_pagamento_detalhe': 'avista',
+        'recorrente': 'unica',
+        'quantidade_parcelas': 1
+    }
+    response = client.post(reverse('core:saida_update', kwargs={'pk': saida.pk}), data)
+    assert response.status_code == 302
+    assert response.url == reverse('core:saida_list')
+    saida.refresh_from_db()
+    assert saida.nome == 'New Name'
 
-class CoreModelsTestCase(TestCase):
-    def setUp(self):
-        """
-        Configuração inicial para os testes de modelo.
-        """
-        self.user = User.objects.create_user(username='modeluser', password='modelpassword')
-        self.conta = ContaBancaria.objects.create(
-            proprietario=self.user,
-            nome_banco='bradesco',
-            tipo='corrente',
-            agencia='0011',
-            numero_conta='22334-4',
-            saldo_atual=Decimal('2000.00')
-        )
+def test_entrada_delete_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    entrada = EntradaFactory(usuario=user)
+    response = client.post(reverse('core:entrada_delete', kwargs={'pk': entrada.pk}))
+    assert response.status_code == 302
+    assert response.url == reverse('core:entrada_list')
+    assert not Entrada.objects.filter(pk=entrada.pk).exists()
 
-    def test_user_profile_creation(self):
-        """
-        Verifica se um Profile é criado automaticamente quando um User é criado.
-        """
-        self.assertTrue(hasattr(self.user, 'profile'))
-        self.assertIsInstance(self.user.profile, Profile)
+def test_saida_delete_view(client):
+    user = UserFactory()
+    client.force_login(user)
+    saida = SaidaFactory(usuario=user)
+    response = client.post(reverse('core:saida_delete', kwargs={'pk': saida.pk}))
+    assert response.status_code == 302
+    assert response.url == reverse('core:saida_list')
+    assert not Saida.objects.filter(pk=saida.pk).exists()
 
-    def test_conta_bancaria_creation(self):
-        """
-        Testa a criação e representação em string de uma ContaBancaria.
-        """
-        self.assertEqual(str(self.conta), 'bradesco - 0011/22334-4')
-        self.assertEqual(ContaBancaria.objects.count(), 1)
+# Tests for Models
+def test_user_profile_creation():
+    user = UserFactory()
+    assert hasattr(user, 'profile')
+    assert isinstance(user.profile, Profile)
 
-    def test_entrada_creation(self):
-        """
-        Testa a criação de uma Entrada.
-        """
-        entrada = Entrada.objects.create(
-            usuario=self.user,
-            conta_bancaria=self.conta,
-            nome='Venda de produto',
-            valor=Decimal('100.00'),
-            data=timezone.now().date()
-        )
-        self.assertEqual(Entrada.objects.count(), 1)
-        self.assertEqual(entrada.valor, Decimal('100.00'))
+def test_conta_bancaria_creation():
+    conta = ContaBancariaFactory()
+    assert isinstance(conta, ContaBancaria)
+    assert str(conta) == f'{conta.get_nome_banco_display()} - {conta.agencia}/{conta.numero_conta}'
 
-    def test_saida_parcelada_validation(self):
-        """
-        Testa a validação de uma Saída parcelada com quantidade de parcelas inválida.
-        """
-        saida = Saida(
-            usuario=self.user,
-            conta_bancaria=self.conta,
-            nome='Compra parcelada',
-            valor=Decimal('1000.00'),
-            tipo_pagamento_detalhe='parcelado',
-            quantidade_parcelas=1 # Inválido para parcelado
-        )
-        with self.assertRaises(ValidationError) as cm:
-            saida.clean()
-        self.assertIn('quantidade_parcelas', cm.exception.message_dict)
+def test_entrada_creation():
+    entrada = EntradaFactory()
+    assert isinstance(entrada, Entrada)
+    assert entrada.valor == Decimal('100.00')
 
-    def test_saida_recorrente_parcelada_validation(self):
-        """
-        Testa a validação que impede uma Saída de ser recorrente e parcelada ao mesmo tempo.
-        """
-        saida = Saida(
-            usuario=self.user,
-            conta_bancaria=self.conta,
-            nome='Assinatura parcelada',
-            valor=Decimal('120.00'),
-            tipo_pagamento_detalhe='parcelado',
-            quantidade_parcelas=12,
-            recorrente='mensal' # Inválido com parcelado
-        )
-        with self.assertRaises(ValidationError) as cm:
-            saida.clean()
-        self.assertIn('recorrente', cm.exception.message_dict)
+def test_saida_parcelada_validation():
+    with pytest.raises(ValidationError, match='Para pagamento parcelado, o número de parcelas deve ser maior que 1.'):
+        SaidaFactory.build(tipo_pagamento_detalhe='parcelado', quantidade_parcelas=1).clean()
 
-    def test_transferencia_saldo_insuficiente(self):
-        """
-        Testa a validação de transferência com saldo insuficiente na conta de origem.
-        """
-        conta_destino = ContaBancaria.objects.create(
-            proprietario=self.user,
-            nome_banco='inter',
-            tipo='corrente',
-            agencia='0001',
-            numero_conta='12345-6',
-            saldo_atual=Decimal('100.00')
-        )
-        transferencia = Transferencia(
-            usuario=self.user,
-            conta_origem=self.conta,
-            conta_destino=conta_destino,
-            valor=Decimal('3000.00') # Maior que o saldo da conta de origem
-        )
-        with self.assertRaises(ValidationError):
-            transferencia.clean()
+def test_saida_recorrente_parcelada_validation():
+    with pytest.raises(ValidationError, match='Não é possível ter recorrência em pagamentos parcelados.'):
+        SaidaFactory.build(tipo_pagamento_detalhe='parcelado', recorrente='mensal', quantidade_parcelas=2).clean()
 
-    def test_transferencia_successful(self):
-        """
-        Testa uma transferência bem-sucedida e a atualização dos saldos.
-        """
-        saldo_origem_before = self.conta.saldo_atual
-        
-        conta_destino = ContaBancaria.objects.create(
-            proprietario=self.user,
-            nome_banco='inter',
-            tipo='corrente',
-            agencia='0001',
-            numero_conta='12345-6',
-            saldo_atual=Decimal('100.00')
-        )
-        saldo_destino_before = conta_destino.saldo_atual
-        
-        valor_transferencia = Decimal('500.00')
+def test_transferencia_saldo_insuficiente():
+    user = UserFactory()
+    conta_origem = ContaBancariaFactory(proprietario=user, saldo_atual=Decimal('100.00'))
+    conta_destino = ContaBancariaFactory(proprietario=user)
+    with pytest.raises(ValidationError, match='Saldo insuficiente na conta de origem.'):
+        Transferencia(usuario=user, conta_origem=conta_origem, conta_destino=conta_destino, valor=Decimal('200.00')).clean()
 
-        # A lógica de atualização de saldo está no método save()
-        transferencia = Transferencia(
-            usuario=self.user,
-            conta_origem=self.conta,
-            conta_destino=conta_destino,
-            valor=valor_transferencia
-        )
-        transferencia.save()
+def test_transferencia_successful():
+    user = UserFactory()
+    conta_origem = ContaBancariaFactory(proprietario=user, saldo_atual=Decimal('1000.00'))
+    conta_destino = ContaBancariaFactory(proprietario=user, saldo_atual=Decimal('500.00'))
+    
+    valor_transferencia = Decimal('200.00')
+    
+    transferencia = Transferencia(
+        usuario=user,
+        conta_origem=conta_origem,
+        conta_destino=conta_destino,
+        valor=valor_transferencia
+    )
+    transferencia.save()
 
-        # Recarrega as contas do banco de dados para verificar os saldos atualizados
-        self.conta.refresh_from_db()
-        conta_destino.refresh_from_db()
+    conta_origem.refresh_from_db()
+    conta_destino.refresh_from_db()
 
-        self.assertEqual(self.conta.saldo_atual, saldo_origem_before - valor_transferencia)
-        self.assertEqual(conta_destino.saldo_atual, saldo_destino_before + valor_transferencia)
-        self.assertEqual(Transferencia.objects.count(), 1)
+    assert conta_origem.saldo_atual == Decimal('800.00')
+    assert conta_destino.saldo_atual == Decimal('700.00')

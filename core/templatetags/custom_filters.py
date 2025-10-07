@@ -2,19 +2,28 @@ from django import template
 
 register = template.Library()
 
-
 @register.filter
 def get_item(dictionary, key):
+    """
+    Retorna o valor de um dicionário para uma chave específica
+    Suporta dicionários Python normais e listas de tuplas
+    """
+    if dictionary is None:
+        return ''
+    
+    # Se for um dicionário Python
     if isinstance(dictionary, dict):
-        # Se for um dicionário, usa o método get()
-        return dictionary.get(key)
-    elif isinstance(dictionary, list):
-        # Se for uma lista de tuplas, itera sobre ela
-        for k, v in dictionary:
-            if str(k) == str(key):
-                return v
-    return '' # Retorna uma string vazia se não encontrar ou se não for um tipo suportado
-
+        return dictionary.get(key, '')
+    
+    # Se for uma lista de tuplas (como choices do Django)
+    elif isinstance(dictionary, (list, tuple)):
+        # Procura pela chave na lista de tuplas
+        for item in dictionary:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                if str(item[0]) == str(key):
+                    return item[1]
+    
+    return ''
 
 @register.filter
 def abs(value):
@@ -34,3 +43,23 @@ def direction_arrow(value):
             return "↓"  # Seta para baixo
     except (ValueError, TypeError):
         return ""
+
+@register.filter
+def classname(obj):
+    return obj.__class__.__name__
+
+@register.filter
+def subtract(value, arg):
+    return value - arg
+
+@register.filter
+def br_currency(value):
+    """Formata valor como moeda brasileira"""
+    if value is None:
+        return 'R$ 0,00'
+    try:
+        # Converte para float e formata
+        value_float = float(value)
+        return f'R$ {value_float:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+    except (ValueError, TypeError):
+        return 'R$ 0,00'

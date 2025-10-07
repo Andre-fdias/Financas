@@ -5,10 +5,11 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-
+from django.db import models # <-- Adicione esta linha
+from .choices import CATEGORIA_CHOICES
 from .models import (
     ContaBancaria, Entrada, Saida, Transferencia, 
-    Profile, Lembrete, OperacaoSaque
+    Profile, Lembrete, OperacaoSaque, Categoria, Subcategoria
 )
 
 from .choices import TIPO_OPERACAO_CHOICES
@@ -138,63 +139,88 @@ class EntradaForm(forms.ModelForm):
                 raise forms.ValidationError("Valor inválido")
         return valor
 
+from django import forms
+from .models import Saida
+from core.choices import (
+    CATEGORIA_CHOICES, 
+    SUBCATEGORIA_CHOICES,
+    SUBCATEGORIA_PARA_CATEGORIA
+)
 
 class SaidaForm(forms.ModelForm):
     class Meta:
         model = Saida
-        fields = [
-            'nome', 'valor', 'valor_parcela', 'data_lancamento', 'data_vencimento', 'local',
-            'categoria', 'subcategoria', 'forma_pagamento', 'tipo_pagamento_detalhe',
-            'situacao', 'quantidade_parcelas', 'recorrente', 'observacao', 'conta_bancaria'
-        ]
+        # Remover 'usuario' dos fields - será definido automaticamente
+        fields = ['conta_bancaria', 'nome', 'local', 'categoria', 'subcategoria', 
+                 'observacao', 'valor', 'data_lancamento', 'data_vencimento', 
+                 'forma_pagamento', 'tipo_pagamento_detalhe', 'recorrente', 
+                 'quantidade_parcelas', 'valor_parcela', 'situacao']
         widgets = {
-            'nome': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Nome da transação'}),
-            'valor': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'min': '0.01'}),
-            'valor_parcela': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.01', 'readonly': 'readonly'}),
-            'data_lancamento': forms.DateInput(attrs={'type': 'date', 'class': 'form-input', 'max': timezone.now().date().isoformat()}),
-            'data_vencimento': forms.DateInput(attrs={'type': 'date', 'class': 'form-input', 'min': timezone.now().date().isoformat()}),
-            'local': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Local'}),
-            'categoria': forms.Select(attrs={'class': 'form-input'}),
-            'subcategoria': forms.Select(attrs={'class': 'form-input'}),
-            'forma_pagamento': forms.Select(attrs={'class': 'form-input'}),
-            'tipo_pagamento_detalhe': forms.Select(attrs={'class': 'form-input'}),
-            'situacao': forms.Select(attrs={'class': 'form-input'}),
-            'quantidade_parcelas': forms.NumberInput(attrs={'class': 'form-input', 'min': '1'}),
+            'data_lancamento': forms.DateInput(attrs={'type': 'date'}),
+            'data_vencimento': forms.DateInput(attrs={'type': 'date'}),
+            'observacao': forms.Textarea(attrs={'rows': 3}),
+            'valor': forms.TextInput(attrs={'class': 'currency-input'}),
+            'valor_parcela': forms.TextInput(attrs={'class': 'currency-input', 'readonly': 'readonly'}),
             'recorrente': forms.Select(attrs={'class': 'form-input'}),
-            'observacao': forms.Textarea(attrs={'class': 'form-input', 'rows': 3, 'placeholder': 'Observações adicionais'}),
-            'conta_bancaria': forms.Select(attrs={'class': 'form-input'}),
         }
-
+    
     def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
+        # Extrair o parâmetro 'user' antes de chamar o super()
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        if user:
-            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(proprietario=user, ativa=True)
-        # Opcional: se usar categorias/subcategorias do usuário, pode filtrar assim:
-        # self.fields['categoria'].queryset = Categoria.objects.filter(usuario=user)
-        # self.fields['subcategoria'].queryset = Subcategoria.objects.filter(usuario=user)
-
+        
+        # Garantir que as choices sejam carregadas corretamente
+        self.fields['categoria'].choices = [('', 'Selecione uma categoria')] + list(CATEGORIA_CHOICES)
+        self.fields['subcategoria'].choices = [('', 'Selecione uma subcategoria')] + list(SUBCATEGORIA_CHOICES)
+        
+        # Tornar campos opcionais
+        self.fields['subcategoria'].required = False
+        self.fields['local'].required = False
+        self.fields['observacao'].required = False
+        
+        # Filtrar contas bancárias do usuário, se disponível
+        if self.user and 'conta_bancaria' in self.fields:
+            from .models import ContaBancaria
+            self.fields['conta_bancaria'].queryset = ContaBancaria.objects.filter(
+                proprietario=self.user, ativa=True
+            )
+            # Adicionar placeholder
+            self.fields['conta_bancaria'].empty_label = "Selecione uma conta"
+    
     def clean(self):
         cleaned_data = super().clean()
-        data_lancamento = cleaned_data.get('data_lancamento')
-        situacao = cleaned_data.get('situacao')
-        tipo_pagamento = cleaned_data.get('tipo_pagamento_detalhe')
-
-        # Segurança: converte datetime para date
-        if data_lancamento and hasattr(data_lancamento, 'date'):
-            data_lancamento = data_lancamento.date()
-
-        # Validação de data de lançamento
-        if data_lancamento and data_lancamento > timezone.now().date():
-            raise ValidationError({'data_lancamento': 'Data de lançamento não pode ser futura.'})
-
-        # Se for à vista e pago, data de vencimento deve ser igual a data de lançamento
-        if tipo_pagamento == 'avista' and situacao == 'pago':
-            cleaned_data['data_vencimento'] = data_lancamento
-
+        categoria = cleaned_data.get('categoria')
+        subcategoria = cleaned_data.get('subcategoria')
+        
+        # Validar se a subcategoria pertence à categoria
+        if categoria and subcategoria:
+            categoria_da_subcategoria = SUBCATEGORIA_PARA_CATEGORIA.get(subcategoria)
+            if categoria_da_subcategoria and categoria_da_subcategoria != categoria:
+                self.add_error('subcategoria', f'A subcategoria selecionada não pertence à categoria "{dict(CATEGORIA_CHOICES).get(categoria)}"')
+        
         return cleaned_data
+    
+def clean_valor(self):
+    valor = self.cleaned_data.get("valor")
+    if isinstance(valor, str):
+        valor = valor.replace("R$", "").replace(".", "").replace(",", ".").strip()
+        try:
+            valor = Decimal(valor)
+        except (InvalidOperation, ValueError):
+            raise forms.ValidationError("Valor inválido.")
+    return valor
 
-
+    
+    def save(self, commit=True):
+        # Definir o usuário automaticamente antes de salvar
+        saida = super().save(commit=False)
+        if self.user:
+            saida.usuario = self.user
+        
+        if commit:
+            saida.save()
+        
+        return saida
 
 # forms.py - Atualize o formulário
 class TransferenciaForm(forms.ModelForm):
@@ -338,8 +364,22 @@ from django import forms
 from decimal import Decimal, InvalidOperation
 from .models import OperacaoSaque
 from .choices import INSTITUICOES_FINANCEIRAS, TIPO_OPERACAO_CHOICES  # Importe as choices
+from decimal import Decimal, InvalidOperation
+from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from .models import OperacaoSaque
+from .choices import INSTITUICOES_FINANCEIRAS, TIPO_OPERACAO_CHOICES
 
 class OperacaoSaqueForm(forms.ModelForm):
+    # Campos numéricos agora são CharField para aceitar vírgula
+    valor_saque = forms.CharField(max_length=20, required=False)
+    valor_financiado = forms.CharField(max_length=20, required=False)
+    valor_iof = forms.CharField(max_length=20, required=False)
+    valor_liberado_cliente = forms.CharField(max_length=20, required=False)
+    valor_parcela = forms.CharField(max_length=20, required=False)
+    quantidade_parcelas = forms.IntegerField(required=False)
+
     class Meta:
         model = OperacaoSaque
         fields = [
@@ -351,82 +391,76 @@ class OperacaoSaqueForm(forms.ModelForm):
             'data_contratacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
             'data_inicio_parcelas': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
             'data_termino_parcelas': forms.DateInput(attrs={'type': 'date', 'class': 'form-input', 'readonly': 'readonly'}),
-            'nome_banco': forms.Select(choices=INSTITUICOES_FINANCEIRAS, attrs={'class': 'form-input'}),
-            'tipo_operacao': forms.Select(choices=TIPO_OPERACAO_CHOICES, attrs={'class': 'form-input'}),
+            'nome_banco': forms.Select(attrs={'class': 'form-input'}),
+            'tipo_operacao': forms.Select(attrs={'class': 'form-input'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Adicionar classes CSS aos campos
-        for field_name, field in self.fields.items():
-            if field_name not in ['data_contratacao', 'data_inicio_parcelas', 'data_termino_parcelas', 'nome_banco']:
-                field.widget.attrs['class'] = 'form-input'
         
+        # Adiciona choices dinamicamente, se necessário
+        self.fields['nome_banco'].choices = INSTITUICOES_FINANCEIRAS
+        self.fields['tipo_operacao'].choices = TIPO_OPERACAO_CHOICES
+
+        # Adicionar classes CSS aos campos não definidos nos widgets
+        for field_name, field in self.fields.items():
+            if field_name not in ['data_contratacao', 'data_inicio_parcelas', 'data_termino_parcelas', 'nome_banco', 'tipo_operacao', 'quantidade_parcelas']:
+                 field.widget.attrs['class'] = 'form-input monetary-input'
+            if field_name == 'quantidade_parcelas':
+                field.widget.attrs['class'] = 'form-input'
+
         # Configurar placeholder para campos monetários
         monetary_fields = ['valor_saque', 'valor_financiado', 'valor_iof', 'valor_liberado_cliente', 'valor_parcela']
         for field in monetary_fields:
             self.fields[field].widget.attrs['placeholder'] = '0,00'
     
-    def clean_decimal_field(self, value, field_name):
-        """Método auxiliar para limpar campos decimais"""
+    def _clean_decimal_field(self, field_name, value):
+        """Método auxiliar para limpar e validar campos decimais."""
         if not value:
             return None
-            
+        
         try:
             # Remove R$, pontos e converte vírgula para ponto
             value_str = str(value).replace('R$', '').replace('.', '').replace(',', '.').strip()
             return Decimal(value_str)
         except (InvalidOperation, ValueError):
-            raise forms.ValidationError(f'Por favor, insira um valor válido para {field_name}')
-    
-    def clean_valor_saque(self):
-        return self.clean_decimal_field(self.cleaned_data.get('valor_saque'), 'valor do saque')
-    
-    def clean_valor_financiado(self):
-        return self.clean_decimal_field(self.cleaned_data.get('valor_financiado'), 'valor financiado')
-    
-    def clean_valor_iof(self):
-        return self.clean_decimal_field(self.cleaned_data.get('valor_iof'), 'IOF')
-    
-    def clean_valor_liberado_cliente(self):
-        return self.clean_decimal_field(self.cleaned_data.get('valor_liberado_cliente'), 'valor liberado')
-    
-    def clean_valor_parcela(self):
-        return self.clean_decimal_field(self.cleaned_data.get('valor_parcela'), 'valor da parcela')
-    
+            self.add_error(field_name, f'Por favor, insira um valor válido para {field_name.replace("_", " ")}.')
+            return None
+
     def clean(self):
         cleaned_data = super().clean()
-        valor_saque = cleaned_data.get('valor_saque')
-        valor_liberado = cleaned_data.get('valor_liberado_cliente')
-        quantidade_parcelas = cleaned_data.get('quantidade_parcelas')
-        valor_parcela = cleaned_data.get('valor_parcela')
+        
+        # Limpa os campos decimais manualmente
+        valor_saque = self._clean_decimal_field('valor_saque', cleaned_data.get('valor_saque'))
+        valor_financiado = self._clean_decimal_field('valor_financiado', cleaned_data.get('valor_financiado'))
+        valor_iof = self._clean_decimal_field('valor_iof', cleaned_data.get('valor_iof'))
+        valor_liberado_cliente = self._clean_decimal_field('valor_liberado_cliente', cleaned_data.get('valor_liberado_cliente'))
+        valor_parcela = self._clean_decimal_field('valor_parcela', cleaned_data.get('valor_parcela'))
+        
+        # Atualiza o cleaned_data com os valores limpos
+        cleaned_data['valor_saque'] = valor_saque
+        cleaned_data['valor_financiado'] = valor_financiado
+        cleaned_data['valor_iof'] = valor_iof
+        cleaned_data['valor_liberado_cliente'] = valor_liberado_cliente
+        cleaned_data['valor_parcela'] = valor_parcela
+
+        # Validações de negócio
         data_inicio = cleaned_data.get('data_inicio_parcelas')
         data_termino = cleaned_data.get('data_termino_parcelas')
+        quantidade_parcelas = cleaned_data.get('quantidade_parcelas')
         
-        # Validação: valor liberado não pode ser maior que valor do saque
-        if valor_saque and valor_liberado and valor_liberado > valor_saque:
-            raise forms.ValidationError(
-                'O valor liberado não pode ser maior que o valor do saque.'
-            )
+        if valor_saque and valor_liberado_cliente and valor_liberado_cliente > valor_saque:
+            self.add_error('valor_liberado_cliente', 'O valor liberado não pode ser maior que o valor do saque.')
         
-        # Validação: se tem quantidade de parcelas, deve ter valor da parcela
         if quantidade_parcelas and not valor_parcela:
-            raise forms.ValidationError(
-                'Se informar a quantidade de parcelas, deve informar o valor da parcela.'
-            )
+            self.add_error('valor_parcela', 'Se informar a quantidade de parcelas, deve informar o valor da parcela.')
         
-        # Validação: se tem valor da parcela, deve ter quantidade de parcelas
         if valor_parcela and not quantidade_parcelas:
-            raise forms.ValidationError(
-                'Se informar o valor da parcela, deve informar a quantidade de parcelas.'
-            )
-        
-        # Validação: datas consistentes
+            self.add_error('quantidade_parcelas', 'Se informar o valor da parcela, deve informar a quantidade de parcelas.')
+
         if data_inicio and data_termino and data_termino < data_inicio:
-            raise forms.ValidationError(
-                'A data de término das parcelas não pode ser anterior à data de início.'
-            )
-        
+            self.add_error('data_termino_parcelas', 'A data de término das parcelas não pode ser anterior à data de início.')
+
         return cleaned_data
     
 
@@ -440,3 +474,42 @@ class LembreteForm(forms.ModelForm):
             'data_limite': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
             'concluido': forms.CheckboxInput(attrs={'class': 'form-checkbox'}),
         }
+
+
+
+
+
+# Adicione estes formulários ao forms.py
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ['nome']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Nome da categoria',
+                'required': 'required'
+            })
+        }
+
+class SubcategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Subcategoria
+        fields = ['nome', 'categoria']
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Nome da subcategoria',
+                'required': 'required'
+            }),
+            'categoria': forms.Select(attrs={
+                'class': 'form-input',
+                'required': 'required'
+            })
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        if user:
+            self.fields['categoria'].queryset = Categoria.objects.filter(usuario=user)

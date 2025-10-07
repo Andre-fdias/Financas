@@ -1,9 +1,15 @@
-# Bem-vindo ao Sistema de Gestão Financeira
+# Bem-vindo ao FinanceFlow
 
-Esta documentação fornece todos os detalhes técnicos sobre a arquitetura, funcionalidades e guias de desenvolvimento do Sistema de Gestão Financeira.
+Esta é a documentação oficial do FinanceFlow, uma aplicação web de controle financeiro pessoal e empresarial desenvolvida em Django, com interface moderna em Tailwind CSS.
 
-O projeto é construído com **Django** e utiliza **HTMX** para uma experiência de usuário dinâmica e reativa, com um frontend estilizado com **Tailwind CSS**.
+O projeto foi construído com foco em usabilidade, segurança e análise de dados, oferecendo uma experiência de usuário fluida e insights financeiros valiosos.
 
-Um dos principais diferenciais do sistema é seu **painel analítico**, que não apenas exibe o estado financeiro atual, mas também realiza projeções de saldo futuro utilizando modelos de regressão linear da biblioteca **Scikit-learn**.
+## Visão Geral do Projeto
 
-Navegue pelas seções para aprender sobre a instalação, arquitetura e como contribuir para o projeto.
+- **Tecnologias:** Django, Tailwind CSS, Python 3.10+, HTMX.
+- **Funcionalidades Principais:** Gestão de contas, receitas, despesas, transferências, dashboard dinâmico, autenticação de usuários e relatórios avançados.
+- **Diferencial:** O painel analítico utiliza `scikit-learn` para realizar projeções de saldo futuro, ajudando no planejamento financeiro.
+
+Navegue pela documentação utilizando o menu lateral para explorar os guias de instalação, as funcionalidades em detalhe, a estrutura das APIs e mais.
+
+Para começar, recomendamos a leitura da seção de **[Instalação](./instalacao.md)**.

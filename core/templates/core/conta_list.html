@@ -258,41 +258,6 @@
             transform: translateX(-50%);
             z-index: 1001;
         }
-         .titular-diferente {
-        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-        color: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        font-weight: 500;
-        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    }
-    
-    .titular-proprio {
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        color: white;
-        padding: 0.5rem 0.75rem;
-        border-radius: 8px;
-        font-weight: 500;
-        box-shadow: 0 2px 8px rgba(107, 114, 128, 0.3);
-    }
-    
-    .dark .titular-diferente {
-        background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-    }
-    
-    .dark .titular-proprio {
-        background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
-    }
-    
-    .table-row:hover .titular-diferente {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-    }
-    
-    .table-row:hover .titular-proprio {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
-    }
     </style>
 {% endblock %}
 
@@ -450,201 +415,132 @@
         </div>
     </div>
 
-<!-- Accounts Table -->
-<div class="glass-panel overflow-hidden">
-    <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
-            <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
-            Contas Bancárias
-            <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
-                {{ contas|length }} registros
-            </span>
-        </h2>
-    </div>
+    <!-- Accounts Table -->
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
+                Contas Bancárias
+                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                    {{ contas|length }} registros
+                </span>
+            </h2>
+        </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full">
-            <thead class="bg-indigo-50 dark:bg-indigo-900">
-                <tr>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-landmark mr-2"></i>Banco
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-user mr-2"></i>Titular
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-building mr-2"></i>Agência/Conta
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-credit-card mr-2"></i>Tipo
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-money-bill-wave mr-2"></i>Saldo
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-circle mr-2"></i>Status
-                    </th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
-                        <i class="fas fa-cog mr-2"></i>Ações
-                    </th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                {% for conta in contas %}
-                <tr class="table-row hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <!-- Coluna Banco -->
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center dark:bg-indigo-900">
-                                <i class="fas fa-landmark text-indigo-600 dark:text-indigo-300"></i>
-                            </div>
-                            <div class="ml-4">
-                                <div class="font-medium text-gray-900 dark:text-white">{{ conta.get_nome_banco_display }}</div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400">{{ conta.proprietario.username }}</div>
-                            </div>
-                        </div>
-                    </td>
-                    
-                    <!-- NOVA COLUNA: Titular -->
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                            {% if conta.nome_do_titular %}
-                                <div class="bg-blue-100 p-2 rounded-lg dark:bg-blue-900">
-                                    <div class="text-sm font-medium text-blue-800 dark:text-blue-200">
-                                        <i class="fas fa-user-tie mr-1"></i>
-                                        {{ conta.nome_do_titular }}
-                                    </div>
-                                    <div class="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                                        Titular Diferente
-                                    </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-indigo-50 dark:bg-indigo-900">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-landmark mr-2"></i>Banco
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-building mr-2"></i>Agência/Conta
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-credit-card mr-2"></i>Tipo
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Saldo
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-circle mr-2"></i>Status
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">
+                            <i class="fas fa-cog mr-2"></i>Ações
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for conta in contas %}
+                    <tr class="table-row hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center dark:bg-indigo-900">
+                                    <i class="fas fa-landmark text-indigo-600 dark:text-indigo-300"></i>
                                 </div>
+                                <div class="ml-4">
+                                    <div class="font-medium text-gray-900 dark:text-white">{{ conta.get_nome_banco_display }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ conta.proprietario.username }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {% if conta.agencia and conta.numero_conta %}
+                                {{ conta.agencia }}/{{ conta.numero_conta }}
                             {% else %}
-                                <div class="bg-gray-100 p-2 rounded-lg dark:bg-gray-700">
-                                    <div class="text-sm text-gray-600 dark:text-gray-300">
-                                        <i class="fas fa-user mr-1"></i>
-                                        {{ conta.proprietario.get_full_name|default:conta.proprietario.username }}
-                                    </div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                        Próprio Usuário
-                                    </div>
-                                </div>
+                                -
                             {% endif %}
-                        </div>
-                    </td>
-                    
-                    <!-- Coluna Agência/Conta -->
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                        {% if conta.agencia and conta.numero_conta %}
-                            <div class="flex flex-col">
-                                <span class="font-medium">Ag: {{ conta.agencia }}</span>
-                                <span class="text-gray-500 dark:text-gray-400">C/C: {{ conta.numero_conta }}</span>
-                            </div>
-                        {% elif conta.numero_cartao %}
-                            <div class="flex flex-col">
-                                <span class="font-medium">Cartão</span>
-                                <span class="text-gray-500 dark:text-gray-400">•••• •••• •••• {{ conta.numero_cartao|slice:"-4:" }}</span>
-                            </div>
-                        {% else %}
-                            <span class="text-gray-400 dark:text-gray-500">-</span>
-                        {% endif %}
-                    </td>
-                    
-                    <!-- Coluna Tipo -->
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold 
-                                    {% if conta.tipo == 'corrente' %}bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200
-                                    {% elif conta.tipo == 'poupanca' %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                    {% elif conta.tipo == 'credito' %}bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200
-                                    {% elif conta.tipo == 'investimento' %}bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                                    {% else %}bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200{% endif %}">
-                            <i class="fas 
-                                {% if conta.tipo == 'corrente' %}fa-building
-                                {% elif conta.tipo == 'poupanca' %}fa-piggy-bank
-                                {% elif conta.tipo == 'credito' %}fa-credit-card
-                                {% elif conta.tipo == 'investimento' %}fa-chart-line
-                                {% else %}fa-wallet{% endif %} mr-1"></i>
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             {{ conta.get_tipo_display }}
-                        </span>
-                    </td>
-                    
-                    <!-- Coluna Saldo -->
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="{% if conta.saldo_atual >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
-                            {{ conta.saldo_atual|br_currency }}
-                        </span>
-                        {% if conta.limite_cartao %}
-                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Limite: {{ conta.limite_cartao|br_currency }}
-                            </div>
-                        {% endif %}
-                    </td>
-                    
-                    <!-- Coluna Status -->
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        {% if conta.ativa %}
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                <i class="fas fa-check-circle mr-1"></i> Ativa
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="{% if conta.saldo_atual >= 0 %}valor-positivo{% else %}valor-negativo{% endif %}">
+                                {{ conta.saldo_atual|br_currency }}
                             </span>
-                        {% else %}
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                                <i class="fas fa-ban mr-1"></i> Inativa
-                            </span>
-                        {% endif %}
-                    </td>
-                    
-                    <!-- Coluna Ações -->
+                        </td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if conta.ativa %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    <i class="fas fa-check-circle mr-1"></i> Ativa
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    <i class="fas fa-ban mr-1"></i> Inativa
+                                </span>
+                            {% endif %}
+                        </td>
+                        
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div class="flex items-center space-x-2">
-                            <!-- Botão Editar -->
+                          <div class="flex items-center space-x-2">
                             <a href="#" class="text-blue-600 hover:text-blue-800 transition-colors flex items-center dark:text-blue-400 dark:hover:text-blue-300 edit-conta-btn"
-                               data-conta-id="{{ conta.pk }}"
-                               data-conta-banco="{{ conta.nome_banco }}"
-                               data-conta-tipo="{{ conta.tipo }}"
-                               data-conta-agencia="{{ conta.agencia|default:'' }}"
-                               data-conta-numero="{{ conta.numero_conta|default:'' }}"
-                               data-conta-saldo="{{ conta.saldo_atual }}"
-                               data-conta-numero-cartao="{{ conta.numero_cartao|default:'' }}"
-                               data-conta-limite="{{ conta.limite_cartao|default:'' }}"
-                               data-conta-fechamento="{{ conta.dia_fechamento_fatura|default:'' }}"
-                               data-conta-vencimento="{{ conta.dia_vencimento_fatura|default:'' }}"
-                               data-conta-ativa="{{ conta.ativa|yesno:'True,False' }}"
-                               data-conta-nome-titular="{{ conta.nome_do_titular|default:'' }}"
-                               title="Editar conta">
+                            data-conta-id="{{ conta.pk }}"
+                            data-conta-banco="{{ conta.nome_banco }}"
+                            data-conta-tipo="{{ conta.tipo }}"
+                            data-conta-agencia="{{ conta.agencia|default:'' }}"
+                            data-conta-numero="{{ conta.numero_conta|default:'' }}"
+                            data-conta-saldo="{{ conta.saldo_atual }}"
+                            data-conta-numero-cartao="{{ conta.numero_cartao|default:'' }}"
+                            data-conta-limite="{{ conta.limite_cartao|default:'' }}"
+                            data-conta-fechamento="{{ conta.dia_fechamento_fatura|default:'' }}"
+                            data-conta-vencimento="{{ conta.dia_vencimento_fatura|default:'' }}"
+                            data-conta-ativa="{{ conta.ativa|yesno:'True,False' }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                            
+                           
                             </a>
-                            
-                            <!-- Botão Excluir -->
                             <button class="text-red-600 hover:text-red-800 transition-colors flex items-center dark:text-red-400 dark:hover:text-red-300 delete-conta-btn"
                                     data-conta-id="{{ conta.pk }}"
-                                    data-conta-nome="{{ conta.get_nome_banco_display }}"
-                                    data-conta-titular="{{ conta.nome_do_titular|default:conta.proprietario.username }}"
-                                    title="Excluir conta">
+                                    data-conta-nome="{{ conta.get_nome_banco_display }}">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
-                             
+                           
                             </button>
                         </div>
                     </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" class="px-6 py-12 text-center">
-                        <div class="text-gray-400 dark:text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-4"></i>
-                            <p class="text-lg font-medium">Nenhuma conta encontrada</p>
-                            <p class="text-sm">Tente ajustar os filtros ou adicione novas contas</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <div class="text-gray-400 dark:text-gray-500">
+                                <i class="fas fa-inbox text-4xl mb-4"></i>
+                                <p class="text-lg font-medium">Nenhuma conta encontrada</p>
+                                <p class="text-sm">Tente ajustar os filtros ou adicione novas contas</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 </div>
 
 <!-- Loading Spinner -->
@@ -801,18 +697,7 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Nome do Titular -->
-                <div class="input-group">
-                    <label for="id_nome_do_titular" class="form-label flex items-center">
-                        <i class="fas fa-user mr-2 text-blue-500"></i>
-                        Nome do Titular
-                    </label>
-                    <input type="text" id="id_nome_do_titular" name="nome_do_titular" class="form-input" 
-                        placeholder="Nome do titular (se diferente do usuário)">
-                    <p class="form-error" id="nome_do_titular_error"></p>
-                </div>
-                    
+    
                 <!-- Status da Conta (Ativa/Inativa) -->
                 <div class="input-group">
                     <label class="form-label">Status da Conta</label>
@@ -985,17 +870,6 @@
                             <p class="form-error" id="edit_dia_vencimento_fatura_error"></p>
                         </div>
                     </div>
-                </div>
-
-                <!-- Nome do Titular -->
-                <div class="input-group">
-                    <label for="edit_nome_do_titular" class="form-label flex items-center">
-                        <i class="fas fa-user mr-2 text-blue-500"></i>
-                        Nome do Titular
-                    </label>
-                    <input type="text" id="edit_nome_do_titular" name="nome_do_titular" class="form-input" 
-                        placeholder="Nome do titular (se diferente do usuário)">
-                    <p class="form-error" id="edit_nome_do_titular_error"></p>
                 </div>
     
                 <!-- Status da Conta (Ativa/Inativa) -->
@@ -1340,28 +1214,21 @@
             const deleteModalTitle = document.getElementById('deleteModalTitle');
             const deleteModalMessage = document.getElementById('deleteModalMessage');
 
-            // Na função showDeleteModal, atualize para:
-            function showDeleteModal(contaId, contaNome, contaTitular) {
+            // Função para mostrar o modal de exclusão
+            function showDeleteModal(contaId, contaNome) {
                 deleteModalTitle.textContent = 'Confirmar Exclusão';
-                let message = `Tem certeza de que deseja excluir a conta "${contaNome}"`;
-                if (contaTitular) {
-                    message += ` (Titular: ${contaTitular})`;
-                }
-                message += '? Esta ação não pode ser desfeita.';
-                
-                deleteModalMessage.textContent = message;
+                deleteModalMessage.textContent = `Tem certeza de que deseja excluir a conta "${contaNome}"? Esta ação não pode ser desfeita.`;
                 deleteContaForm.action = `/contas/${contaId}/excluir/`;
                 showGenericModal(deleteContaModal);
             }
 
-            // E no event listener dos botões de exclusão:
+            // Event listeners para botões de exclusão
             document.querySelectorAll('.delete-conta-btn').forEach(btn => {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const contaId = this.getAttribute('data-conta-id');
                     const contaNome = this.getAttribute('data-conta-nome');
-                    const contaTitular = this.getAttribute('data-conta-titular');
-                    showDeleteModal(contaId, contaNome, contaTitular);
+                    showDeleteModal(contaId, contaNome);
                 });
             });
 
@@ -1602,8 +1469,7 @@
             document.getElementById('edit_tipo').value = contaData.tipo;
             document.getElementById('edit_agencia').value = contaData.agencia;
             document.getElementById('edit_numero_conta').value = contaData.numero;
-            document.getElementById('edit_nome_do_titular').value = contaData.nomeTitular || '';
-
+            
             const saldoValue = parseFloat(contaData.saldo);
             document.getElementById('edit_saldo_atual').value = saldoValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
