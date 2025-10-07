@@ -3,8 +3,7 @@ from .base import *
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-# Configure os hosts permitidos para produção
-ALLOWED_HOSTS = ['seu-dominio.com', 'www.seu-dominio.com', 'localhost']
+# ALLOWED_HOSTS é configurado via variável de ambiente no base.py
 
 # Configurações de segurança para HTTPS e cookies seguros
 SESSION_COOKIE_SECURE = True
