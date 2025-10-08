@@ -66,7 +66,7 @@ pip install mkdocs mkdocs-material
 # Sirva a documentação
 mkdocs serve
 ```
-Acesse a documentação em: [http://localhost:8000](http://localhost:8000)
+Acesse a documentação em: [https://andre-fdias.github.io/Financas/](https://andre-fdias.github.io/Financas/)
 
 ## 🏗️ Arquitetura
 
@@ -86,3 +86,4 @@ Certifique-se de atualizar os testes conforme apropriado.
 ## 📄 Licença
 
 Este projeto está licenciado sob a [MIT License](LICENSE).
+
