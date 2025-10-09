@@ -10,16 +10,10 @@ sqlparse==0.5.3
 # ======================================================
 psycopg2-binary==2.9.10
 dj-database-url==3.0.1
+django-redis==5.4.0
 
 # ======================================================
-# 🎨 FRONTEND / TEMPLATES / UTILITÁRIOS
-# ======================================================
-django-widget-tweaks==1.5.0
-django-htmx==1.23.2
-django-tailwind==4.2.0
-
-# ======================================================
-# 🌐 CORS / APIs
+# 🌐 CORS / API / AUTENTICAÇÃO
 # ======================================================
 django-cors-headers==4.4.0
 djangorestframework==3.15.1
@@ -32,24 +26,36 @@ python-decouple==3.8
 django-environ==0.4.5
 
 # ======================================================
-# 🖼️ ARQUIVOS ESTÁTICOS E MÍDIA
+# 🖼️ ARQUIVOS ESTÁTICOS / MÍDIA / UI
 # ======================================================
 whitenoise==6.9.0
 Pillow==11.3.0
+django-widget-tweaks==1.5.0
+django-htmx==1.23.2
+django-tailwind==4.2.0
 
 # ======================================================
-# 🩺 HEALTH CHECK / MONITORAMENTO / LOGS
+# 🩺 MONITORAMENTO / LOGS / SEGURANÇA
 # ======================================================
 django-health-check==3.18.1
 sentry-sdk==2.3.1
 
 # ======================================================
-# 🦄 SERVIDOR DE PRODUÇÃO (Render)
+# 🦄 SERVIDOR DE PRODUÇÃO
 # ======================================================
 gunicorn==23.0.0
 
 # ======================================================
-# ⚙️ OPCIONAIS RECOMENDADOS (para PDF, relatórios e utilitários)
+# ⚙️ UTILITÁRIOS E BIBLIOTECAS DE APOIO
+# ======================================================
+requests==2.32.4
+urllib3==2.5.0
+certifi==2025.10.5
+packaging==25.0
+tzdata==2025.2
+
+# ======================================================
+# 🧾 RELATÓRIOS, PDF E TEXTOS
 # ======================================================
 reportlab==4.4.4
 xhtml2pdf==0.2.17
@@ -57,10 +63,52 @@ arabic-reshaper==3.0.0
 python-bidi==0.6.6
 
 # ======================================================
-# 📦 OUTRAS DEPENDÊNCIAS ESSENCIAIS
+# 🧪 DESENVOLVIMENTO / TESTES / QUALIDADE DE CÓDIGO
 # ======================================================
-requests==2.32.4
-urllib3==2.5.0
-certifi==2025.10.5
+pytest==8.2.2
+pytest-django==4.8.0
+black==25.9.0
+flake8==7.3.0
+isort==6.1.0
+factory-boy==3.3.0
+Faker==37.8.0
+coverage==7.5.4
+
+# ======================================================
+# 📘 DOCUMENTAÇÃO / MKDOCS
+# ======================================================
+mkdocs==1.6.0
+mkdocs-material==9.5.26
+mkdocs-material-extensions==1.3.1
+mkdocs-get-deps==0.2.0
+ghp-import==2.1.0
+
+# ======================================================
+# 🔤 SUPORTE A PDF / FONTS / RENDERIZAÇÃO HTML
+# ======================================================
+svglib==1.6.0
+tinycss2==1.4.0
+cssselect2==0.8.0
+html5lib==1.1
+webencodings==0.5.1
+lxml==6.0.2
+
+# ======================================================
+# 📦 OUTRAS DEPENDÊNCIAS DE SUPORTE
+# ======================================================
+PyYAML==6.0.2
+redis==6.4.0
+typing_extensions==4.12.2
+idna==3.10
+six==1.17.0
+colorama==0.4.6
+click==8.2.1
+pathspec==0.12.1
+platformdirs==4.4.0
+mccabe==0.7.0
+pycodestyle==2.14.0
+pyflakes==3.4.0
+iniconfig==2.1.0
+pluggy==1.6.0
+python-dateutil==2.9.0.post0
 packaging==25.0
-tzdata==2025.2
