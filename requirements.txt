@@ -14,7 +14,7 @@ dj-database-url==2.2.0
 gunicorn==22.0.0
 mkdocs==1.6.0
 mkdocs-material==9.5.26
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 python-decouple==3.8
 soupsieve==2.5
 sqlparse==0.5.0
