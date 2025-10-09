@@ -146,7 +146,25 @@ def converter_moeda_para_decimal(valor_str):
 
 @login_required
 def home(request):
-    return render(request, 'core/home.html')
+    user = request.user
+    hoje = dj_timezone.now().date()
+
+    # Calcular estatísticas para os cards
+    contas_ativas = ContaBancaria.objects.filter(proprietario=user, ativa=True).count()
+    saldo_total = ContaBancaria.objects.filter(proprietario=user, ativa=True).aggregate(total=Sum('saldo_atual'))['total'] or Decimal('0.00')
+    lembretes_pendentes = Lembrete.objects.filter(user=user, concluido=False, data_limite__gte=hoje).count()
+    
+    entradas_hoje = Entrada.objects.filter(usuario=user, data=hoje).count()
+    saidas_hoje = Saida.objects.filter(usuario=user, data_lancamento=hoje).count()
+    transacoes_hoje = entradas_hoje + saidas_hoje
+
+    context = {
+        'contas_ativas': contas_ativas,
+        'saldo_total': saldo_total,
+        'lembretes_pendentes': lembretes_pendentes,
+        'transacoes_hoje': transacoes_hoje,
+    }
+    return render(request, 'core/home.html', context)
 
 def register(request):
     if request.method == 'POST':

@@ -58,6 +58,12 @@ INSTALLED_APPS = [
     'theme',
     'django_htmx',
     'widget_tweaks',
+    
+    # API libs
+    'corsheaders',
+    'rest_framework',
+    'rest_framework_simplejwt',
+
     'health_check',  # Adicione esta linha
     'health_check.db',  # E esta para o DB check
    
@@ -71,6 +77,7 @@ INTERNAL_IPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware', # whitenoise
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -205,6 +212,50 @@ LOGGING = {
     },
 }
 
+
+# ================================================================
+# API, JWT & CORS CONFIGURATION
+# ================================================================
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8081", # React Native Metro
+]
+
+# Se você precisar permitir todos os domínios (NÃO RECOMENDADO PARA PRODUÇÃO)
+# CORS_ALLOW_ALL_ORIGINS = True
+
+
+# ================================================================
+# CACHE CONFIGURATION
+# ================================================================
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": config('REDIS_URL', default="redis://127.0.0.1:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
 
 # ================================================================
 # SEGURANÇA E SESSÕES

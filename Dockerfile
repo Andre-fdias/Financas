@@ -1,30 +1,23 @@
-# syntax=docker/dockerfile:1
+# Use a imagem oficial do Python
+FROM python:3.9-slim
 
-# Base image
-FROM python:3.12-slim
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Install system dependencies including Node.js and npm
-RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create a non-root user
-RUN addgroup --system app && adduser --system --group app
-
-# Set work directory
+# Define o diretório de trabalho
 WORKDIR /app
 
-# Install Python dependencies
-COPY requirements.txt /app/
+# Copia os arquivos de dependências
+COPY requirements.txt .
+
+# Instala as dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY . /app/
+# Copia o restante do código da aplicação
+COPY . .
+
+# Expõe a porta que o Gunicorn irá rodar
+EXPOSE 8000
+
+# Comando para rodar a aplicação
+CMD ["gunicorn", "--bind", ":8000", "--workers", "3", "financas.wsgi:application"]
 
 # --- Build Tailwind CSS ---
 # Install npm dependencies

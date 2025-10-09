@@ -1,6 +1,6 @@
 # FinanceFlow
 
-FinanceFlow é uma aplicação web de controle financeiro pessoal e empresarial desenvolvida em Django, com interface moderna em Tailwind CSS.
+FinanceFlow é uma aplicação web de controle financeiro pessoal e empresarial desenvolvida em Django, com interface moderna em Tailwind CSS, e um aplicativo Android nativo em Kotlin.
 
 ## Visão Geral
 
@@ -16,6 +16,8 @@ A documentação completa (instalação, APIs, tutoriais e exemplos) está dispo
 
 ## Instalação Rápida
 
+### Backend (Django)
+
 ```
 git clone https://github.com/seuusuario/financeflow.git
 cd financeflow
@@ -24,11 +26,19 @@ python manage.py migrate
 python manage.py runserver
 ```
 
+### Android App
+
+1. Abra o projeto `android_app` no Android Studio.
+2. Configure o emulador ou um dispositivo físico.
+3. Execute o aplicativo.
+
 ## Tecnologias
 
 - Django
 - Tailwind CSS
 - Python 3.10+
+- Kotlin
+- Android
 
 ## Contribuindo
 
