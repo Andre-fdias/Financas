@@ -113,3 +113,5 @@ watchdog==6.0.0
 webencodings==0.5.1
 whitenoise==6.9.0
 xhtml2pdf==0.2.17
+django-axes==8.0.0
+sib-api-v3-sdk==7.6.0

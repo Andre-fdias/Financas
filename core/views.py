@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 
 from .forms import CustomUserCreationForm, ProfileUpdateForm,LembreteForm
+from .utils.email_utils import send_email_brevo
 
 from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth.decorators import login_required
@@ -162,16 +163,8 @@ def custom_login_view(request):
             messages.success(request, 'Login realizado com sucesso!')
             return redirect('core:dashboard')  # ou a página que você quiser redirecionar
         else:
-            # Verificar se o usuário existe no sistema
-            from django.contrib.auth.models import User
-            try:
-                user_exists = User.objects.get(username=username)
-                # Usuário existe, mas senha está errada
-                messages.error(request, 'Senha incorreta. Tente novamente.')
-            except User.DoesNotExist:
-                # Usuário não existe
-                messages.error(request, 'Usuário não cadastrado. Verifique suas credenciais.')
-            
+            # Mensagem de erro genérica para evitar enumeração de usuários
+            messages.error(request, 'Usuário ou senha incorretos.')
             return render(request, 'core/login.html')
     
     return render(request, 'core/login.html')
@@ -203,9 +196,20 @@ def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            form.save()
+            user = form.save()
             username = form.cleaned_data.get('username')
-            messages.success(request, f'Conta criada para {username}! Faça login para continuar.')
+            
+            try:
+                send_email_brevo(
+                    to_email=user.email,
+                    subject="Bem-vindo ao Finanças Pessoais!",
+                    html_content=f"<h3>Olá {user.username},</h3><p>Sua conta foi criada com sucesso. Bem-vindo(a) ao nosso sistema!</p>"
+                )
+                messages.success(request, f'Conta criada para {username}! Um e-mail de boas-vindas foi enviado. Faça login para continuar.')
+            except Exception as e:
+                print(f"Erro ao enviar e-mail de boas-vindas: {e}")
+                messages.warning(request, f'Conta criada para {username}, porém não foi possível enviar o e-mail de boas-vindas. Faça seu login para continuar.')
+            
             return redirect('core:login')
     else:
         form = CustomUserCreationForm()

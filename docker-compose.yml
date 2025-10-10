@@ -1,8 +1,20 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - monitoring_net
+
   app:
     build: .
+    env_file: .env
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -10,6 +22,7 @@ services:
       - "8000:8000"
     depends_on:
       - redis
+      - db
     networks:
       - monitoring_net
 
@@ -65,3 +78,4 @@ networks:
 
 volumes:
   grafana-data:
+  postgres_data:

@@ -33,11 +33,8 @@ COPY . .
 # Copia os assets construídos do estágio anterior
 COPY --from=frontend-builder /app/theme/static/css/dist/styles.css theme/static/css/styles.css
 
-# Fornece variáveis de ambiente temporárias para o collectstatic
-COPY .env.docker .env
-
 # Coleta os arquivos estáticos do Django
-RUN python manage.py collectstatic --noinput
+RUN SECRET_KEY=dummy-key-for-build-only python manage.py collectstatic --noinput
 
 # Expõe a porta
 EXPOSE 8000
