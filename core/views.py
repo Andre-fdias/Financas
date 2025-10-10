@@ -144,6 +144,39 @@ def converter_moeda_para_decimal(valor_str):
 # VIEWS DA APLICAÇÃO
 # ================================================================
 
+from django.contrib import messages
+from django.contrib.auth import authenticate, login
+from django.shortcuts import render, redirect
+
+def custom_login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        # Verificar se o usuário existe
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            # Login bem-sucedido
+            login(request, user)
+            messages.success(request, 'Login realizado com sucesso!')
+            return redirect('core:dashboard')  # ou a página que você quiser redirecionar
+        else:
+            # Verificar se o usuário existe no sistema
+            from django.contrib.auth.models import User
+            try:
+                user_exists = User.objects.get(username=username)
+                # Usuário existe, mas senha está errada
+                messages.error(request, 'Senha incorreta. Tente novamente.')
+            except User.DoesNotExist:
+                # Usuário não existe
+                messages.error(request, 'Usuário não cadastrado. Verifique suas credenciais.')
+            
+            return render(request, 'core/login.html')
+    
+    return render(request, 'core/login.html')
+
+
 @login_required
 def home(request):
     user = request.user

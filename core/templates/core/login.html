@@ -5,39 +5,216 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login | Financas Pessoais</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .form-input:focus {
       border-color: #22c55e;
       box-shadow: 0 0 0 2px #bbf7d0;
     }
+    
+    /* Sistema de Mensagens Melhorado */
+    .message-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .message {
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: flex-start;
+      animation: slideIn 0.3s ease-out;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .message::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 4px;
+    }
+    
+    .message-success {
+      background-color: #f0fdf4;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+    
+    .message-success::before {
+      background-color: #22c55e;
+    }
+    
+    .message-error {
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    
+    .message-error::before {
+      background-color: #ef4444;
+    }
+    
+    .message-warning {
+      background-color: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fed7aa;
+    }
+    
+    .message-warning::before {
+      background-color: #f59e0b;
+    }
+    
+    .message-info {
+      background-color: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+    
+    .message-info::before {
+      background-color: #3b82f6;
+    }
+    
+    .message-icon {
+      margin-right: 12px;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+    
+    .message-content {
+      flex-grow: 1;
+    }
+    
+    .message-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .message-text {
+      font-size: 14px;
+    }
+    
+    .message-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: inherit;
+      opacity: 0.7;
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    
+    .message-close:hover {
+      opacity: 1;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+      to {
+        opacity: 0;
+      }
+    }
+    
+    .message.hiding {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    
+    /* Para telas menores */
+    @media (max-width: 640px) {
+      .message-container {
+        right: 10px;
+        left: 10px;
+        width: auto;
+      }
+    }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center bg-cover bg-center relative" style="background-image: url(
+<body class="min-h-screen flex items-center justify-center bg-cover bg-center relative" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=900&q=80');">
 
-  <!-- No topo do template login.html -->
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-    <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
-        {{ message }}
-        <button type="button" class="close" data-dismiss="alert">
-            <span>&times;</span>
-        </button>
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
+  <!-- Container para mensagens -->
+  <div class="message-container" id="messageContainer">
+    {% if messages %}
+      {% for message in messages %}
+        {% if message.tags == 'success' %}
+          <div class="message message-success">
+            <div class="message-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="message-content">
+              <div class="message-title">Sucesso!</div>
+              <div class="message-text">{{ message }}</div>
+            </div>
+            <button class="message-close" onclick="closeMessage(this)">×</button>
+          </div>
+        {% elif message.tags == 'error' %}
+          <div class="message message-error">
+            <div class="message-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="message-content">
+              <div class="message-title">Erro!</div>
+              <div class="message-text">{{ message }}</div>
+            </div>
+            <button class="message-close" onclick="closeMessage(this)">×</button>
+          </div>
+        {% elif message.tags == 'warning' %}
+          <div class="message message-warning">
+            <div class="message-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="message-content">
+              <div class="message-title">Atenção!</div>
+              <div class="message-text">{{ message }}</div>
+            </div>
+            <button class="message-close" onclick="closeMessage(this)">×</button>
+          </div>
+        {% else %}
+          <div class="message message-info">
+            <div class="message-icon"><i class="fas fa-info-circle"></i></div>
+            <div class="message-content">
+              <div class="message-title">Informação</div>
+              <div class="message-text">{{ message }}</div>
+            </div>
+            <button class="message-close" onclick="closeMessage(this)">×</button>
+          </div>
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+    
+    {% if form.errors %}
+      <div class="message message-error">
+        <div class="message-icon"><i class="fas fa-exclamation-circle"></i></div>
+        <div class="message-content">
+          <div class="message-title">Erro de Validação</div>
+          <div class="message-text">
+            {% for field, errors in form.errors.items %}
+              {% for error in errors %}
+                {{ error }}<br>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+        <button class="message-close" onclick="closeMessage(this)">×</button>
+      </div>
+    {% endif %}
+  </div>
 
-{% if form.errors %}
-<div class="alert alert-danger">
-    <strong>Erro:</strong> Por favor, corrija os erros abaixo.
-</div>
-{% endif %}
-  
-  
-  
-  
-  
   <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"></div>
   <div class="relative z-10 flex flex-col md:flex-row w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl bg-transparent my-8">
     <!-- Branding e texto -->
@@ -52,16 +229,15 @@
     <!-- Card Login -->
     <div class="flex-1 flex items-center justify-center">
       <div class="w-full max-w-md rounded-xl p-8 shadow-lg bg-gray-900 bg-opacity-80 backdrop-blur-md">
-        <form method="post">
-          <!-- ATENÇÃO: Use {% csrf_token %} se for Django -->
-          <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <form method="post" id="loginForm">
+          {% csrf_token %}
           <h2 class="text-2xl font-bold text-green-100 mb-8 text-center tracking-wide">Entrar</h2>
           <!-- Usuário ou Email -->
           <div class="mb-5">
             <label for="id_username" class="block text-green-200 font-semibold mb-1">Usuário ou Email</label>
             <input type="text" id="id_username" name="username" placeholder="Digite seu usuário ou email"
                    class="form-input w-full px-4 py-2 rounded-md border border-gray-700 text-gray-100 bg-gray-800 placeholder-gray-400 focus:outline-none focus:border-green-400 transition"
-                   required autocomplete="username">
+                   required autocomplete="username" value="{{ form.username.value|default:'' }}">
           </div>
           <!-- Senha -->
           <div class="mb-5">
@@ -72,7 +248,6 @@
           </div>
           <div class="flex justify-end mb-6">
             <a href="{% url 'core:password_reset' %}" class="text-sm text-green-300 hover:underline">Esqueceu a senha?</a>
-
           </div>
           <button type="submit"
                   class="w-full bg-green-600 text-white py-2 rounded-md font-semibold hover:bg-green-700 transition focus:ring-2 focus:ring-green-400 mb-3 shadow">
@@ -86,5 +261,84 @@
       </div>
     </div>
   </div>
+
+  <script>
+    // Função para fechar mensagem
+    function closeMessage(closeButton) {
+      const messageEl = closeButton.closest('.message');
+      
+      // Adicionar classe de animação de saída
+      messageEl.classList.add('hiding');
+      
+      // Remover após a animação
+      setTimeout(() => {
+        messageEl.remove();
+      }, 300);
+    }
+    
+    // Fechar automaticamente as mensagens após 5 segundos
+    document.addEventListener('DOMContentLoaded', function() {
+      const messages = document.querySelectorAll('.message');
+      messages.forEach(message => {
+        setTimeout(() => {
+          const closeBtn = message.querySelector('.message-close');
+          if (closeBtn) {
+            closeMessage(closeBtn);
+          }
+        }, 5000);
+      });
+    });
+    
+    // Validação adicional do formulário
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      const username = document.getElementById('id_username').value.trim();
+      const password = document.getElementById('id_password').value.trim();
+      
+      if (!username || !password) {
+        e.preventDefault();
+        showMessage('error', 'Campos obrigatórios', 'Por favor, preencha todos os campos.');
+      }
+    });
+    
+    // Função para exibir mensagens (para validação frontend)
+    function showMessage(type, title, text, duration = 5000) {
+      const container = document.getElementById('messageContainer');
+      
+      // Criar elemento da mensagem
+      const messageEl = document.createElement('div');
+      messageEl.className = `message message-${type}`;
+      
+      // Ícones para cada tipo de mensagem
+      const icons = {
+        success: '<i class="fas fa-check-circle"></i>',
+        error: '<i class="fas fa-exclamation-circle"></i>',
+        warning: '<i class="fas fa-exclamation-triangle"></i>',
+        info: '<i class="fas fa-info-circle"></i>'
+      };
+      
+      // Conteúdo da mensagem
+      messageEl.innerHTML = `
+        <div class="message-icon">${icons[type]}</div>
+        <div class="message-content">
+          <div class="message-title">${title}</div>
+          <div class="message-text">${text}</div>
+        </div>
+        <button class="message-close" onclick="closeMessage(this)">×</button>
+      `;
+      
+      // Adicionar à página
+      container.appendChild(messageEl);
+      
+      // Remover automaticamente após o tempo especificado
+      if (duration > 0) {
+        setTimeout(() => {
+          const closeBtn = messageEl.querySelector('.message-close');
+          if (closeBtn) {
+            closeMessage(closeBtn);
+          }
+        }, duration);
+      }
+    }
+  </script>
 </body>
 </html>

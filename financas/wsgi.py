@@ -1,16 +1,19 @@
 """
 WSGI config for financas project.
-
-It exposes the WSGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/5.2/howto/deployment/wsgi/
 """
 
 import os
-
+from decouple import config
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'financas.settings.development')
+# Para WSGI (produção), sempre use production settings
+settings_module = config(
+    'DJANGO_SETTINGS_MODULE', 
+    default='financas.settings.production'
+)
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', settings_module)
 
 application = get_wsgi_application()
+
+print(f"✅ WSGI Application carregada com settings: {settings_module}")
