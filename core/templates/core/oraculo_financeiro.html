@@ -1,0 +1,175 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Oráculo Financeiro - Análise Inteligente{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- FullCalendar CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    <style>
+
+
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Oráculo Financeiro</h1>
+        <p class="text-gray-600 mb-8">Análise inteligente das suas finanças em {{ hoje }}</p>
+        
+        <!-- Resumo Financeiro -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-blue-800">Saldo Total</h3>
+                <p class="text-2xl font-bold text-blue-600">R$ {{ saldo_total|floatformat:2 }}</p>
+            </div>
+            
+            <div class="bg-green-50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-green-800">Entrada Média Mensal</h3>
+                <p class="text-2xl font-bold text-green-600">R$ {{ media_entradas_mensal|floatformat:2 }}</p>
+            </div>
+            
+            <div class="bg-red-50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-red-800">Saída Média Mensal</h3>
+                <p class="text-2xl font-bold text-red-600">R$ {{ media_saidas_mensal|floatformat:2 }}</p>
+            </div>
+            
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <h3 class="text-lg font-semibold text-purple-800">Meses de Reserva</h3>
+                <p class="text-2xl font-bold text-purple-600">{{ meses_reserva|floatformat:1 }}</p>
+            </div>
+        </div>
+        
+        <!-- Metas do Usuário -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Suas Metas Financeiras</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {% for meta in metas_usuario %}
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-gray-800">{{ meta.nome }}</h3>
+                        <span class="text-sm font-medium {% if meta.atingida %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if meta.atingida %}✓ Concluída{% else %}⏳ Pendente{% endif %}
+                        </span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div class="bg-{% if meta.atingida %}green{% else %}blue{% endif %}-500 h-2 rounded-full" 
+                             style="width: {% if meta.nome == 'Zerar dívidas' %}{% if meta.valor == 0 %}100{% else %}0{% endif %}%{% else %}{% widthratio meta.valor meta.meta 100 %}%{% endif %}"></div>
+                    </div>
+                    <p class="text-sm text-gray-600">
+                        {% if meta.nome == 'Zerar dívidas' %}
+                            Dívidas: R$ {{ meta.valor|floatformat:2 }}
+                        {% else %}
+                            {{ meta.valor|floatformat:1 }}/{{ meta.meta }}
+                        {% endif %}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Insights -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Insights Financeiros</h2>
+            
+            {% if insights %}
+                <div class="space-y-4">
+                    {% for insight in insights %}
+                    <div class="p-4 rounded-lg border-l-4 {% if insight.tipo == 'perigo' %}bg-red-50 border-red-500{% elif insight.tipo == 'alerta' %}bg-yellow-50 border-yellow-500{% elif insight.tipo == 'sucesso' %}bg-green-50 border-green-500{% else %}bg-blue-50 border-blue-500{% endif %}">
+                        <h3 class="font-semibold text-lg mb-2">{{ insight.titulo }}</h3>
+                        <p class="text-gray-700 mb-2">{{ insight.descricao }}</p>
+                        <p class="text-sm font-medium text-gray-600">Ação sugerida: {{ insight.acao }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-600">Não há insights disponíveis no momento.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Comparativo com Média Nacional -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Comparativo com Média Nacional</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-blue-800">Taxa de Economia</h3>
+                    <p class="text-2xl font-bold text-blue-600">{{ taxa_economia|floatformat:1 }}%</p>
+                    <p class="text-sm text-blue-600">Média nacional: {{ media_brasileira.economia }}%</p>
+                    <div class="w-full bg-blue-200 rounded-full h-2 mt-2">
+                        <div class="bg-blue-600 h-2 rounded-full" style="width: {% widthratio taxa_economia 100 100 %}%"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-purple-800">Meses de Reserva</h3>
+                    <p class="text-2xl font-bold text-purple-600">{{ meses_reserva|floatformat:1 }}</p>
+                    <p class="text-sm text-purple-600">Média nacional: {{ media_brasileira.reserva }}</p>
+                    <div class="w-full bg-purple-200 rounded-full h-2 mt-2">
+                        <div class="bg-purple-600 h-2 rounded-full" style="width: {% widthratio meses_reserva 6 100 %}%"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-red-800">Endividamento</h3>
+                    <p class="text-2xl font-bold text-red-600">{% if dividas_cartao > 0 %}Sim{% else %}Não{% endif %}</p>
+                    <p class="text-sm text-red-600">{{ media_brasileira.endividamento }}% das famílias brasileiras</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hábitos de Gastos -->
+        {% if gastos_por_dia %}
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Hábitos de Gastos por Dia da Semana</h2>
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <div class="grid grid-cols-7 gap-2">
+                    {% for gasto in gastos_por_dia %}
+                    <div class="text-center">
+                        <div class="text-sm font-semibold text-gray-700">{{ gasto.dia|slice:":3" }}</div>
+                        <div class="text-lg font-bold {% if gasto.total > 100 %}text-red-600{% else %}text-green-600{% endif %}">
+                            R$ {{ gasto.total|floatformat:2 }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Previsão -->
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Previsão para os Próximos 3 Meses</h2>
+            
+            {% if previsao_3_meses %}
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% for previsao in previsao_3_meses %}
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-gray-800">{{ previsao.mes }}</h3>
+                        <p class="text-xl font-bold {% if previsao.saldo_projetado >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            R$ {{ previsao.saldo_projetado|floatformat:2 }}
+                        </p>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-600">Não há dados suficientes para fazer previsões.</p>
+            {% endif %}
+        </div>
+        
+        <!-- Botões de Ação -->
+        <div class="flex flex-wrap gap-4">
+            <a href="{% url 'core:dashboard' %}" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">
+                Voltar ao Dashboard
+            </a>
+            <a href="{% url 'core:saida_list' %}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
+                Gerenciar Despesas
+            </a>
+            <a href="{% url 'core:entrada_list' %}" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg">
+                Gerenciar Receitas
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

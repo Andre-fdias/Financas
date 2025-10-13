@@ -1,0 +1,456 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrato Bancário - {{ conta.get_nome_banco_display }}</title>
+    <style>
+        /* Estilos principais */
+        @page {
+            size: A4;
+            margin: 1.2cm;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 9.5pt;
+            color: #2d3748;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #2d3748;
+        }
+        
+        .logo-container {
+            flex: 1;
+            min-width: 250px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo img {
+            height: 48px;
+            width: auto;
+        }
+        
+        .logo-text h1 {
+            font-size: 20pt;
+            margin: 0 0 4px 0;
+            font-weight: 800;
+            color: #2d3748;
+            letter-spacing: -0.5px;
+        }
+        
+        .logo-text .subtitle {
+            font-size: 9pt;
+            color: #718096;
+            margin-top: 0;
+            font-weight: 500;
+        }
+        
+        .user-info {
+            background: #f8fafc;
+            padding: 12px 15px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px 15px;
+        }
+        
+        .info-item {
+            display: flex;
+            align-items: center;
+            font-size: 9pt;
+        }
+        
+        .info-item strong {
+            color: #4a5568;
+            margin-right: 6px;
+            font-weight: 600;
+            min-width: 60px;
+        }
+        
+        .info-item span {
+            color: #2d3748;
+            font-weight: 500;
+        }
+        
+        .conta-info {
+            background: #2d3748;
+            color: white;
+            padding: 15px 18px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            display: block;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        
+        .conta-info h2 {
+            margin: 0 0 8px 0;
+            font-size: 14pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        
+        .conta-details {
+            display: block;
+            width: 100%;
+        }
+        
+        .conta-detail {
+            font-size: 9.5pt;
+            margin: 5px 0;
+            padding: 2px 0;
+            display: inline-block;
+            width: 48%;
+        }
+        
+        .conta-detail strong {
+            color: #e2e8f0;
+            margin-right: 6px;
+            font-weight: 600;
+        }
+        
+        .resumo-container {
+            width: 100%;
+            margin-bottom: 25px;
+            margin-top: 10px;
+        }
+        
+        .resumo-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        
+        .resumo-item {
+            text-align: center;
+            padding: 15px 8px;
+            border: none;
+            width: 25%;
+        }
+        
+        .resumo-item h3 {
+            font-size: 9pt;
+            color: #718096;
+            margin: 0 0 8px 0;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .resumo-valor {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        
+        .saldo-positivo {
+            color: #2f855a;
+        }
+        
+        .saldo-negativo {
+            color: #c53030;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 9.5pt;
+            border: 1px solid #e2e8f0;
+        }
+        
+        th {
+            background: #4a5568;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            border: 1px solid #718096;
+            font-size: 9.5pt;
+        }
+        
+        td {
+            padding: 9px 8px;
+            border: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        
+        .valor-positivo {
+            color: #2f855a;
+            font-weight: 600;
+        }
+        
+        .valor-negativo {
+            color: #c53030;
+            font-weight: 600;
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 8.5pt;
+            color: #718096;
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            line-height: 1.6;
+        }
+        
+        .text-right {
+            text-align: right;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .row-alt {
+            background-color: #f8fafc;
+        }
+        
+        .saldo-acumulado {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .logo-container {
+                margin-bottom: 15px;
+                width: 100%;
+            }
+            
+            .user-info {
+                width: 100%;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 6px;
+            }
+            
+            .conta-detail {
+                width: 100%;
+            }
+            
+            .resumo-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .resumo-item {
+                min-width: 150px;
+            }
+        }
+        
+        /* Melhorias para impressão */
+        @media print {
+            body {
+                font-size: 9pt;
+            }
+            
+            .header {
+                border-bottom: 2px solid #000;
+                margin-bottom: 15px;
+            }
+            
+            .conta-info {
+                background: #2d3748 !important;
+                color-adjust: exact;
+                padding: 12px 15px;
+            }
+            
+            th {
+                background: #4a5568 !important;
+                color-adjust: exact;
+                padding: 8px 6px;
+            }
+            
+            .resumo-table {
+                background: #f7fafc !important;
+                color-adjust: exact;
+            }
+            
+            .user-info {
+                background: #f8fafc !important;
+                color-adjust: exact;
+            }
+            
+            .row-alt {
+                background-color: #f7fafc !important;
+                color-adjust: exact;
+            }
+            
+            .footer {
+                margin-top: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho com Logo -->
+    <div class="header">
+        <div class="logo-container">
+            <div class="logo">
+                <img src="{% static 'image/logo_finance.png' %}" alt="Logo Finance">
+                <div class="logo-text">
+                    <h1>EXTRATO BANCÁRIO</h1>
+                    <p class="subtitle">Sistema de Gestão Financeira</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informações do Usuário -->
+        <div class="user-info">
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Cliente:</strong>
+                    <span>{{ usuario.get_full_name|default:usuario.username }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Emissão:</strong>
+                    <span>{{ data_geracao|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Período:</strong>
+                    <span>{{ periodo }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>Página:</strong>
+                    <span>1/1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações da Conta -->
+    <div class="conta-info">
+        <h2>{{ conta.get_nome_banco_display }}</h2>
+        <div class="conta-details">
+            <p class="conta-detail"><strong>Agência:</strong> {{ conta.agencia|default:"N/A" }}</p>
+            <p class="conta-detail"><strong>Conta:</strong> {{ conta.numero_conta|default:conta.numero_cartao|default:"N/A" }}</p>
+            <p class="conta-detail"><strong>Tipo:</strong> {{ conta.get_tipo_display }}</p>
+            <p class="conta-detail"><strong>Titular:</strong> {{ conta.nome_do_titular|default:"N/A" }}</p>
+        </div>
+    </div>
+    
+    <!-- Resumo Financeiro -->
+    <div class="resumo-container">
+        <table class="resumo-table">
+            <tr>
+                <td class="resumo-item">
+                    <h3>Saldo Inicial</h3>
+                    <div class="resumo-valor {% if saldo_inicial >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                        R$ {{ saldo_inicial|floatformat:2 }}
+                    </div>
+                </td>
+                <td class="resumo-item">
+                    <h3>Entradas</h3>
+                    <div class="resumo-valor saldo-positivo">
+                        + R$ {{ total_entradas|floatformat:2 }}
+                    </div>
+                </td>
+                <td class="resumo-item">
+                    <h3>Saídas</h3>
+                    <div class="resumo-valor saldo-negativo">
+                        - R$ {{ total_saidas|floatformat:2 }}
+                    </div>
+                </td>
+                <td class="resumo-item">
+                    <h3>Saldo Final</h3>
+                    <div class="resumo-valor {% if saldo_final >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                        R$ {{ saldo_final|floatformat:2 }}
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- Tabela de Transações -->
+    <table>
+        <thead>
+            <tr>
+                <th width="70">DATA</th>
+                <th width="180">DESCRIÇÃO</th>
+                <th width="70">CATEGORIA</th>
+                <th width="60">TIPO</th>
+                <th width="80">VALOR (R$)</th>
+                <th width="90">SALDO (R$)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Saldo Inicial -->
+            <tr class="row-alt">
+                <td>{{ data_inicio|date:"d/m/Y" }}</td>
+                <td><strong>SALDO INICIAL</strong></td>
+                <td class="text-center">-</td>
+                <td class="text-center">-</td>
+                <td class="text-right">-</td>
+                <td class="text-right saldo-acumulado {% if saldo_inicial >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                    R$ {{ saldo_inicial|floatformat:2 }}
+                </td>
+            </tr>
+            
+            <!-- Transações -->
+            {% for transacao in transacoes %}
+            <tr {% if forloop.counter|divisibleby:2 %}class="row-alt"{% endif %}>
+                <td>{{ transacao.data|date:"d/m/Y" }}</td>
+                <td>{{ transacao.nome|truncatechars:35 }}</td>
+                <td class="text-center">{{ transacao.categoria|default:"-" }}</td>
+                <td class="text-center">{{ transacao.tipo }}</td>
+                <td class="text-right {% if transacao.tipo == 'Entrada' %}valor-positivo{% else %}valor-negativo{% endif %}">
+                    {% if transacao.tipo == 'Entrada' %}+{% else %}-{% endif %}{{ transacao.valor|floatformat:2 }}
+                </td>
+                <td class="text-right saldo-acumulado {% if transacao.saldo_acumulado >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                    R$ {{ transacao.saldo_acumulado|floatformat:2 }}
+                </td>
+            </tr>
+            {% endfor %}
+            
+            <!-- Saldo Final -->
+            <tr style="background-color: #edf2f7; font-weight: 700;">
+                <td colspan="4" style="text-align: right; border-right: none;">SALDO FINAL:</td>
+                <td class="text-right" style="border-left: none;">-</td>
+                <td class="text-right saldo-acumulado {% if saldo_final >= 0 %}saldo-positivo{% else %}saldo-negativo{% endif %}">
+                    R$ {{ saldo_final|floatformat:2 }}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <!-- Rodapé -->
+    <div class="footer">
+        <p>Documento gerado automaticamente em {{ data_geracao|date:"d/m/Y à\s H:i" }} • Sistema de Gestão Financeira</p>
+        <p>Este é um documento não fiscal • Página 1 de 1</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div class="p-6 relative">
+            <button onclick="fecharModalExtrato()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6">
+                <i class="fas fa-file-pdf mr-2 text-red-600"></i>
+                Emitir Extrato Bancário
+            </h2>
+            
+            <form id="formExtrato" onsubmit="gerarExtrato(event)">
+                {% csrf_token %}
+                <!-- Seleção da Conta -->
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                        <i class="fas fa-building mr-2"></i>Conta Bancária
+                    </label>
+                    <select name="conta" id="contaSelect" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="">Selecione uma conta...</option>
+                        {% for item in contas_com_saldo %}
+                        <option value="{{ item.conta.id }}">
+                            {{ item.conta.get_nome_banco_display }} - 
+                            {{ item.conta.get_tipo_display }} - 
+                            Saldo: R$ {{ item.saldo_mes|floatformat:2 }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Período -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                        <i class="fas fa-calendar-alt mr-2"></i>Período do Extrato
+                    </label>
+                    <select name="periodo" id="periodoSelect" required 
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="15">Últimos 15 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="60">Últimos 60 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </div>
+                
+                <!-- Botões -->
+                <div class="flex gap-3">
+                    <button type="button" onclick="fecharModalExtrato()" 
+                            class="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" id="btnEmitir" 
+                            class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors opacity-50 cursor-not-allowed" 
+                            disabled>
+                        <i class="fas fa-file-pdf mr-2"></i>
+                        Emitir Extrato
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function fecharModalExtrato() {
+    const modal = document.querySelector('.fixed.inset-0.bg-black');
+    if (modal) {
+        modal.remove();
+    }
+    document.body.style.overflow = '';
+}
+
+function habilitarBotaoEmitir() {
+    const contaSelect = document.getElementById('contaSelect');
+    const periodoSelect = document.getElementById('periodoSelect');
+    const btnEmitir = document.getElementById('btnEmitir');
+    
+    if (contaSelect.value && periodoSelect.value) {
+        btnEmitir.disabled = false;
+        btnEmitir.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        btnEmitir.disabled = true;
+        btnEmitir.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+function gerarExtrato(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    console.log('DEBUG: Gerando extrato com parâmetros:', params.toString());
+    
+    // Mostrar loading
+    const btnEmitir = document.getElementById('btnEmitir');
+    const originalText = btnEmitir.innerHTML;
+    btnEmitir.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Gerando...';
+    btnEmitir.disabled = true;
+    
+    // Fazer a requisição
+    fetch(`/extrato/gerar-pdf/?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/pdf'
+        }
+    })
+    .then(response => {
+        console.log('DEBUG: Status da resposta:', response.status);
+        console.log('DEBUG: Content-Type:', response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+            return response.json().then(errorData => {
+                throw new Error(errorData.error || 'Erro ao gerar extrato');
+            });
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        console.log('DEBUG: PDF recebido, tamanho:', blob.size);
+        
+        if (blob.size === 0) {
+            throw new Error('PDF vazio recebido');
+        }
+        
+        // Criar download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Nome do arquivo
+        const dataAtual = new Date().toISOString().split('T')[0];
+        const nomeArquivo = `extrato_${dataAtual}.pdf`;
+        
+        a.download = nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Fechar modal
+        fecharModalExtrato();
+        
+        // Mostrar mensagem de sucesso
+        showNotification('Extrato gerado com sucesso!', 'success');
+    })
+    .catch(error => {
+        console.error('DEBUG: Erro completo:', error);
+        
+        // Fechar modal em caso de erro
+        fecharModalExtrato();
+        
+        // Mostrar mensagem de erro
+        showNotification('Erro ao gerar extrato: ' + error.message, 'error');
+    })
+    .finally(() => {
+        // Restaurar botão
+        btnEmitir.innerHTML = originalText;
+        btnEmitir.disabled = false;
+    });
+}
+// Inicializar eventos quando o modal for carregado
+document.addEventListener('DOMContentLoaded', function() {
+    const contaSelect = document.getElementById('contaSelect');
+    const periodoSelect = document.getElementById('periodoSelect');
+    
+    if (contaSelect && periodoSelect) {
+        contaSelect.addEventListener('change', habilitarBotaoEmitir);
+        periodoSelect.addEventListener('change', habilitarBotaoEmitir);
+        habilitarBotaoEmitir();
+    }
+});
+
+// Função de notificação (simplificada)
+function showNotification(message, type = 'info') {
+    // Criar elemento de notificação
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 p-4 rounded-lg shadow-lg z-50 ${
+        type === 'success' ? 'bg-green-500 text-white' :
+        type === 'error' ? 'bg-red-500 text-white' :
+        'bg-blue-500 text-white'
+    }`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${
+                type === 'success' ? 'fa-check-circle' :
+                type === 'error' ? 'fa-exclamation-circle' :
+                'fa-info-circle'
+            } mr-2"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        notification.remove();
+    }, 5000);
+}
+</script>

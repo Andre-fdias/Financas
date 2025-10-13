@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Criar Conta | Financas Pessoais</title>
+    {% load static %}
+  <link rel="icon" type="image/png" href="{% static 'image/generated-image.png' %}" sizes="16x16">
+  
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+ 
+ 
+  <style>
+    .form-input:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 2px #bbf7d0;
+    }
+    
+    /* Sistema de Notificações */
+    .alert {
+      padding: 16px;
+      margin-bottom: 16px;
+      border-radius: 12px;
+      font-weight: 500;
+      border-left: 4px solid;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      animation: slideIn 0.5s ease-out;
+    }
+    
+    .alert-success {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border-left-color: #16a34a;
+      color: #166534;
+    }
+    
+    .alert-error {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-left-color: #dc2626;
+      color: #991b1b;
+    }
+    
+    .alert-warning {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-left-color: #d97706;
+      color: #92400e;
+    }
+    
+    .alert-info {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-left-color: #2563eb;
+      color: #1e40af;
+    }
+    
+    .field-error {
+      border-color: #dc2626 !important;
+      box-shadow: 0 0 0 2px #fecaca !important;
+      background-color: #fef2f2 !important;
+    }
+    
+    .field-success {
+      border-color: #16a34a !important;
+      box-shadow: 0 0 0 2px #bbf7d0 !important;
+      background-color: #f0fdf4 !important;
+    }
+    
+    .error-list {
+      color: #dc2626;
+      font-size: 14px;
+      margin-top: 6px;
+      padding: 8px 12px;
+      background-color: #fef2f2;
+      border-radius: 6px;
+      border-left: 3px solid #dc2626;
+    }
+    
+    .success-list {
+      color: #16a34a;
+      font-size: 14px;
+      margin-top: 6px;
+      padding: 8px 12px;
+      background-color: #f0fdf4;
+      border-radius: 6px;
+      border-left: 3px solid #16a34a;
+    }
+    
+    .password-strength {
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    
+    .strength-weak {
+      background-color: #fef2f2;
+      color: #dc2626;
+      border-left: 3px solid #dc2626;
+    }
+    
+    .strength-medium {
+      background-color: #fffbeb;
+      color: #d97706;
+      border-left: 3px solid #d97706;
+    }
+    
+    .strength-strong {
+      background-color: #f0fdf4;
+      color: #16a34a;
+      border-left: 3px solid #16a34a;
+    }
+    
+    .progress-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, #ef4444, #f59e0b, #10b981);
+      transition: width 0.3s ease;
+    }
+    
+    .honeypot {
+      position: absolute;
+      left: -9999px;
+    }
+    
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 200px;
+      background-color: #1f2937;
+      color: white;
+      text-align: center;
+      border-radius: 6px;
+      padding: 8px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 12px;
+    }
+    
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+    
+    .loading {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    .shake {
+      animation: shake 0.5s ease-in-out;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-cover bg-center relative" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=2000&q=80');">
+  <div class="absolute inset-0 bg-black bg-opacity-60 backdrop-blur-sm"></div>
+  
+  <!-- Sistema de Notificações -->
+  <div class="fixed top-4 right-4 z-50 w-96 space-y-3" id="notification-container">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} transform transition-all duration-500 ease-in-out">
+          <div class="flex justify-between items-start">
+            <div class="flex items-start space-x-3 flex-1">
+              {% if message.tags == 'success' %}
+                <div class="flex-shrink-0 w-5 h-5 text-green-500 mt-0.5">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+              {% elif message.tags == 'error' %}
+                <div class="flex-shrink-0 w-5 h-5 text-red-500 mt-0.5">
+                  <i class="fas fa-exclamation-circle"></i>
+                </div>
+              {% elif message.tags == 'warning' %}
+                <div class="flex-shrink-0 w-5 h-5 text-orange-500 mt-0.5">
+                  <i class="fas fa-exclamation-triangle"></i>
+                </div>
+              {% else %}
+                <div class="flex-shrink-0 w-5 h-5 text-blue-500 mt-0.5">
+                  <i class="fas fa-info-circle"></i>
+                </div>
+              {% endif %}
+              <div class="flex-1">
+                <span class="font-semibold block">{{ message }}</span>
+                {% if message.extra_text %}
+                  <p class="text-sm mt-1 opacity-90">{{ message.extra_text }}</p>
+                {% endif %}
+              </div>
+            </div>
+            <button type="button" class="close-btn text-lg font-bold hover:opacity-70 transition-opacity flex-shrink-0 ml-2">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+            <div class="h-1.5 rounded-full bg-current opacity-40 progress-bar" style="width: 100%"></div>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
+  </div>
+
+  <div class="relative z-10 flex flex-col md:flex-row w-full max-w-6xl rounded-2xl overflow-hidden shadow-2xl bg-transparent my-8 mx-4">
+    <!-- Branding e texto -->
+    <div class="flex-1 flex flex-col justify-center p-8 text-white bg-gradient-to-br from-green-900/80 to-emerald-800/80">
+      <div class="max-w-md mx-auto">
+        <h1 class="text-5xl font-bold mb-6 tracking-wide drop-shadow-lg">
+          <span class="text-green-300">FINANÇAS</span><span class="text-gray-100 ml-2">PESSOAIS</span>
+        </h1>
+        <h2 class="text-4xl font-bold mb-6 leading-tight drop-shadow-lg bg-gradient-to-r from-green-200 to-emerald-100 bg-clip-text text-transparent">
+          Comece Sua Jornada Financeira
+        </h2>
+        <div class="space-y-4 mb-8">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <i class="fas fa-shield-alt text-white text-sm"></i>
+            </div>
+            <p class="text-lg drop-shadow">Cadastro 100% seguro e protegido</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <i class="fas fa-rocket text-white text-sm"></i>
+            </div>
+            <p class="text-lg drop-shadow">Controle total das suas finanças</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+              <i class="fas fa-chart-line text-white text-sm"></i>
+            </div>
+            <p class="text-lg drop-shadow">Relatórios e insights inteligentes</p>
+          </div>
+        </div>
+        <div class="bg-black/30 rounded-xl p-4 border border-green-500/30">
+          <p class="text-green-200 text-sm flex items-center">
+            <i class="fas fa-lock mr-2"></i>
+            Seus dados estão protegidos com criptografia avançada
+          </p>
+        </div>
+      </div>
+    </div>
+    
+<!-- Card Registro -->
+<div class="flex-1 flex items-center justify-center p-4">
+  <div class="w-full max-w-md rounded-2xl p-8 shadow-2xl bg-gray-800 border border-gray-600">
+    <div class="text-center mb-2">
+      <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <i class="fas fa-user-plus text-white text-2xl"></i>
+      </div>
+      <h2 class="text-3xl font-bold text-green-100 mb-2 tracking-wide">Criar Conta</h2>
+      <p class="text-gray-400 text-sm">Preencha os dados abaixo para começar</p>
+    </div>
+
+    <form method="post" id="registerForm" novalidate class="space-y-6">
+      {% csrf_token %}
+      
+      <!-- Campos Honeypot para Proteção -->
+      <div class="honeypot">
+        <label for="confirm_email">Confirme seu email</label>
+        <input type="email" id="confirm_email" name="confirm_email" autocomplete="off">
+        <label for="phone">Telefone</label>
+        <input type="text" id="phone" name="phone" autocomplete="off">
+      </div>
+
+      <!-- Timestamp para Prevenção de Replay -->
+      <input type="hidden" name="form_timestamp" id="form_timestamp" value="">
+
+      <!-- Usuário -->
+      <div class="space-y-2">
+        <label for="id_username" class="block text-green-200 font-semibold text-sm">
+          <i class="fas fa-user mr-2"></i>Nome de Usuário
+          <span class="tooltip ml-1">
+            <i class="fas fa-question-circle text-gray-400 text-xs"></i>
+            <span class="tooltiptext">Escolha um nome único. Letras, números e _ são permitidos.</span>
+          </span>
+        </label>
+        <input type="text" id="id_username" name="username" 
+               value="{{ form.username.value|default:'' }}"
+               class="form-input w-full px-4 py-3 rounded-lg border-2 border-gray-600 text-gray-100 bg-gray-700 placeholder-gray-400 focus:outline-none focus:border-green-500 transition-all duration-300 {% if form.username.errors %}field-error{% endif %}"
+               placeholder="ex: joao_silva2024" 
+               required 
+               autocomplete="username"
+               minlength="3"
+               maxlength="30"
+               pattern="[a-zA-Z0-9_]+"
+               oninput="validarUsername(this.value)">
+        <div id="username-status" class="text-xs transition-all duration-300"></div>
+        {% if form.username.errors %}
+          <div class="error-list">
+            {% for error in form.username.errors %}
+              <p><i class="fas fa-exclamation-circle mr-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Email -->
+      <div class="space-y-2">
+        <label for="id_email" class="block text-green-200 font-semibold text-sm">
+          <i class="fas fa-envelope mr-2"></i>Email
+        </label>
+        <input type="email" id="id_email" name="email" 
+               value="{{ form.email.value|default:'' }}"
+               class="form-input w-full px-4 py-3 rounded-lg border-2 border-gray-600 text-gray-100 bg-gray-700 placeholder-gray-400 focus:outline-none focus:border-green-500 transition-all duration-300 {% if form.email.errors %}field-error{% endif %}"
+               placeholder="seu@email.com" 
+               required 
+               autocomplete="email"
+               onblur="verificarEmail(this.value)">
+        <div id="email-status" class="text-xs transition-all duration-300"></div>
+        {% if form.email.errors %}
+          <div class="error-list">
+            {% for error in form.email.errors %}
+              <p><i class="fas fa-exclamation-circle mr-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Senha -->
+      <div class="space-y-2">
+        <label for="id_password1" class="block text-green-200 font-semibold text-sm">
+          <i class="fas fa-lock mr-2"></i>Senha
+        </label>
+        <div class="relative">
+          <input type="password" id="id_password1" name="password1" 
+                 class="form-input w-full px-4 py-3 rounded-lg border-2 border-gray-600 text-gray-100 bg-gray-700 placeholder-gray-400 focus:outline-none focus:border-green-500 transition-all duration-300 {% if form.password1.errors %}field-error{% endif %}"
+                 placeholder="Sua senha segura" 
+                 required 
+                 autocomplete="new-password"
+                 minlength="8"
+                 oninput="validarSenha(this.value)">
+          <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors" onclick="togglePassword('id_password1', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div id="password-strength" class="password-strength hidden">
+          <div class="flex justify-between items-center mb-2">
+            <span id="strength-text" class="text-sm font-medium"></span>
+            <span id="strength-percent" class="text-xs"></span>
+          </div>
+          <div class="w-full bg-gray-600 rounded-full h-2">
+            <div id="strength-bar" class="h-2 rounded-full progress-bar" style="width: 0%"></div>
+          </div>
+          <div id="password-requirements" class="text-xs mt-2 space-y-1"></div>
+        </div>
+        {% if form.password1.errors %}
+          <div class="error-list">
+            {% for error in form.password1.errors %}
+              <p><i class="fas fa-exclamation-circle mr-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Confirmação de Senha -->
+      <div class="space-y-2">
+        <label for="id_password2" class="block text-green-200 font-semibold text-sm">
+          <i class="fas fa-lock mr-2"></i>Confirmar Senha
+        </label>
+        <div class="relative">
+          <input type="password" id="id_password2" name="password2" 
+                 class="form-input w-full px-4 py-3 rounded-lg border-2 border-gray-600 text-gray-100 bg-gray-700 placeholder-gray-400 focus:outline-none focus:border-green-500 transition-all duration-300 {% if form.password2.errors %}field-error{% endif %}"
+                 placeholder="Digite a senha novamente" 
+                 required 
+                 autocomplete="new-password"
+                 oninput="validarConfirmacaoSenha()">
+          <button type="button" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors" onclick="togglePassword('id_password2', this)">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+        <div id="password-match-status" class="text-xs transition-all duration-300"></div>
+        {% if form.password2.errors %}
+          <div class="error-list">
+            {% for error in form.password2.errors %}
+              <p><i class="fas fa-exclamation-circle mr-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Termos e Condições -->
+      <div class="flex items-start space-x-3 p-3 bg-gray-700 rounded-lg border border-gray-600">
+        <input type="checkbox" id="accept_terms" name="accept_terms" 
+               class="mt-1 rounded border-gray-600 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800" required>
+        <label for="accept_terms" class="text-sm text-gray-300">
+          Concordo com os 
+          <a href="#" class="text-green-400 hover:text-green-300 underline transition-colors">Termos de Serviço</a> 
+          e 
+          <a href="#" class="text-green-400 hover:text-green-300 underline transition-colors">Política de Privacidade</a>
+        </label>
+      </div>
+
+      <button type="submit" id="submitBtn"
+              class="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all duration-300 focus:ring-4 focus:ring-green-500/30 shadow-lg transform hover:scale-[1.02] active:scale-[0.98] flex justify-center items-center space-x-2 group">
+        <span id="btnText">Criar Minha Conta</span>
+        <div id="spinner" class="hidden ml-2">
+          <div class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+        </div>
+        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform duration-300"></i>
+      </button>
+
+      <div class="text-center pt-4 border-t border-gray-600">
+        <p class="text-gray-400 text-sm">
+          Já tem uma conta?
+          <a href="{% url 'core:login' %}" class="text-green-400 hover:text-green-300 font-semibold underline transition-colors">
+            Fazer Login
+          </a>
+        </p>
+      </div>
+    </form>
+  </div>
+</div>
+  </div>
+
+  <script>
+    // Sistema Avançado de Notificações
+    class NotificationSystem {
+      constructor() {
+        this.container = document.getElementById('notification-container');
+        this.init();
+      }
+
+      init() {
+        this.autoRemoveNotifications();
+        this.addCloseListeners();
+        this.addProgressBars();
+      }
+
+      autoRemoveNotifications() {
+        const notifications = this.container.querySelectorAll('.alert');
+        notifications.forEach(notification => {
+          setTimeout(() => {
+            this.removeNotification(notification);
+          }, 6000);
+        });
+      }
+
+      addCloseListeners() {
+        this.container.querySelectorAll('.close-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            this.removeNotification(e.target.closest('.alert'));
+          });
+        });
+      }
+
+      addProgressBars() {
+        this.container.querySelectorAll('.progress-bar').forEach(bar => {
+          bar.style.width = '100%';
+          bar.style.transition = 'width 6s linear';
+          setTimeout(() => {
+            bar.style.width = '0%';
+          }, 100);
+        });
+      }
+
+      removeNotification(notification) {
+        notification.style.transform = 'translateX(100%)';
+        notification.style.opacity = '0';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.remove();
+          }
+        }, 300);
+      }
+
+      show(message, type = 'info', duration = 6000) {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type}`;
+        
+        const icons = {
+          success: 'fa-check-circle',
+          error: 'fa-exclamation-circle',
+          warning: 'fa-exclamation-triangle',
+          info: 'fa-info-circle'
+        };
+        
+        const colors = {
+          success: 'text-green-500',
+          error: 'text-red-500',
+          warning: 'text-orange-500',
+          info: 'text-blue-500'
+        };
+
+        notification.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div class="flex items-start space-x-3 flex-1">
+              <div class="flex-shrink-0 w-5 h-5 ${colors[type]} mt-0.5">
+                <i class="fas ${icons[type]}"></i>
+              </div>
+              <div class="flex-1">
+                <span class="font-semibold block">${message}</span>
+              </div>
+            </div>
+            <button type="button" class="close-btn text-lg font-bold hover:opacity-70 transition-opacity flex-shrink-0 ml-2">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+            <div class="h-1.5 rounded-full bg-current opacity-40 progress-bar" style="width: 100%"></div>
+          </div>
+        `;
+        
+        this.container.appendChild(notification);
+        this.addCloseListeners();
+        this.addProgressBars();
+        
+        setTimeout(() => {
+          this.removeNotification(notification);
+        }, duration);
+      }
+    }
+
+    // Sistema de Validação de Formulário
+    class FormValidator {
+      constructor() {
+        this.notificationSystem = new NotificationSystem();
+        this.init();
+      }
+
+      init() {
+        this.setupEventListeners();
+        this.setupFormProtection();
+      }
+
+      setupEventListeners() {
+        // Previne múltiplos envios
+        const form = document.getElementById('registerForm');
+        let formSubmitted = false;
+
+        form.addEventListener('submit', (e) => {
+          if (formSubmitted) {
+            e.preventDefault();
+            this.notificationSystem.show('Aguarde o processamento do cadastro anterior...', 'warning');
+            return;
+          }
+
+          // Validação final antes do envio
+          if (!this.validateForm()) {
+            e.preventDefault();
+            form.classList.add('shake');
+            setTimeout(() => form.classList.remove('shake'), 500);
+            return;
+          }
+
+          // Verifica honeypot
+          const honeypotEmail = document.getElementById('confirm_email').value;
+          const honeypotPhone = document.getElementById('phone').value;
+          
+          if (honeypotEmail || honeypotPhone) {
+            e.preventDefault();
+            this.notificationSystem.show('Atividade suspeita detectada. Tente novamente.', 'error');
+            return;
+          }
+
+          formSubmitted = true;
+          this.disableForm();
+        });
+      }
+
+      setupFormProtection() {
+        // Preenche timestamp
+        document.getElementById('form_timestamp').value = Date.now();
+        
+        // Adiciona delay para bots
+        setTimeout(() => {
+          document.getElementById('submitBtn').disabled = false;
+        }, 1000);
+      }
+
+      validateForm() {
+        const username = document.getElementById('id_username').value;
+        const email = document.getElementById('id_email').value;
+        const password1 = document.getElementById('id_password1').value;
+        const password2 = document.getElementById('id_password2').value;
+        const acceptTerms = document.getElementById('accept_terms').checked;
+
+        let isValid = true;
+
+        if (!username || username.length < 3) {
+          this.highlightField('id_username', false);
+          isValid = false;
+        }
+
+        if (!this.validateEmail(email)) {
+          this.highlightField('id_email', false);
+          isValid = false;
+        }
+
+        if (!this.validatePassword(password1)) {
+          this.highlightField('id_password1', false);
+          isValid = false;
+        }
+
+        if (password1 !== password2) {
+          this.highlightField('id_password2', false);
+          isValid = false;
+        }
+
+        if (!acceptTerms) {
+          this.notificationSystem.show('Você deve aceitar os termos e condições', 'error');
+          isValid = false;
+        }
+
+        return isValid;
+      }
+
+      validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+      }
+
+      validatePassword(password) {
+        return password.length >= 8;
+      }
+
+      highlightField(fieldId, isValid) {
+        const field = document.getElementById(fieldId);
+        if (isValid) {
+          field.classList.remove('field-error');
+          field.classList.add('field-success');
+        } else {
+          field.classList.remove('field-success');
+          field.classList.add('field-error');
+        }
+      }
+
+      disableForm() {
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+
+        submitBtn.disabled = true;
+        btnText.textContent = 'Criando conta...';
+        spinner.classList.remove('hidden');
+      }
+    }
+
+    // Funções de Validação em Tempo Real
+    function validarUsername(username) {
+      const statusDiv = document.getElementById('username-status');
+      const field = document.getElementById('id_username');
+      
+      if (username.length === 0) {
+        statusDiv.innerHTML = '';
+        field.classList.remove('field-error', 'field-success');
+        return;
+      }
+
+      if (username.length < 3) {
+        statusDiv.innerHTML = '<span class="text-red-400"><i class="fas fa-times mr-1"></i>Mínimo 3 caracteres</span>';
+        field.classList.add('field-error');
+        field.classList.remove('field-success');
+        return;
+      }
+
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (!usernameRegex.test(username)) {
+        statusDiv.innerHTML = '<span class="text-red-400"><i class="fas fa-times mr-1"></i>Apenas letras, números e _</span>';
+        field.classList.add('field-error');
+        field.classList.remove('field-success');
+        return;
+      }
+
+      statusDiv.innerHTML = '<span class="text-green-400"><i class="fas fa-check mr-1"></i>Nome disponível</span>';
+      field.classList.remove('field-error');
+      field.classList.add('field-success');
+    }
+
+    function verificarEmail(email) {
+      const statusDiv = document.getElementById('email-status');
+      const field = document.getElementById('id_email');
+      
+      if (email.length === 0) {
+        statusDiv.innerHTML = '';
+        field.classList.remove('field-error', 'field-success');
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        statusDiv.innerHTML = '<span class="text-red-400"><i class="fas fa-times mr-1"></i>Formato de email inválido</span>';
+        field.classList.add('field-error');
+        field.classList.remove('field-success');
+        return;
+      }
+
+      // Simula verificação de disponibilidade
+      statusDiv.innerHTML = '<span class="text-blue-400"><i class="fas fa-spinner fa-spin mr-1"></i>Verificando disponibilidade...</span>';
+      
+      setTimeout(() => {
+        statusDiv.innerHTML = '<span class="text-green-400"><i class="fas fa-check mr-1"></i>Email válido</span>';
+        field.classList.remove('field-error');
+        field.classList.add('field-success');
+      }, 800);
+    }
+
+    function validarSenha(password) {
+      const strengthDiv = document.getElementById('password-strength');
+      const strengthText = document.getElementById('strength-text');
+      const strengthPercent = document.getElementById('strength-percent');
+      const strengthBar = document.getElementById('strength-bar');
+      const requirementsDiv = document.getElementById('password-requirements');
+      const field = document.getElementById('id_password1');
+
+      if (password.length === 0) {
+        strengthDiv.classList.add('hidden');
+        field.classList.remove('field-error', 'field-success');
+        return;
+      }
+
+      strengthDiv.classList.remove('hidden');
+
+      // Calcula força da senha
+      let score = 0;
+      const requirements = [];
+
+      if (password.length >= 8) {
+        score += 25;
+        requirements.push('<span class="text-green-400"><i class="fas fa-check mr-1"></i>Mínimo 8 caracteres</span>');
+      } else {
+        requirements.push('<span class="text-red-400"><i class="fas fa-times mr-1"></i>Mínimo 8 caracteres</span>');
+      }
+
+      if (/[A-Z]/.test(password)) {
+        score += 25;
+        requirements.push('<span class="text-green-400"><i class="fas fa-check mr-1"></i>Letra maiúscula</span>');
+      } else {
+        requirements.push('<span class="text-red-400"><i class="fas fa-times mr-1"></i>Letra maiúscula</span>');
+      }
+
+      if (/[0-9]/.test(password)) {
+        score += 25;
+        requirements.push('<span class="text-green-400"><i class="fas fa-check mr-1"></i>Número</span>');
+      } else {
+        requirements.push('<span class="text-red-400"><i class="fas fa-times mr-1"></i>Número</span>');
+      }
+
+      if (/[^A-Za-z0-9]/.test(password)) {
+        score += 25;
+        requirements.push('<span class="text-green-400"><i class="fas fa-check mr-1"></i>Caractere especial</span>');
+      } else {
+        requirements.push('<span class="text-red-400"><i class="fas fa-times mr-1"></i>Caractere especial</span>');
+      }
+
+      // Atualiza interface
+      strengthBar.style.width = `${score}%`;
+      strengthPercent.textContent = `${score}%`;
+      requirementsDiv.innerHTML = requirements.join('');
+
+      if (score < 50) {
+        strengthDiv.className = 'password-strength strength-weak';
+        strengthText.innerHTML = '<i class="fas fa-times mr-1"></i>Senha Fraca';
+        field.classList.add('field-error');
+        field.classList.remove('field-success');
+      } else if (score < 75) {
+        strengthDiv.className = 'password-strength strength-medium';
+        strengthText.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>Senha Média';
+        field.classList.remove('field-error', 'field-success');
+      } else {
+        strengthDiv.className = 'password-strength strength-strong';
+        strengthText.innerHTML = '<i class="fas fa-check mr-1"></i>Senha Forte';
+        field.classList.remove('field-error');
+        field.classList.add('field-success');
+      }
+
+      validarConfirmacaoSenha();
+    }
+
+    function validarConfirmacaoSenha() {
+      const password1 = document.getElementById('id_password1').value;
+      const password2 = document.getElementById('id_password2').value;
+      const statusDiv = document.getElementById('password-match-status');
+      const field = document.getElementById('id_password2');
+
+      if (password2.length === 0) {
+        statusDiv.innerHTML = '';
+        field.classList.remove('field-error', 'field-success');
+        return;
+      }
+
+      if (password1 === password2 && password1.length >= 8) {
+        statusDiv.innerHTML = '<span class="text-green-400"><i class="fas fa-check mr-1"></i>Senhas coincidem</span>';
+        field.classList.remove('field-error');
+        field.classList.add('field-success');
+      } else {
+        statusDiv.innerHTML = '<span class="text-red-400"><i class="fas fa-times mr-1"></i>As senhas não coincidem</span>';
+        field.classList.add('field-error');
+        field.classList.remove('field-success');
+      }
+    }
+
+    function togglePassword(fieldId, button) {
+      const field = document.getElementById(fieldId);
+      const icon = button.querySelector('i');
+      
+      if (field.type === 'password') {
+        field.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        field.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+
+    // Inicialização quando o DOM estiver carregado
+    document.addEventListener('DOMContentLoaded', function() {
+      new FormValidator();
+      
+      // Adiciona efeitos visuais
+      const inputs = document.querySelectorAll('.form-input');
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          this.parentElement.classList.add('ring-2', 'ring-green-500', 'ring-opacity-20');
+        });
+        
+        input.addEventListener('blur', function() {
+          this.parentElement.classList.remove('ring-2', 'ring-green-500', 'ring-opacity-20');
+        });
+      });
+
+      // Efeito de digitação no título
+      const title = document.querySelector('h2');
+      const originalText = title.textContent;
+      title.textContent = '';
+      let i = 0;
+      
+      function typeWriter() {
+        if (i < originalText.length) {
+          title.textContent += originalText.charAt(i);
+          i++;
+          setTimeout(typeWriter, 50);
+        }
+      }
+      
+      setTimeout(typeWriter, 1000);
+    });
+  </script>
+</body>
+</html>

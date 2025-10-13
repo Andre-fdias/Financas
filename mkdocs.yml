@@ -1,0 +1,38 @@
+site_name: FinanceFlow
+theme:
+  name: material
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  palette:
+    - scheme: default
+      primary: 'blue'
+      accent: 'green'
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to dark mode
+    - scheme: slate
+      primary: 'blue'
+      accent: 'green'
+      toggle:
+        icon: material/lightbulb
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.annotation
+    - content.code.copy
+nav:
+  - Introdução: index.md
+  - Visão Geral: visao_geral.md
+  - Instalação: instalacao.md
+  - Uso: uso.md
+  - Funcionalidades: funcionalidades.md
+  - Tecnologias: tecnologias.md
+  - APIs: apis.md
+  - FAQ: faq.md
+  - Créditos: creditos.md

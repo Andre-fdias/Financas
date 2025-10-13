@@ -1,0 +1,3073 @@
+{% extends 'core/base.html' %}
+{% load currency_filters %}
+{% load widget_tweaks %}
+{% load custom_filters %} 
+
+{% block title %}Minhas Despesas - {{ mes_atual_nome }} {{ ano_atual }}{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Estilos base do painel e outros elementos */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        @supports not (backdrop-filter: blur(12px)) {
+            .glass-panel {
+                background: rgba(255, 255, 255, 0.95);
+            }
+        }
+        
+        .valor-positivo {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        .valor-negativo {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 0.35rem 0.75rem;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        .dark .valor-positivo {
+            background: linear-gradient(135deg, #065f46 0%, #064e3b 100%);
+        }
+        
+        .dark .valor-negativo {
+            background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+        }
+
+        .table-row {
+            transition: all 0.2s ease;
+        }
+        
+        .table-row:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+        }
+
+        /* Estilos do Modal */
+/* Adicione isso ao seu CSS existente */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+        /* Estilos do Formulário dentro do Modal */
+        .form-container-modal {
+            background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .form-input {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            width: 100%;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            outline: none;
+            transform: translateY(-1px);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+            font-size: 0.95rem;
+        }
+        
+        .form-error {
+            color: #ef4444;
+            font-size: 0.875rem;
+            margin-top: 6px;
+            padding-left: 4px;
+            display: none;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.3), 0 2px 4px -1px rgba(99, 102, 241, 0.2);
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4), 0 4px 6px -2px rgba(99, 102, 241, 0.3);
+        }
+        
+        .cancel-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .input-group {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+        
+        .hidden-field {
+            display: none;
+        }
+        
+        .success-message {
+            display: none;
+            background-color: #10b981;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            text-align: center;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+        }
+
+        .saida-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .filter-pill {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .filter-pill:hover {
+            transform: scale(1.05);
+        }
+        
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        /* Estilos para os campos de parcelamento */
+        .parcelamento-section {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark .parcelamento-section {
+            background: #2d3748;
+            border-color: #4a5568;
+        }
+
+        .parcelamento-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .dark .parcelamento-header {
+            color: #e5e7eb;
+        }
+
+        .parcelamento-header i {
+            margin-right: 0.5rem;
+            color: #3b82f6;
+        }
+
+        .metodo-radio-group {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metodo-radio-label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            background: #f1f5f9;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dark .metodo-radio-label {
+            background: #374151;
+            border-color: #4a5568;
+        }
+
+        .metodo-radio-label:hover {
+            border-color: #3b82f6;
+        }
+
+        .metodo-radio-label.selected {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .dark .metodo-radio-label.selected {
+            background: #1e40af;
+            border-color: #3b82f6;
+        }
+
+        .parcelamento-campos {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .valor-total-calc {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-weight: 600;
+            color: #166534;
+        }
+
+        .dark .valor-total-calc {
+            background: #052e16;
+            border-color: #059669;
+            color: #bbf7d0;
+        }
+        .flex.justify-end.space-x-2 button {
+                transition: all 0.2s ease;
+            }
+
+            .flex.justify-end.space-x-2 button:hover {
+                transform: scale(1.1);
+            }
+
+            .flex.justify-end.space-x-2 button:active {
+                transform: scale(0.95);
+            }
+            /* Estilos para Notificações */
+    .notification {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-left: 4px solid;
+        animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s;
+        transform: translateX(100%);
+        opacity: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .notification.show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    
+    .notification.hide {
+        animation: slideOut 0.3s ease-in;
+    }
+    
+    .notification.success {
+        border-left-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    }
+    
+    .notification.error {
+        border-left-color: #ef4444;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    }
+    
+    .notification.warning {
+        border-left-color: #f59e0b;
+        background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    }
+    
+    .notification.info {
+        border-left-color: #3b82f6;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    }
+    
+    .notification-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    
+    .notification.success .notification-icon {
+        color: #10b981;
+    }
+    
+    .notification.error .notification-icon {
+        color: #ef4444;
+    }
+    
+    .notification.warning .notification-icon {
+        color: #f59e0b;
+    }
+    
+    .notification.info .notification-icon {
+        color: #3b82f6;
+    }
+    
+    .notification-content {
+        flex: 1;
+    }
+    
+    .notification-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notification-message {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    
+    .notification-close {
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .notification-close:hover {
+        color: #6b7280;
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Animações */
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
+
+
+    /* Estilos específicos para o modal de edição */
+.edit-modal-content {
+    background: white;
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+    
+    /* Dark mode support */
+    .dark .notification {
+        background: #1f2937;
+    }
+    
+    .dark .notification.success {
+        background: linear-gradient(135deg, #052e16 0%, #064e3b 100%);
+    }
+    
+    .dark .notification.error {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+    }
+    
+    .dark .notification.warning {
+        background: linear-gradient(135deg, #431407 0%, #7c2d12 100%);
+    }
+    
+    .dark .notification.info {
+        background: linear-gradient(135deg, #172554 0%, #1e40af 100%);
+    }
+    
+    .dark .notification-message {
+        color: #d1d5db;
+    }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="glass-panel min-h-screen p-8 flex flex-col space-y-6">
+    <div class="glass-panel p-6 mb-8">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    <i class="fas fa-receipt mr-3 text-red-600"></i>
+                    Minhas Despesas
+                </h1>
+                <p class="text-xl text-gray-600 dark:text-gray-300 font-semibold">
+                    Gerencie suas despesas e visualize seus gastos
+                </p>
+            </div>
+            <button id="openSaidaModalBtn" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg inline-flex items-center shadow-md hover:shadow-lg transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                Nova Despesa
+            </button>
+        </div>
+    </div>
+
+    <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
+
+    <div id="customConfirmModal" class="modal-overlay hidden">
+        <div class="modal-content max-w-md">
+            <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+                <div class="text-center mb-6">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                        <i class="fas fa-question-circle text-blue-600 dark:text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mt-4 dark:text-white" id="confirmModalTitle">Confirmação</h3>
+                    <p class="text-sm text-gray-500 mt-2 dark:text-gray-400" id="confirmModalMessage"></p>
+                </div>
+                <div class="flex justify-center space-x-4">
+                    <button type="button" id="confirmModalCancel" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="button" id="confirmModalOk" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 stats-grid">
+        <div class="glass-panel p-6 stats-card border-l-4 border-blue-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Total Despesas (Mês)</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ total_despesas|br_currency }}</p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0-2.08-.402-2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center">
+                <span class="text-xs font-medium {% if variacao_mensal >= 0 %}bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200{% else %}bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200{% endif %} px-2 py-1 rounded-full">
+                    {{ variacao_mensal_abs }}% {{ variacao_mensal|direction_arrow }} vs mês anterior
+                </span>
+            </div>
+        </div>
+
+        <div class="glass-panel p-6 stats-card border-l-4 border-green-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Despesas Pagas</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ despesas_pagas|br_currency }}</p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-green-100 text-green-800 px-2 py-1 rounded-full dark:bg-green-900 dark:text-green-200">
+                    {{ percentual_pago }}% do total
+                </span>
+            </div>
+        </div>
+
+        <div class="glass-panel p-6 stats-card border-l-4 border-orange-500">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 mb-1 dark:text-gray-300">Despesas Pendentes</p>
+                    <p class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white"> {{ despesas_pendentes|br_currency}}</p>
+                </div>
+                <div class="bg-orange-100 p-3 rounded-full text-orange-600 dark:bg-orange-900 dark:text-orange-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="mt-4">
+                <span class="text-xs font-medium bg-orange-100 text-orange-800 px-2 py-1 rounded-full dark:bg-orange-900 dark:text-orange-200">
+                    {{ percentual_pendente }}% do total
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-6 flex items-center">
+            <i class="fas fa-filter mr-3 text-indigo-600"></i>
+            Filtrar Despesas
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <!-- Filtro de Ano -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Ano
+                </label>
+                <select onchange="updateFilters()" id="anoFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if ano_selecionado == ano|stringformat:"s" %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Filtro de Mês CORRIGIDO -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-calendar-alt mr-2"></i>Mês
+                </label>
+                <select onchange="updateFilters()" id="mesFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os meses</option>
+                    {% for mes_num, mes_nome in meses %}
+                        <option value="{{ mes_num }}" 
+                                {% if mes_selecionado == mes_num %}selected{% endif %}>
+                            {{ mes_nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro de Status -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2 dark:text-gray-300">
+                    <i class="fas fa-info-circle mr-2"></i>Status
+                </label>
+                <select onchange="updateFilters()" id="statusFilter" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="">Todos os status</option>
+                    {% for code, name in STATUS_CHOICES %}
+                    <option value="{{ code }}" {% if status_selecionado == code %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-4">
+            <!-- Filtro de Ano Ativo -->
+            {% if ano_selecionado %}
+            <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-yellow-900 dark:text-yellow-200 filter-pill">
+                Ano: {{ ano_selecionado }}
+                <button onclick="removeFilter('ano')" class="ml-2 text-yellow-600 hover:text-yellow-800">×</button>
+            </span>
+            {% endif %}
+            
+            <!-- Filtro de Mês Ativo -->
+            {% if mes_selecionado %}
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
+                Mês: {{ meses_display_map|get_item:mes_selecionado }}
+                <button onclick="removeFilter('mes')" class="ml-2 text-green-600 hover:text-green-800">×</button>
+            </span>
+            {% else %}
+            <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-green-900 dark:text-green-200 filter-pill">
+                Mês: Todos os meses
+            </span>
+            {% endif %}
+
+            <!-- Filtro de Status Ativo -->
+            {% if status_selecionado and status_selecionado != '' %}
+            <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-purple-900 dark:text-purple-200 filter-pill">
+                Status: {{ status_display_map|get_item:status_selecionado }}
+                <button onclick="removeFilter('status')" class="ml-2 text-purple-600 hover:text-purple-800">×</button>
+            </span>
+            {% endif %}
+
+            <!-- Botão Limpar Filtros -->
+            {% if ano_selecionado or mes_selecionado or status_selecionado %}
+            <button onclick="clearFilters()" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-sm hover:bg-gray-300 transition-colors flex items-center">
+                <i class="fas fa-eraser mr-2"></i>Limpar Todos
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <div class="glass-panel overflow-hidden">
+        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white flex items-center">
+                <i class="fas fa-list-ol mr-3 text-indigo-600"></i>
+                Lista de Despesas
+                <span class="ml-3 bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium dark:bg-indigo-900 dark:text-indigo-200">
+                    {{ saidas|length }} registros
+                </span>
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto saida-table-container">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-indigo-50 dark:bg-indigo-900">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Descrição</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Categoria</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Vencimento</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Status</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Valor Total</th>
+                        <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Parcelas</th>
+                        <th scope="col" class="px-6 py-4 text-right text-xs font-semibold text-indigo-800 uppercase tracking-wider dark:text-indigo-200">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {% for saida in saidas %}
+                    <tr class="table-row hover:bg-gray-50 transition-colors duration-150 dark:hover:bg-gray-700">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="font-medium text-gray-900 dark:text-white">{{ saida.nome }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">{{ saida.local|default:"Local não informado" }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ saida.get_categoria_display }}
+                            {% if saida.subcategoria %}<br><span class="text-xs text-gray-500 dark:text-gray-400">{{ saida.get_subcategoria_display }}</span>{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {{ saida.data_vencimento|date:"d/m/Y" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if saida.situacao == 'pago' %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                    Pago
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+                                    Pendente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">
+                             <span class="valor-negativo">{{ saida.valor|br_currency }}</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                            {% if saida.tipo_pagamento_detalhe == 'parcelado' %}
+                                {{ saida.parcela_atual }}/{{ saida.quantidade_parcelas }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+    <div class="flex justify-end space-x-2">
+        <button class="text-blue-600 hover:text-blue-900 edit-saida-btn" 
+                data-saida-id="{{ saida.id }}" 
+                title="Editar"
+                onclick="window.handleEditarDespesa({{ saida.id }})">
+            <i class="fas fa-edit"></i>
+        </button>
+        {% if saida.situacao == 'pendente' %}
+            <button class="text-green-600 hover:text-green-900 mark-as-paid-btn" 
+                    data-saida-id="{{ saida.id }}" 
+                    data-saida-nome="{{ saida.nome }}" 
+                    title="Marcar como Pago"
+                    onclick="window.handleMarcarComoPago({{ saida.id }}, '{{ saida.nome|escapejs }}')">
+                <i class="fas fa-check-circle"></i>
+            </button>
+        {% endif %}
+        <button class="text-red-600 hover:text-red-900 delete-saida-btn" 
+                data-saida-id="{{ saida.id }}" 
+                data-saida-nome="{{ saida.nome }}" 
+                title="Excluir"
+                onclick="window.handleExcluirDespesa({{ saida.id }}, '{{ saida.nome|escapejs }}')">
+            <i class="fas fa-trash-alt"></i>
+        </button>
+    </div>
+</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                            Nenhuma despesa encontrada para os filtros selecionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<div id="loadingSpinner" class="loading-spinner hidden">
+    <div class="bg-white p-6 rounded-lg shadow-xl">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+        <p class="text-center mt-4 text-gray-600">Processando...</p>
+    </div>
+</div>
+
+<div id="saidaModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="form-container-modal w-full p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200" id="modalTitle">Nova Despesa</h2>
+                <button type="button" id="closeSaidaModalBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+             <div id="notificationContainer" class="fixed top-4 right-4 z-50 space-y-3 max-w-sm"></div>
+            <form method="post" id="saidaFormModal" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" id="saida_id" name="saida_id">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Coluna 1 -->
+                    <div class="space-y-6">
+                        <!-- Conta Bancária -->
+                        <div class="input-group">
+                            <label for="id_conta_bancaria" class="form-label flex items-center">
+                                <i class="fas fa-piggy-bank mr-2 text-blue-500"></i> Conta Bancária <span class="text-red-500">*</span>
+                            </label>
+                            <select name="conta_bancaria" id="id_conta_bancaria" class="form-input" required>
+                                <option value="">Selecione uma conta</option>
+                                {% for conta in contas_bancarias %}
+                                    <option value="{{ conta.id }}">{{ conta.get_nome_banco_display }} - {{ conta.get_tipo_display }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="form-error" id="conta_bancaria_error"></p>
+                        </div>
+
+                        <!-- Nome/Descrição -->
+                        <div class="input-group">
+                            <label for="id_nome" class="form-label flex items-center">
+                                <i class="fas fa-file-alt mr-2 text-blue-500"></i> Descrição <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" name="nome" id="id_nome" class="form-input" placeholder="Nome da despesa" required>
+                            <p class="form-error" id="nome_error"></p>
+                        </div>
+
+                        <!-- Local -->
+                        <div class="input-group">
+                            <label for="id_local" class="form-label flex items-center">
+                                <i class="fas fa-map-marker-alt mr-2 text-red-500"></i> Local
+                            </label>
+                            <input type="text" name="local" id="id_local" class="form-input" placeholder="Ex: Shopping, Loja de Roupas">
+                            <p class="form-error" id="local_error"></p>
+                        </div>
+
+                        <!-- Categoria e Subcategoria -->
+                        <div class="input-group">
+                            <label for="id_categoria" class="form-label flex items-center">
+                                <i class="fas fa-tag mr-2 text-green-500"></i> Categoria
+                            </label>
+                            <select name="categoria" id="id_categoria" class="form-input" onchange="carregarSubcategorias(this.value)">
+                                <option value="">Selecione uma categoria</option>
+                                {% for code, name in categorias_choices %}
+                                    <option value="{{ code }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="form-error" id="categoria_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_subcategoria" class="form-label flex items-center">
+                                <i class="fas fa-tags mr-2 text-green-400"></i> Subcategoria
+                            </label>
+                            <select name="subcategoria" id="id_subcategoria" class="form-input">
+                                <option value="">Selecione uma categoria primeiro</option>
+                            </select>
+                            <p class="form-error" id="subcategoria_error"></p>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="input-group">
+                            <label for="id_observacao" class="form-label flex items-center">
+                                <i class="fas fa-comment-alt mr-2 text-gray-500"></i> Observações
+                            </label>
+                            <textarea name="observacao" id="id_observacao" class="form-input" rows="3" placeholder="Observações adicionais"></textarea>
+                            <p class="form-error" id="observacao_error"></p>
+                        </div>
+                    </div>
+
+                    <!-- Coluna 2 -->
+                    <div class="space-y-6">
+                        <!-- Valor Total -->
+                        <div class="input-group">
+                            <label for="id_valor" class="form-label flex items-center">
+                                <i class="fas fa-dollar-sign mr-2 text-green-600"></i> Valor Total <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 sm:text-sm">R$</span>
+                                </div>
+                                <input type="text" name="valor" id="id_valor" class="form-input pl-10" placeholder="0,00" required
+                                    oninput="formatarMoeda(this)" onblur="validarMoeda(this)">
+                            </div>
+                            <p class="form-error" id="valor_error"></p>
+                        </div>
+
+                        <!-- Datas -->
+                        <div class="input-group">
+                            <label for="id_data_lancamento" class="form-label flex items-center">
+                                <i class="fas fa-calendar-alt mr-2 text-purple-500"></i> Data de Lançamento <span class="text-red-500">*</span>
+                            </label>
+                            <input type="date" name="data_lancamento" id="id_data_lancamento" class="form-input" required max="{{ today_date }}">
+                            <p class="form-error" id="data_lancamento_error"></p>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="id_data_vencimento" class="form-label flex items-center">
+                                <i class="fas fa-calendar-check mr-2 text-teal-500"></i> Data de Vencimento <span class="text-red-500">*</span>
+                            </label>
+                            <input type="date" name="data_vencimento" id="id_data_vencimento" class="form-input" required>
+                            <p class="form-error" id="data_vencimento_error"></p>
+                        </div>
+
+                        <!-- Forma de Pagamento -->
+                        <div class="input-group">
+                            <label for="id_forma_pagamento" class="form-label flex items-center">
+                                <i class="fas fa-credit-card mr-2 text-yellow-500"></i> Forma de Pagamento <span class="text-red-500">*</span>
+                            </label>
+                            <select name="forma_pagamento" id="id_forma_pagamento" class="form-input" required onchange="validarParcelamento()">
+                                <option value="">Selecione a forma de pagamento</option>
+                                <option value="dinheiro">Dinheiro</option>
+                                <option value="cartao_credito">Cartão de Crédito</option>
+                                <option value="cartao_debito">Cartão de Débito</option>
+                                <option value="pix">PIX</option>
+                                <option value="transferencia">Transferência Bancária</option>
+                                <option value="boleto">Boleto</option>
+                                <option value="debito_conta">Débito em Conta</option>
+                            </select>
+                            <p class="form-error" id="forma_pagamento_error"></p>
+                        </div>
+
+                        <!-- Tipo de Pagamento (À vista/Parcelado) -->
+                        <div class="input-group">
+                            <label for="id_tipo_pagamento_detalhe" class="form-label flex items-center">
+                                <i class="fas fa-wallet mr-2 text-gray-500"></i> Tipo de Pagamento <span class="text-red-500">*</span>
+                            </label>
+                            <select name="tipo_pagamento_detalhe" id="id_tipo_pagamento_detalhe" class="form-input" required onchange="toggleParcelamentoFields()">
+                                <option value="avista">À Vista</option>
+                                <option value="parcelado">Parcelado</option>
+                            </select>
+                            <p class="form-error" id="tipo_pagamento_detalhe_error"></p>
+                        </div>
+
+                        <!-- Recorrência -->
+                        <div class="input-group">
+                            <label for="id_recorrente" class="form-label flex items-center">
+                                <i class="fas fa-redo mr-2 text-orange-500"></i> Recorrência
+                            </label>
+                            <select name="recorrente" id="id_recorrente" class="form-input" onchange="validarRecorrencia()">
+                                <option value="unica" selected>Única</option>
+                                <option value="mensal">Mensal</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                            <p class="form-error" id="recorrente_error"></p>
+                        </div>
+
+                        <!-- Campos de Parcelamento (inicialmente ocultos) -->
+                        <div id="parcelamento_fields" style="display: none;">
+                            <div class="parcelamento-section">
+                                <h3 class="parcelamento-header">
+                                    <i class="fas fa-calculator"></i> Parcelamento
+                                </h3>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="input-group">
+                                        <label for="id_quantidade_parcelas" class="form-label">Quantidade de Parcelas</label>
+                                        <input type="number" name="quantidade_parcelas" id="id_quantidade_parcelas" class="form-input" min="2" value="2" onchange="calcularParcelamento()">
+                                    </div>
+                                    
+                                    <div class="input-group">
+                                        <label for="id_valor_parcela" class="form-label">Valor da Parcela (R$)</label>
+                                        <div class="relative">
+                                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <span class="text-gray-500 sm:text-sm">R$</span>
+                                            </div>
+                                            <input type="text" name="valor_parcela" id="id_valor_parcela" class="form-input pl-10" placeholder="0,00" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Valor total: <span id="valor_total_calculado">R$ 0,00</span>
+                                        | Parcelas: <span id="num_parcelas_calculado">0</span>
+                                        | Valor por parcela: <span id="valor_parcela_calculado">R$ 0,00</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Situação -->
+                <div class="input-group">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="id_situacao_checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                        <label for="id_situacao_checkbox" class="ml-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Marcar como Pago
+                        </label>
+                    </div>
+                    <input type="hidden" name="situacao" id="id_situacao" value="pendente">
+                </div>
+
+                <!-- Botões -->
+                <div class="flex justify-end space-x-4 mt-6">
+                    <button type="button" id="cancelSaidaBtn" class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-6 py-2 rounded-lg text-white font-medium submit-btn transition-transform duration-200">
+                        Salvar Despesa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição (vazio - será preenchido via JavaScript) -->
+<div id="editSaidaModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 900px;">
+        <!-- O conteúdo será inserido aqui via JavaScript -->
+    </div>
+</div>
+
+
+<!-- Modal de Confirmação de Exclusão com Opções -->
+<div id="deleteSaidaModal" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+            <div class="text-center mb-6">
+                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20">
+                    <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mt-4 dark:text-white">Confirmar Exclusão</h3>
+                <p class="text-sm text-gray-500 mt-2 dark:text-gray-400" id="deleteModalMessage"></p>
+            </div>
+
+            <!-- Opções de Exclusão (serão preenchidas dinamicamente) -->
+            <div id="deleteOptions" class="mb-6 space-y-4 hidden">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 dark:bg-blue-900/20 dark:border-blue-800">
+                    <p class="text-sm text-blue-800 dark:text-blue-200 font-medium mb-2">Escolha o que excluir:</p>
+                    <div class="space-y-3" id="deleteOptionsList">
+                        <!-- Opções serão inseridas aqui via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informações da Despesa -->
+            <div id="despesaInfo" class="mb-6 p-4 bg-gray-50 rounded-lg dark:bg-gray-700 hidden">
+                <h4 class="font-medium text-gray-900 dark:text-white mb-2">Informações da Despesa:</h4>
+                <div class="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+                    <div><strong>Nome:</strong> <span id="infoNome"></span></div>
+                    <div><strong>Valor:</strong> <span id="infoValor"></span></div>
+                    <div><strong>Vencimento:</strong> <span id="infoVencimento"></span></div>
+                    <div><strong>Tipo:</strong> <span id="infoTipo"></span></div>
+                    <div id="infoParcelas" class="hidden"><strong>Parcela:</strong> <span id="infoParcelaAtual"></span></div>
+                    <div id="infoRecorrencia" class="hidden"><strong>Recorrência:</strong> <span id="infoRecorrente"></span></div>
+                </div>
+            </div>
+
+            <form id="deleteSaidaForm" method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="saida_id" id="saida-id-to-delete">
+                <input type="hidden" name="delete_option" id="delete-option" value="esta">
+                
+                <div class="flex justify-center space-x-4">
+                    <button type="button" id="cancelDeleteSaidaBtn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition dark:bg-gray-600 dark:text-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                        <i class="fas fa-trash-alt mr-2"></i>Excluir
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!--<div id="modalCategoria" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    <i class="fas fa-folder-plus mr-2"></i>Nova Categoria
+                </h3>
+                <button type="button" onclick="fecharModalCategoria()" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="input-group">
+                <label class="form-label">Nome da Categoria</label>
+                <input type="text" id="novaCategoriaNome" class="form-input" placeholder="Digite o nome da categoria">
+                <p class="form-error" id="categoriaError"></p>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="fecharModalCategoria()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition">
+                    Cancelar
+                </button>
+                <button type="button" onclick="salvarCategoria()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-1"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalSubcategoria" class="modal-overlay hidden">
+    <div class="modal-content max-w-md">
+        <div class="bg-white p-6 rounded-lg shadow-xl dark:bg-gray-800">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">
+                    <i class="fas fa-tag mr-2"></i>Nova Subcategoria
+                </h3>
+                <button type="button" onclick="fecharModalSubcategoria()" class="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="input-group">
+                <label class="form-label">Categoria</label>
+                <select id="subcategoriaCategoria" class="form-input">
+                    <option value="">Selecione uma categoria</option>
+                    </select>
+            </div>
+            <div class="input-group mt-4">
+                <label class="form-label">Nome da Subcategoria</label>
+                <input type="text" id="novaSubcategoriaNome" class="form-input" placeholder="Digite o nome da subcategoria">
+                <p class="form-error" id="subcategoriaError"></p>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button type="button" onclick="fecharModalSubcategoria()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition">
+                    Cancelar
+                </button>
+                <button type="button" onclick="salvarSubcategoria()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-1"></i> Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>-->
+
+{% endblock %}
+{% block extra_js %}
+<script>
+    // ====== CONFIGURAÇÕES GLOBAIS ======
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    const TODAY_DATE = "{{ today_date }}";
+
+    // ====== CATEGORIAS E SUBCATEGORIAS DO CONTEXTO ======
+    const CATEGORIA_CHOICES = {
+        {% for code, name in categorias_choices %}
+        "{{ code }}": "{{ name }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    const SUBCATEGORIA_CHOICES = {
+        {% for code, name in subcategorias_choices %}
+        "{{ code }}": "{{ name }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    const SUBCATEGORIA_PARA_CATEGORIA = {
+        {% for code, categoria in subcategoria_mapping.items %}
+        "{{ code }}": "{{ categoria }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    console.log('Categorias carregadas:', CATEGORIA_CHOICES);
+    console.log('Subcategorias carregadas:', SUBCATEGORIA_CHOICES);
+    console.log('Mapeamento carregado:', SUBCATEGORIA_PARA_CATEGORIA);
+
+    // ====== FUNÇÕES UTILITÁRIAS ======
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function showLoading() {
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) spinner.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) spinner.classList.add('hidden');
+    }
+
+    function showNotification(type, title, message, duration = 3000) {
+        const container = document.getElementById('notificationContainer');
+        if (!container) return;
+        
+        const notification = document.createElement('div');
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-circle',
+            warning: 'fas fa-exclamation-triangle',
+            info: 'fas fa-info-circle'
+        };
+        
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="notification-icon ${icons[type]}"></i>
+            <div class="notification-content">
+                <div class="notification-title">${title}</div>
+                <div class="notification-message">${message}</div>
+            </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        container.appendChild(notification);
+        setTimeout(() => notification.classList.add('show'), 10);
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+    }
+
+// ====== FUNÇÕES DE VALIDAÇÃO DE PARCELAMENTO ======
+function validarParcelamento() {
+    const formaPagamento = document.getElementById('id_forma_pagamento');
+    const tipoPagamento = document.getElementById('id_tipo_pagamento_detalhe');
+    
+    if (!formaPagamento || !tipoPagamento) return;
+    
+    // Se tentar parcelar com forma de pagamento que não permite parcelamento
+    if (tipoPagamento.value === 'parcelado') {
+        const formasPermitidas = ['cartao_credito', 'boleto'];
+        
+        if (!formasPermitidas.includes(formaPagamento.value)) {
+            showNotification('warning', 'Atenção', 
+                'Parcelamento só é permitido para Cartão de Crédito ou Boleto. Alterando para "À Vista".');
+            
+            tipoPagamento.value = 'avista';
+            toggleParcelamentoFields();
+        }
+    }
+}
+
+function validarRecorrencia() {
+    const recorrente = document.getElementById('id_recorrente');
+    const tipoPagamento = document.getElementById('id_tipo_pagamento_detalhe');
+    
+    if (!recorrente || !tipoPagamento) return;
+    
+    // Se tentar usar recorrência com parcelamento
+    if (recorrente.value !== 'unica' && tipoPagamento.value === 'parcelado') {
+        showNotification('warning', 'Atenção', 
+            'Não é possível combinar recorrência com parcelamento. Alterando recorrência para "Única".');
+        
+        recorrente.value = 'unica';
+    }
+}
+
+// ====== FUNÇÃO TOGGLE PARCELAMENTO ATUALIZADA ======
+function toggleParcelamentoFields() {
+    const tipoPagamento = document.getElementById('id_tipo_pagamento_detalhe');
+    const formaPagamento = document.getElementById('id_forma_pagamento');
+    const parcelamentoFields = document.getElementById('parcelamento_fields');
+    const recorrenteSelect = document.getElementById('id_recorrente');
+    
+    if (!tipoPagamento || !parcelamentoFields || !formaPagamento) return;
+    
+    if (tipoPagamento.value === 'parcelado') {
+        // Verificar se a forma de pagamento permite parcelamento
+        const formasPermitidas = ['cartao_credito', 'boleto'];
+        
+        if (!formasPermitidas.includes(formaPagamento.value)) {
+            showNotification('error', 'Erro', 
+                'Parcelamento só é permitido para Cartão de Crédito ou Boleto.');
+            tipoPagamento.value = 'avista';
+            parcelamentoFields.style.display = 'none';
+            return;
+        }
+        
+        parcelamentoFields.style.display = 'block';
+        
+        // Se for parcelado, recorrência deve ser única
+        if (recorrenteSelect) {
+            recorrenteSelect.value = 'unica';
+        }
+        
+        calcularParcelamento();
+    } else {
+        parcelamentoFields.style.display = 'none';
+    }
+}
+
+// ====== FUNÇÃO SALVAR DESPESA ATUALIZADA ======
+window.salvarDespesa = async function(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    console.log('=== INICIANDO SALVAMENTO COM VALIDAÇÕES ===');
+    
+    const form = document.getElementById('saidaFormModal');
+    if (!form) {
+        showNotification('error', 'Erro', 'Formulário não encontrado.');
+        return;
+    }
+    
+    // VALIDAÇÕES ADICIONAIS
+    const tipoPagamento = document.getElementById('id_tipo_pagamento_detalhe');
+    const formaPagamento = document.getElementById('id_forma_pagamento');
+    const recorrente = document.getElementById('id_recorrente');
+    
+    // Validar combinação parcelamento x forma de pagamento
+    if (tipoPagamento.value === 'parcelado') {
+        const formasPermitidas = ['cartao_credito', 'boleto'];
+        if (!formasPermitidas.includes(formaPagamento.value)) {
+            showNotification('error', 'Erro de Validação', 
+                'Parcelamento só é permitido para Cartão de Crédito ou Boleto.');
+            return;
+        }
+    }
+    
+    // Validar combinação recorrência x parcelamento
+    if (recorrente.value !== 'unica' && tipoPagamento.value === 'parcelado') {
+        showNotification('error', 'Erro de Validação', 
+            'Não é possível combinar recorrência com parcelamento.');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    const saidaId = document.getElementById('saida_id').value;
+    
+    // VALIDAÇÃO E CONVERSÃO DOS VALORES MONETÁRIOS
+    const valorInput = document.getElementById('id_valor');
+    if (valorInput && valorInput.value) {
+        const valorOriginal = valorInput.value;
+        const valorDecimal = converterParaDecimal(valorOriginal);
+        
+        console.log('Conversão do valor principal:', {
+            original: valorOriginal,
+            convertido: valorDecimal
+        });
+        
+        // Validação adicional
+        const valorNumerico = parseFloat(valorDecimal);
+        if (isNaN(valorNumerico) || valorNumerico <= 0) {
+            showNotification('error', 'Erro', 'Valor deve ser maior que zero.');
+            valorInput.focus();
+            return;
+        }
+        
+        formData.set('valor', valorDecimal);
+    } else {
+        showNotification('error', 'Erro', 'Valor é obrigatório.');
+        valorInput.focus();
+        return;
+    }
+    
+    // Conversão do valor da parcela (se existir)
+    const valorParcelaInput = document.getElementById('id_valor_parcela');
+    if (valorParcelaInput && valorParcelaInput.value && valorParcelaInput.value !== '0,00') {
+        const valorParcelaDecimal = converterParaDecimal(valorParcelaInput.value);
+        formData.set('valor_parcela', valorParcelaDecimal);
+    }
+    
+    // Adicionar validações extras ao formData
+    formData.append('validar_parcelamento', 'true');
+    formData.append('validar_recorrencia', 'true');
+    
+    const url = saidaId ? `/saidas/editar/${saidaId}/` : '/saidas/criar/';
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        console.log('Resposta do servidor:', data);
+        
+        if (data.success) {
+            showNotification('success', 'Sucesso!', data.message);
+            setTimeout(() => {
+                hideModal('saidaModal');
+                window.location.reload();
+            }, 1500);
+        } else {
+            if (data.errors) {
+                exibirErrosFormulario(data.errors);
+            }
+            showNotification('error', 'Erro', data.message || 'Verifique os campos destacados');
+        }
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        showNotification('error', 'Erro de conexão', 'Não foi possível salvar a despesa.');
+    } finally {
+        hideLoading();
+    }
+};
+
+// ====== ATUALIZAR SETUP EVENT LISTENERS ======
+function setupEventListeners() {
+         console.log('=== CONFIGURANDO EVENT LISTENERS ATUALIZADOS ===');
+    
+    // Event Listeners do Modal
+    const openModalBtn = document.getElementById('openSaidaModalBtn');
+    const closeModalBtn = document.getElementById('closeSaidaModalBtn');
+    const cancelBtn = document.getElementById('cancelSaidaBtn');
+    const saidaModal = document.getElementById('saidaModal');
+    const saidaForm = document.getElementById('saidaFormModal');
+    
+
+    
+    // Novos event listeners para validações
+    const formaPagamentoSelect = document.getElementById('id_forma_pagamento');
+    const tipoPagamentoSelect = document.getElementById('id_tipo_pagamento_detalhe');
+    const recorrenteSelect = document.getElementById('id_recorrente');
+    
+    if (formaPagamentoSelect) {
+        formaPagamentoSelect.addEventListener('change', validarParcelamento);
+    }
+    
+    if (tipoPagamentoSelect) {
+        tipoPagamentoSelect.addEventListener('change', function() {
+            toggleParcelamentoFields();
+            validarRecorrencia();
+        });
+    }
+    
+    if (recorrenteSelect) {
+        recorrenteSelect.addEventListener('change', validarRecorrencia);
+    }
+    
+    console.log('=== EVENT LISTENERS ATUALIZADOS CONFIGURADOS ===');
+}
+
+
+    // ====== FUNÇÕES DE FORMATAÇÃO DE MOEDA ======
+function formatarMoeda(input) {
+    if (!input) return;
+    
+    // Salva a posição do cursor
+    const cursorPosition = input.selectionStart;
+    const valorOriginal = input.value;
+    
+    // Remove tudo que não é dígito
+    let value = input.value.replace(/\D/g, '');
+    
+    // Se estiver vazio, define como zero
+    if (value === '' || value === '0') {
+        input.value = '0,00';
+        input.setSelectionRange(4, 4);
+        return;
+    }
+    
+    // Garante que tenha pelo menos 3 dígitos (para centavos)
+    value = value.padStart(3, '0');
+    
+    // Separa reais e centavos
+    const centavos = value.slice(-2);
+    let reais = value.slice(0, -2);
+    
+    // Remove zeros à esquerda dos reais, mas mantém pelo menos '0'
+    reais = reais.replace(/^0+/, '') || '0';
+    
+    // Formata os reais com pontos como separadores de milhar (apenas se tiver mais de 3 dígitos)
+    if (reais.length > 3) {
+        reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    
+    // Atualiza o valor do input
+    const novoValor = reais + ',' + centavos;
+    input.value = novoValor;
+    
+    // Restaura a posição do cursor (aproximadamente)
+    const newCursorPosition = cursorPosition + (novoValor.length - valorOriginal.length);
+    input.setSelectionRange(newCursorPosition, newCursorPosition);
+    
+    console.log('Formatação monetária:', {
+        original: valorOriginal,
+        digitos: value,
+        reais: reais,
+        centavos: centavos,
+        resultado: novoValor
+    });
+}
+
+function converterParaDecimal(valorString) {
+    if (!valorString || typeof valorString !== 'string') return '0.00';
+    
+    try {
+        console.log('Conversão monetária - entrada:', valorString);
+        
+        // Remove R$, espaços e mantém apenas números, vírgula e ponto
+        let valorLimpo = valorString
+            .replace('R$', '')
+            .replace(/\s/g, '')
+            .trim();
+        
+        console.log('Após limpeza inicial:', valorLimpo);
+        
+        // CASO 1: Formato brasileiro com vírgula decimal (ex: "0,01", "1.500,00")
+        if (valorLimpo.includes(',') && valorLimpo.includes('.')) {
+            // Formato: "1.500,00" - remove pontos (separadores de milhar) e substitui vírgula por ponto
+            valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+        }
+        // CASO 2: Apenas vírgula como separador decimal (ex: "0,01", "1500,00")
+        else if (valorLimpo.includes(',') && !valorLimpo.includes('.')) {
+            // Formato: "0,01" ou "1500,00" - substitui vírgula por ponto
+            valorLimpo = valorLimpo.replace(',', '.');
+        }
+        // CASO 3: Formato internacional (ex: "0.01", "1500.00") - mantém como está
+        // Não faz nada
+        // CASO 4: Apenas números (ex: "001", "1500")
+        else if (!valorLimpo.includes(',') && !valorLimpo.includes('.')) {
+            // Se for apenas números, assume que é um valor inteiro em centavos
+            // Converte para decimal dividindo por 100
+            const valorNumerico = parseInt(valorLimpo) / 100;
+            return valorNumerico.toFixed(2);
+        }
+        
+        // Remove qualquer caractere não numérico exceto ponto
+        valorLimpo = valorLimpo.replace(/[^\d.]/g, '');
+        
+        // Garante que não comece com ponto
+        if (valorLimpo.startsWith('.')) {
+            valorLimpo = '0' + valorLimpo;
+        }
+        
+        // Remove múltiplos pontos decimais (mantém apenas o primeiro)
+        const partes = valorLimpo.split('.');
+        if (partes.length > 2) {
+            valorLimpo = partes[0] + '.' + partes.slice(1).join('');
+        }
+        
+        // Se ficou vazio, retorna zero
+        if (valorLimpo === '' || valorLimpo === '.') {
+            return '0.00';
+        }
+        
+        // Converte para número e formata com 2 casas decimais
+        const numero = parseFloat(valorLimpo);
+        
+        if (isNaN(numero)) {
+            console.warn('Valor não pôde ser convertido:', valorString);
+            return '0.00';
+        }
+        
+        // Formata com 2 casas decimais (arredonda se necessário)
+        const valorFormatado = numero.toFixed(2);
+        
+        console.log('Conversão monetária - resultado:', {
+            original: valorString,
+            limpo: valorLimpo,
+            numero: numero,
+            formatado: valorFormatado
+        });
+        
+        return valorFormatado;
+        
+    } catch (error) {
+        console.error('Erro na conversão monetária:', error, valorString);
+        return '0.00';
+    }
+}
+
+function formatarValorParaExibicao(valorDecimal) {
+    if (valorDecimal === null || valorDecimal === undefined || valorDecimal === '') {
+        return '0,00';
+    }
+    
+    try {
+        // Converte para número (trata tanto string quanto número)
+        let numero;
+        if (typeof valorDecimal === 'string') {
+            // Se já está no formato brasileiro, retorna como está
+            if (valorDecimal.includes(',') && !valorDecimal.includes('.')) {
+                return valorDecimal;
+            }
+            // Converte de formato decimal internacional para número
+            numero = parseFloat(valorDecimal.replace(',', '.'));
+        } else {
+            numero = valorDecimal;
+        }
+        
+        if (isNaN(numero)) {
+            console.warn('Valor decimal inválido para formatação:', valorDecimal);
+            return '0,00';
+        }
+        
+        // Formata no padrão brasileiro
+        return numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+        
+    } catch (error) {
+        console.error('Erro na formatação para exibição:', error, valorDecimal);
+        return '0,00';
+    }
+}
+
+// Função para inicializar a formatação monetária em um input
+function inicializarFormatacaoMoeda(inputElement) {
+    if (!inputElement) return;
+    
+    // Formata o valor inicial se existir
+    if (inputElement.value) {
+        const valorDecimal = converterParaDecimal(inputElement.value);
+        const valorFormatado = formatarValorParaExibicao(valorDecimal);
+        inputElement.value = valorFormatado;
+    } else {
+        inputElement.value = '0,00';
+    }
+    
+    // Adiciona os event listeners
+    inputElement.addEventListener('input', function() {
+        formatarMoeda(this);
+    });
+    
+    inputElement.addEventListener('blur', function() {
+        validarMoeda(this);
+    });
+    
+    inputElement.addEventListener('focus', function() {
+        // Seleciona todo o texto ao focar (opcional)
+        setTimeout(() => this.select(), 100);
+    });
+}
+
+
+function validarMoeda(input) {
+    if (!input) return;
+    
+    let value = input.value.replace(/\D/g, '');
+    
+    // Se estiver vazio, define como zero
+    if (value === '' || value === '0') {
+        input.value = '0,00';
+        return;
+    }
+    
+    // Garante que tenha pelo menos 3 dígitos
+    value = value.padStart(3, '0');
+    
+    // Separa reais e centavos
+    const centavos = value.slice(-2);
+    let reais = value.slice(0, -2);
+    
+    // Remove zeros à esquerda dos reais
+    reais = reais.replace(/^0+/, '') || '0';
+    
+    // Formata reais com separadores de milhar
+    if (reais.length > 3) {
+        reais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    
+    input.value = reais + ',' + centavos;
+    
+    // Teste de conversão para debug
+    const valorTeste = input.value;
+    const valorConvertido = converterParaDecimal(valorTeste);
+    console.log('Validação - Entrada:', valorTeste, 'Saída:', valorConvertido);
+}
+
+
+// Função para obter o valor numérico de um campo formatado
+function obterValorNumerico(campoId) {
+    const input = document.getElementById(campoId);
+    if (!input) return 0;
+    
+    return parseFloat(converterParaDecimal(input.value));
+}
+
+    // ====== FUNÇÕES DE MODAL ======
+    function showModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('active'), 10);
+        document.body.style.overflow = 'hidden';
+    }
+
+    function hideModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }, 300);
+    }
+
+    // ====== FUNÇÕES DE FORMULÁRIO ======
+    function limparErrosFormulario() {
+        document.querySelectorAll('.form-error').forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.border-red-500').forEach(el => {
+            el.classList.remove('border-red-500');
+        });
+        const nonFieldErrors = document.querySelector('.non-field-errors-container');
+        if (nonFieldErrors) nonFieldErrors.remove();
+    }
+
+    function exibirErrosFormulario(errors) {
+        limparErrosFormulario();
+        
+        for (const field in errors) {
+            if (field === '__all__') {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'non-field-errors-container bg-red-50 border-l-4 border-red-500 p-4 mb-4';
+                errorDiv.innerHTML = `
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-circle text-red-500"></i>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-medium text-red-800">Erro no formulário</h3>
+                            <div class="mt-2 text-sm text-red-700">
+                                <ul class="list-disc pl-5 space-y-1">
+                                    ${errors[field].map(error => `<li>${error}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const form = document.getElementById('saidaFormModal');
+                if (form) form.prepend(errorDiv);
+            } else {
+                const errorElement = document.getElementById(`${field}_error`);
+                const inputElement = document.getElementById(`id_${field}`);
+                if (errorElement) {
+                    errorElement.textContent = errors[field][0];
+                    errorElement.style.display = 'block';
+                }
+                if (inputElement) {
+                    inputElement.classList.add('border-red-500');
+                }
+            }
+        }
+    }
+
+    // ====== CATEGORIAS E SUBCATEGORIAS ======
+    function carregarSubcategorias(categoriaSelecionada) {
+        console.log('Carregando subcategorias para:', categoriaSelecionada);
+        const subcategoriaSelect = document.getElementById('id_subcategoria');
+        if (!subcategoriaSelect) return;
+        
+        subcategoriaSelect.innerHTML = '<option value="">Selecione uma subcategoria</option>';
+        
+        if (!categoriaSelecionada) {
+            console.log('Nenhuma categoria selecionada');
+            return;
+        }
+        
+        console.log('Procurando subcategorias para categoria:', categoriaSelecionada);
+        
+        // Filtrar subcategorias baseadas na categoria selecionada
+        for (const [codigo, nome] of Object.entries(SUBCATEGORIA_CHOICES)) {
+            if (SUBCATEGORIA_PARA_CATEGORIA[codigo] === categoriaSelecionada) {
+                console.log('Adicionando subcategoria:', codigo, nome);
+                const option = document.createElement('option');
+                option.value = codigo;
+                option.textContent = nome;
+                subcategoriaSelect.appendChild(option);
+            }
+        }
+        
+        console.log('Subcategorias carregadas:', subcategoriaSelect.options.length);
+    }
+
+
+function calcularParcelamento() {
+    const valorTotalInput = document.getElementById('id_valor');
+    const qtdParcelasInput = document.getElementById('id_quantidade_parcelas');
+    const valorParcelaInput = document.getElementById('id_valor_parcela');
+    
+    if (!valorTotalInput || !qtdParcelasInput || !valorParcelaInput) return;
+    
+    // Obtém o valor numérico já convertido
+    const valorTotal = obterValorNumerico('id_valor');
+    const qtdParcelas = parseInt(qtdParcelasInput.value) || 2;
+    
+    if (qtdParcelas < 2) {
+        qtdParcelasInput.value = 2;
+        return;
+    }
+    
+    if (valorTotal <= 0) {
+        valorParcelaInput.value = '0,00';
+        return;
+    }
+    
+    const valorParcela = valorTotal / qtdParcelas;
+    
+    // Formata o valor da parcela para exibição
+    valorParcelaInput.value = formatarValorParaExibicao(valorParcela);
+    
+    // Atualizar display informativo
+    const totalCalc = document.getElementById('valor_total_calculado');
+    const numParcelas = document.getElementById('num_parcelas_calculado');
+    const valorParcelaCalc = document.getElementById('valor_parcela_calculado');
+    
+    if (totalCalc) totalCalc.textContent = 'R$ ' + formatarValorParaExibicao(valorTotal);
+    if (numParcelas) numParcelas.textContent = qtdParcelas;
+    if (valorParcelaCalc) valorParcelaCalc.textContent = 'R$ ' + formatarValorParaExibicao(valorParcela);
+}
+
+    // ====== FUNÇÕES PRINCIPAIS ======
+window.abrirModalDespesa = function(saidaId = null) {
+    console.log('Abrindo modal de despesa, ID:', saidaId);
+    
+    limparErrosFormulario();
+    const form = document.getElementById('saidaFormModal');
+    if (form) form.reset();
+    
+    // CORREÇÃO: Formatar valor inicial como zero
+    const valorInput = document.getElementById('id_valor');
+    if (valorInput) {
+        if (!valorInput.value || valorInput.value === '') {
+            valorInput.value = '0,00';
+        }
+    }
+    
+    // CORREÇÃO: Definir valor padrão para recorrente
+    const recorrenteSelect = document.getElementById('id_recorrente');
+    if (recorrenteSelect) {
+        recorrenteSelect.value = 'unica';
+    }
+    
+    if (saidaId) {
+        document.getElementById('modalTitle').textContent = 'Editar Despesa';
+        document.getElementById('saida_id').value = saidaId;
+        carregarDadosEdicao(saidaId);
+    } else {
+        document.getElementById('modalTitle').textContent = 'Nova Despesa';
+        document.getElementById('saida_id').value = '';
+        
+        // Definir data de lançamento como hoje
+        if (document.getElementById('id_data_lancamento')) {
+            document.getElementById('id_data_lancamento').value = TODAY_DATE;
+        }
+        
+        // Definir vencimento para 7 dias à frente
+        const vencto = new Date();
+        vencto.setDate(vencto.getDate() + 7);
+        const venctoFormatted = vencto.toISOString().split('T')[0];
+        
+        if (document.getElementById('id_data_vencimento')) {
+            document.getElementById('id_data_vencimento').value = venctoFormatted;
+        }
+        
+        // Resetar categorias
+        const categoriaSelect = document.getElementById('id_categoria');
+        if (categoriaSelect) {
+            categoriaSelect.value = '';
+        }
+        
+        const subcategoriaSelect = document.getElementById('id_subcategoria');
+        if (subcategoriaSelect) {
+            subcategoriaSelect.innerHTML = '<option value="">Selecione uma categoria primeiro</option>';
+        }
+    }
+    
+    toggleParcelamentoFields();
+    showModal('saidaModal');
+};
+
+    window.carregarDadosEdicao = async function(saidaId) {
+        showLoading();
+        try {
+            const response = await fetch(`/saidas/editar/${saidaId}/`);
+            const data = await response.json();
+            
+            if (data.success && data.saida) {
+                preencherFormularioEdicao(data.saida);
+            } else {
+                showNotification('error', 'Erro', 'Não foi possível carregar os dados da despesa.');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            showNotification('error', 'Erro', 'Erro ao carregar dados para edição.');
+        } finally {
+            hideLoading();
+        }
+    };
+
+    function preencherFormularioEdicao(saida) {
+        // Campos básicos
+        setValue('id_nome', saida.nome);
+        setValue('id_valor', saida.valor);
+        setValue('id_local', saida.local);
+        setValue('id_observacao', saida.observacao);
+        
+        // Datas
+        setValue('id_data_lancamento', saida.data_lancamento);
+        setValue('id_data_vencimento', saida.data_vencimento);
+        
+        // Selects
+        setValue('id_conta_bancaria', saida.conta_bancaria);
+        setValue('id_forma_pagamento', saida.forma_pagamento);
+        setValue('id_tipo_pagamento_detalhe', saida.tipo_pagamento_detalhe || 'avista');
+        setValue('id_recorrente', saida.recorrente || 'unica');
+        
+        // Categorias
+        setValue('id_categoria', saida.categoria);
+        if (saida.categoria) {
+            // Carregar subcategorias para a categoria selecionada
+            carregarSubcategorias(saida.categoria);
+            // Aguardar um pouco para garantir que as subcategorias foram carregadas
+            setTimeout(() => {
+                setValue('id_subcategoria', saida.subcategoria);
+            }, 100);
+        }
+        
+        // Situação
+        const situacaoCheckbox = document.getElementById('id_situacao_checkbox');
+        const situacaoHidden = document.getElementById('id_situacao');
+        if (situacaoCheckbox && situacaoHidden) {
+            if (saida.situacao === 'pago') {
+                situacaoCheckbox.checked = true;
+                situacaoHidden.value = 'pago';
+            } else {
+                situacaoCheckbox.checked = false;
+                situacaoHidden.value = 'pendente';
+            }
+        }
+        
+        // Parcelamento
+        setValue('id_quantidade_parcelas', saida.quantidade_parcelas || 1);
+        setValue('id_valor_parcela', saida.valor_parcela);
+        
+        toggleParcelamentoFields();
+    }
+
+    function setValue(elementId, value) {
+        const element = document.getElementById(elementId);
+        if (element && value !== undefined && value !== null) {
+            element.value = value;
+        }
+    }
+
+
+    // ====== FUNÇÕES DE AÇÃO (DO PRIMEIRO CÓDIGO) ======
+    window.handleEditarDespesa = function(saidaId) {
+        console.log('Editando despesa ID:', saidaId);
+        abrirModalDespesa(saidaId);
+    };
+
+    window.handleMarcarComoPago = function(saidaId, saidaNome) {
+        console.log('Marcando como pago:', saidaNome);
+        if (confirm(`Tem certeza que deseja marcar "${saidaNome}" como paga?`)) {
+            marcarComoPago(saidaId, saidaNome);
+        }
+    };
+
+// ====== FUNÇÕES PARA EXCLUSÃO COM OPÇÕES ======
+window.handleExcluirDespesa = async function(saidaId, saidaNome) {
+    console.log('Abrindo modal de exclusão para:', saidaNome);
+    
+    try {
+        // Buscar informações da despesa
+        const response = await fetch(`/saidas/excluir/${saidaId}/`, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+        });
+        
+        if (response.status === 404) {
+            showNotification('error', 'Erro', 'Despesa não encontrada. Talvez já tenha sido excluída.');
+            return;
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            abrirModalExclusao(data.despesa);
+        } else {
+            showNotification('error', 'Erro', data.message || 'Não foi possível carregar informações da despesa.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showNotification('error', 'Erro', 'Erro ao carregar informações da despesa.');
+    }
+};
+
+function abrirModalExclusao(despesa) {
+    console.log('Dados da despesa recebidos:', despesa);
+    
+    // Preencher informações básicas
+    document.getElementById('saida-id-to-delete').value = despesa.id;
+    document.getElementById('infoNome').textContent = despesa.nome;
+    document.getElementById('infoValor').textContent = formatarValorParaExibicao(despesa.valor);
+    document.getElementById('infoVencimento').textContent = despesa.data_vencimento;
+    document.getElementById('infoTipo').textContent = despesa.tipo_pagamento === 'parcelado' ? 'Parcelado' : 'À Vista';
+    
+    // Mostrar/ocultar informações de parcelas
+    const infoParcelas = document.getElementById('infoParcelas');
+    if (despesa.quantidade_parcelas > 1) {
+        document.getElementById('infoParcelaAtual').textContent = 
+            `${despesa.parcela_atual}/${despesa.quantidade_parcelas}`;
+        infoParcelas.classList.remove('hidden');
+    } else {
+        infoParcelas.classList.add('hidden');
+    }
+    
+    // Mostrar/ocultar informações de recorrência
+    const infoRecorrencia = document.getElementById('infoRecorrencia');
+    if (despesa.recorrente !== 'unica') {
+        document.getElementById('infoRecorrente').textContent = 
+            despesa.recorrente.charAt(0).toUpperCase() + despesa.recorrente.slice(1);
+        infoRecorrencia.classList.remove('hidden');
+    } else {
+        infoRecorrencia.classList.add('hidden');
+    }
+    
+    // Mostrar informações da despesa
+    document.getElementById('despesaInfo').classList.remove('hidden');
+    
+    // Configurar opções de exclusão
+    const deleteOptions = document.getElementById('deleteOptions');
+    const deleteOptionsList = document.getElementById('deleteOptionsList');
+    const deleteMessage = document.getElementById('deleteModalMessage');
+    
+    deleteOptionsList.innerHTML = '';
+    
+    // Opção padrão - sempre disponível
+    const defaultOption = criarOpcaoExclusao('esta', 'Excluir apenas esta despesa', true);
+    deleteOptionsList.appendChild(defaultOption);
+    
+    console.log('Analisando opções de exclusão:', {
+        tem_parcelas: despesa.tem_parcelas,
+        e_parcela: despesa.e_parcela,
+        e_original: despesa.e_original,
+        tem_recorrencias: despesa.tem_recorrencias,
+        e_recorrente: despesa.e_recorrente
+    });
+    
+    // Opções para parcelas
+    if (despesa.tem_parcelas) {
+        if (despesa.e_parcela) {
+            // Se é uma parcela, oferecer excluir todas
+            console.log('Adicionando opção: excluir todas as parcelas');
+            const todasParcelasOption = criarOpcaoExclusao(
+                'todas_parcelas', 
+                `Excluir todas as ${despesa.total_parcelas} parcelas desta despesa`,
+                false
+            );
+            deleteOptionsList.appendChild(todasParcelasOption);
+        } else if (despesa.e_original && despesa.parcelas_futuras > 0) {
+            // Se é a primeira parcela, oferecer excluir apenas futuras
+            console.log('Adicionando opção: excluir parcelas futuras');
+            const futurasOption = criarOpcaoExclusao(
+                'todas_parcelas_futuras',
+                `Excluir apenas as ${despesa.parcelas_futuras} parcelas futuras`,
+                false
+            );
+            deleteOptionsList.appendChild(futurasOption);
+        }
+    }
+    
+    // Opções para recorrências
+    if (despesa.tem_recorrencias) {
+        if (despesa.e_recorrente) {
+            console.log('Adicionando opção: excluir todas as ocorrências');
+            const todasOcorrenciasOption = criarOpcaoExclusao(
+                'todas_ocorrencias',
+                `Excluir todas as ${despesa.total_ocorrencias || (despesa.ocorrencias_futuras + 1)} ocorrências`,
+                false
+            );
+            deleteOptionsList.appendChild(todasOcorrenciasOption);
+            
+            if (despesa.ocorrencias_futuras > 0) {
+                console.log('Adicionando opção: excluir ocorrências futuras');
+                const futurasOcorrenciasOption = criarOpcaoExclusao(
+                    'futuras_ocorrencias',
+                    `Excluir apenas as ${despesa.ocorrencias_futuras} ocorrências futuras`,
+                    false
+                );
+                deleteOptionsList.appendChild(futurasOcorrenciasOption);
+            }
+        }
+    }
+    
+    // Mostrar opções se houver mais de uma opção
+    const totalOpcoes = deleteOptionsList.children.length;
+    console.log(`Total de opções disponíveis: ${totalOpcoes}`);
+    
+    if (totalOpcoes > 1) {
+        deleteOptions.classList.remove('hidden');
+        deleteMessage.textContent = 'Esta despesa possui parcelas ou ocorrências relacionadas. Escolha o que deseja excluir:';
+    } else {
+        deleteOptions.classList.add('hidden');
+        deleteMessage.textContent = `Tem certeza que deseja excluir a despesa "${despesa.nome}"? Esta ação não pode ser desfeita.`;
+    }
+    
+    // Resetar para opção padrão
+    document.getElementById('delete-option').value = 'esta';
+    
+    // Mostrar modal
+    showModal('deleteSaidaModal');
+}
+
+
+function criarOpcaoExclusao(valor, texto, checked) {
+    const div = document.createElement('div');
+    div.className = 'flex items-center';
+    div.innerHTML = `
+        <input type="radio" name="delete_option" value="${valor}" 
+               ${checked ? 'checked' : ''} 
+               class="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300"
+               onchange="document.getElementById('delete-option').value = this.value">
+        <label class="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+            ${texto}
+        </label>
+    `;
+    return div;
+}
+
+// Event listener para o formulário de exclusão
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteForm = document.getElementById('deleteSaidaForm');
+    const cancelDeleteBtn = document.getElementById('cancelDeleteSaidaBtn');
+    
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            excluirDespesaComOpcoes();
+        });
+    }
+    
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', function() {
+            hideModal('deleteSaidaModal');
+        });
+    }
+});
+
+window.excluirDespesaComOpcoes = async function() {
+    const form = document.getElementById('deleteSaidaForm');
+    const formData = new FormData(form);
+    const saidaId = document.getElementById('saida-id-to-delete').value;
+    const deleteOption = document.getElementById('delete-option').value;
+    
+    console.log(`Enviando exclusão: ID=${saidaId}, Opção=${deleteOption}`);
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/excluir/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'X-Requested-With': 'XMLHttpRequest' // Adicione esta linha
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        console.log('Resposta da exclusão:', data);
+        
+        if (data.success) {
+            showNotification('success', 'Sucesso', data.message);
+            
+            // Fechar o modal imediatamente
+            hideModal('deleteSaidaModal');
+            
+            // Pequeno delay para mostrar a notificação antes do refresh
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+            
+        } else {
+            showNotification('error', 'Erro', data.message);
+            hideModal('deleteSaidaModal');
+        }
+    } catch (error) {
+        console.error('Erro na exclusão:', error);
+        showNotification('error', 'Erro', 'Erro de conexão ao excluir despesa.');
+        hideModal('deleteSaidaModal');
+    } finally {
+        hideLoading();
+    }
+};
+
+
+    window.marcarComoPago = async function(saidaId, saidaNome) {
+        showLoading();
+        try {
+            const response = await fetch(`/saidas/${saidaId}/marcar_pago/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF_TOKEN,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                showNotification('success', 'Sucesso', data.message);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification('error', 'Erro', data.message);
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            showNotification('error', 'Erro', 'Não foi possível marcar como pago.');
+        } finally {
+            hideLoading();
+        }
+    };
+
+window.excluirDespesa = async function(saidaId, saidaNome) {
+    showLoading();
+    try {
+        // CORREÇÃO: Usar a URL correta para exclusão
+        const response = await fetch(`/saidas/excluir/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'  // Importante para identificar como AJAX
+            },
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('success', 'Sucesso', data.message);
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showNotification('error', 'Erro', data.message || 'Não foi possível excluir a despesa.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showNotification('error', 'Erro', 'Erro de conexão ao excluir despesa.');
+    } finally {
+        hideLoading();
+    }
+};
+
+    // ====== FUNÇÕES DE FILTRO (DO PRIMEIRO CÓDIGO) ======
+    window.updateFilters = function() {
+        showLoading();
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        const anoFilter = document.getElementById('anoFilter');
+        const mesFilter = document.getElementById('mesFilter');
+        const statusFilter = document.getElementById('statusFilter');
+        
+        if (anoFilter && anoFilter.value) urlParams.set('ano', anoFilter.value);
+        else urlParams.delete('ano');
+        
+        if (mesFilter && mesFilter.value) urlParams.set('mes', mesFilter.value);
+        else urlParams.delete('mes');
+        
+        if (statusFilter && statusFilter.value) urlParams.set('status', statusFilter.value);
+        else urlParams.delete('status');
+        
+        window.location.search = urlParams.toString();
+    };
+    
+    window.removeFilter = function(filterName) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.delete(filterName);
+        window.location.search = urlParams.toString();
+    };
+    
+    window.clearFilters = function() {
+        window.location.search = '';
+    };
+
+    // ====== FUNÇÃO DEBUG (DO PRIMEIRO CÓDIGO) ======
+    window.debugChoices = function() {
+        console.log('=== DEBUG CHOICES ===');
+        console.log('Categorias:', CATEGORIA_CHOICES);
+        console.log('Subcategorias:', SUBCATEGORIA_CHOICES);
+        
+        const categoriaSelect = document.getElementById('id_categoria');
+        const subcategoriaSelect = document.getElementById('id_subcategoria');
+        
+        console.log('Opções de categoria no select:');
+        if (categoriaSelect) {
+            Array.from(categoriaSelect.options).forEach(opt => {
+                console.log(`- ${opt.value}: ${opt.text}`);
+            });
+        }
+        
+        console.log('Opções de subcategoria no select:');
+        if (subcategoriaSelect) {
+            Array.from(subcategoriaSelect.options).forEach(opt => {
+                console.log(`- ${opt.value}: ${opt.text}`);
+            });
+        }
+    };
+
+
+// Função para abrir modal de edição
+window.abrirModalEdicaoDespesa = async function(saidaId) {
+    console.log('Abrindo modal de edição para ID:', saidaId);
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/editar/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'action=get_form'
+        });
+        
+        // Verificar se a resposta é JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Resposta do servidor não é JSON');
+        }
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Erro na requisição');
+        }
+        
+        if (data.success) {
+            // Obter ou criar o modal de edição
+            let modal = document.getElementById('editSaidaModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'editSaidaModal';
+                modal.className = 'modal-overlay hidden';
+                document.body.appendChild(modal);
+            }
+            
+            // Atualizar o conteúdo do modal
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 900px;">
+                    ${data.form_html}
+                </div>
+            `;
+            
+            // Configurar eventos do modal
+            configurarModalEdicao(saidaId);
+            showModal('editSaidaModal');
+            
+        } else {
+            showNotification('error', 'Erro', data.message || 'Não foi possível carregar o formulário de edição.');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar modal de edição:', error);
+        
+        if (error.message.includes('JSON')) {
+            showNotification('error', 'Erro', 'Erro no servidor ao carregar formulário de edição.');
+        } else {
+            showNotification('error', 'Erro', error.message || 'Erro ao carregar dados para edição.');
+        }
+    } finally {
+        hideLoading();
+    }
+};
+
+// Configurar eventos do modal de edição
+function configurarModalEdicao(saidaId) {
+    const closeBtn = document.getElementById('closeEditSaidaModalBtn');
+    const cancelBtn = document.getElementById('cancelEditSaidaBtn');
+    const form = document.getElementById('editSaidaFormModal');
+    const modal = document.getElementById('editSaidaModal');
+    const situacaoCheckbox = document.getElementById('edit_id_situacao_checkbox');
+    const situacaoHidden = document.getElementById('edit_id_situacao');
+    
+    // Event listeners para fechar modal
+    if (closeBtn) {
+        closeBtn.onclick = () => hideModal('editSaidaModal');
+    }
+    
+    if (cancelBtn) {
+        cancelBtn.onclick = () => hideModal('editSaidaModal');
+    }
+    
+    // Fechar modal clicando fora
+    if (modal) {
+        modal.onclick = (e) => {
+            if (e.target === modal) hideModal('editSaidaModal');
+        };
+    }
+    
+    // Situação checkbox
+    if (situacaoCheckbox && situacaoHidden) {
+        situacaoCheckbox.onchange = function() {
+            situacaoHidden.value = this.checked ? 'pago' : 'pendente';
+        };
+    }
+    
+    // Submit do formulário
+    if (form) {
+        form.onsubmit = (e) => salvarEdicaoDespesa(e, saidaId);
+    }
+    
+    // Inicializar formatação monetária
+    const valorInput = document.getElementById('edit_id_valor');
+    if (valorInput) {
+        inicializarFormatacaoMoeda(valorInput);
+    }
+}
+
+// Função para salvar edição
+// Função para salvar edição
+window.salvarEdicaoDespesa = async function(event, saidaId) {
+    event.preventDefault();
+    console.log('=== INICIANDO SALVAMENTO DE EDIÇÃO ===');
+    
+    const form = document.getElementById('editSaidaFormModal');
+    if (!form) {
+        console.error('Formulário de edição não encontrado');
+        return;
+    }
+    
+    // Verificar opção selecionada
+    const aplicarTodas = document.querySelector('input[name="edit_option"]:checked')?.value === 'todas';
+    document.getElementById('aplicar_todas').value = aplicarTodas;
+    
+    const formData = new FormData(form);
+    
+    // Log dos dados do formulário
+    console.log('Dados do formulário:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+    }
+    
+    // Converter valor para formato decimal
+    const valorInput = document.getElementById('edit_id_valor');
+    if (valorInput && valorInput.value) {
+        const valorOriginal = valorInput.value;
+        const valorDecimal = converterParaDecimal(valorOriginal);
+        console.log('Conversão de valor:', { original: valorOriginal, decimal: valorDecimal });
+        formData.set('valor', valorDecimal);
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/editar/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+            body: formData
+        });
+        
+        console.log('Status da resposta:', response.status);
+        
+        const data = await response.json();
+        console.log('Resposta do servidor:', data);
+        
+        if (data.success) {
+            showNotification('success', 'Sucesso!', data.message);
+            setTimeout(() => {
+                hideModal('editSaidaModal');
+                window.location.reload();
+            }, 1500);
+        } else {
+            console.error('Erros de validação:', data.errors);
+            if (data.errors) {
+                exibirErrosFormularioEdicao(data.errors);
+                showNotification('error', 'Erro de Validação', 'Verifique os campos destacados em vermelho.');
+            } else {
+                showNotification('error', 'Erro', data.message || 'Erro ao atualizar a despesa.');
+            }
+        }
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        showNotification('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor.');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Função para exibir erros no formulário de edição
+function exibirErrosFormularioEdicao(errors) {
+    // Limpar erros anteriores
+    document.querySelectorAll('.form-error').forEach(el => {
+        el.textContent = '';
+        el.style.display = 'none';
+    });
+    
+    document.querySelectorAll('.border-red-500').forEach(el => {
+        el.classList.remove('border-red-500');
+    });
+    
+    for (const field in errors) {
+        const errorElement = document.getElementById(`edit_${field}_error`);
+        const inputElement = document.getElementById(`edit_id_${field}`);
+        
+        if (errorElement) {
+            errorElement.textContent = errors[field][0];
+            errorElement.style.display = 'block';
+        }
+        if (inputElement) {
+            inputElement.classList.add('border-red-500');
+        }
+    }
+}
+
+// Função para carregar subcategorias na edição
+window.carregarSubcategoriasEdicao = function(categoriaSelecionada) {
+    const subcategoriaSelect = document.getElementById('edit_id_subcategoria');
+    if (!subcategoriaSelect) return;
+    
+    subcategoriaSelect.innerHTML = '<option value="">Selecione uma subcategoria</option>';
+    
+    if (!categoriaSelecionada) return;
+    
+    // Filtrar subcategorias baseadas na categoria selecionada
+    for (const [codigo, nome] of Object.entries(SUBCATEGORIA_CHOICES)) {
+        if (codigo.startsWith(categoriaSelecionada)) {
+            const option = document.createElement('option');
+            option.value = codigo;
+            option.textContent = nome;
+            subcategoriaSelect.appendChild(option);
+        }
+    }
+};
+
+// Atualizar a função handleEditarDespesa
+window.handleEditarDespesa = function(saidaId) {
+    console.log('Editando despesa ID:', saidaId);
+    abrirModalEdicaoDespesa(saidaId);
+};
+  
+
+// Funções específicas para edição
+function validarParcelamentoEdicao() {
+    const formaPagamento = document.getElementById('edit_id_forma_pagamento');
+    const tipoPagamento = document.getElementById('edit_id_tipo_pagamento_detalhe');
+    
+    if (tipoPagamento.value === 'parcelado') {
+        const formasPermitidas = ['cartao_credito', 'boleto'];
+        if (!formasPermitidas.includes(formaPagamento.value)) {
+            showNotification('warning', 'Atenção', 
+                'Parcelamento só é permitido para Cartão de Crédito ou Boleto. Alterando para "À Vista".');
+            tipoPagamento.value = 'avista';
+            toggleParcelamentoFieldsEdicao();
+        }
+    }
+}
+
+function validarRecorrenciaEdicao() {
+    const recorrente = document.getElementById('edit_id_recorrente');
+    const tipoPagamento = document.getElementById('edit_id_tipo_pagamento_detalhe');
+    
+    if (recorrente.value !== 'unica' && tipoPagamento.value === 'parcelado') {
+        showNotification('warning', 'Atenção', 
+            'Não é possível combinar recorrência com parcelamento. Alterando recorrência para "Única".');
+        recorrente.value = 'unica';
+    }
+}
+
+function toggleParcelamentoFieldsEdicao() {
+    const tipoPagamento = document.getElementById('edit_id_tipo_pagamento_detalhe');
+    const formaPagamento = document.getElementById('edit_id_forma_pagamento');
+    const parcelamentoFields = document.getElementById('edit_parcelamento_fields');
+    
+    if (tipoPagamento.value === 'parcelado') {
+        const formasPermitidas = ['cartao_credito', 'boleto'];
+        if (!formasPermitidas.includes(formaPagamento.value)) {
+            showNotification('error', 'Erro', 
+                'Parcelamento só é permitido para Cartão de Crédito ou Boleto.');
+            tipoPagamento.value = 'avista';
+            parcelamentoFields.style.display = 'none';
+            return;
+        }
+        parcelamentoFields.style.display = 'block';
+        
+        const recorrenteSelect = document.getElementById('edit_id_recorrente');
+        if (recorrenteSelect) {
+            recorrenteSelect.value = 'unica';
+        }
+    } else {
+        parcelamentoFields.style.display = 'none';
+    }
+}
+
+function calcularParcelamentoEdicao() {
+    const valorTotal = obterValorNumerico('edit_id_valor');
+    const qtdParcelas = parseInt(document.getElementById('edit_id_quantidade_parcelas').value) || 2;
+    
+    if (qtdParcelas < 2) {
+        document.getElementById('edit_id_quantidade_parcelas').value = 2;
+        return;
+    }
+    
+    if (valorTotal <= 0) {
+        document.getElementById('edit_id_valor_parcela').value = '0,00';
+        return;
+    }
+    
+    const valorParcela = valorTotal / qtdParcelas;
+    document.getElementById('edit_id_valor_parcela').value = formatarValorParaExibicao(valorParcela);
+}
+
+// Atualizar a função de abrir modal de edição
+window.abrirModalEdicaoDespesa = async function(saidaId) {
+    console.log('Abrindo modal de edição para ID:', saidaId);
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/editar/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'action=get_form'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const modal = document.getElementById('editSaidaModal');
+            if (modal) {
+                modal.querySelector('.modal-content').innerHTML = data.form_html;
+                showModal('editSaidaModal');
+                
+                // Inicializar formatação monetária
+                const valorInput = document.getElementById('edit_id_valor');
+                if (valorInput) {
+                    inicializarFormatacaoMoeda(valorInput);
+                }
+                
+                // Configurar evento do checkbox de situação
+                const situacaoCheckbox = document.getElementById('edit_id_situacao_checkbox');
+                const situacaoHidden = document.getElementById('edit_id_situacao');
+                if (situacaoCheckbox && situacaoHidden) {
+                    situacaoCheckbox.addEventListener('change', function() {
+                        situacaoHidden.value = this.checked ? 'pago' : 'pendente';
+                    });
+                }
+                
+                // Configurar evento do formulário
+                const form = document.getElementById('editSaidaFormModal');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        salvarEdicaoDespesa(saidaId);
+                    });
+                }
+                
+                // Configurar botão cancelar
+                const cancelBtn = document.getElementById('cancelEditSaidaBtn');
+                if (cancelBtn) {
+                    cancelBtn.addEventListener('click', function() {
+                        hideModal('editSaidaModal');
+                    });
+                }
+                
+                // Configurar botão fechar
+                const closeBtn = document.getElementById('closeEditSaidaModalBtn');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', function() {
+                        hideModal('editSaidaModal');
+                    });
+                }
+            }
+        } else {
+            showNotification('error', 'Erro', data.message || 'Não foi possível carregar o formulário de edição.');
+        }
+    } catch (error) {
+        console.error('Erro ao carregar modal de edição:', error);
+        showNotification('error', 'Erro', 'Erro ao carregar dados para edição.');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Função para salvar edição
+window.salvarEdicaoDespesa = async function(saidaId) {
+    console.log('Salvando edição para ID:', saidaId);
+    
+    const form = document.getElementById('editSaidaFormModal');
+    if (!form) {
+        showNotification('error', 'Erro', 'Formulário não encontrado.');
+        return;
+    }
+    
+    const formData = new FormData(form);
+    
+    // Converter valor para decimal
+    const valorInput = document.getElementById('edit_id_valor');
+    if (valorInput && valorInput.value) {
+        const valorDecimal = converterParaDecimal(valorInput.value);
+        formData.set('valor', valorDecimal);
+    }
+    
+    // Converter valor_parcela para decimal se existir
+    const valorParcelaInput = document.getElementById('edit_id_valor_parcela');
+    if (valorParcelaInput && valorParcelaInput.value) {
+        const valorParcelaDecimal = converterParaDecimal(valorParcelaInput.value);
+        formData.set('valor_parcela', valorParcelaDecimal);
+    }
+    
+    showLoading();
+    
+    try {
+        const response = await fetch(`/saidas/editar/${saidaId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_TOKEN,
+            },
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showNotification('success', 'Sucesso!', data.message);
+            setTimeout(() => {
+                hideModal('editSaidaModal');
+                window.location.reload();
+            }, 1500);
+        } else {
+            if (data.errors) {
+                // Exibir erros no formulário
+                for (const field in data.errors) {
+                    const errorElement = document.getElementById(`edit_${field}_error`);
+                    const inputElement = document.getElementById(`edit_id_${field}`);
+                    if (errorElement) {
+                        errorElement.textContent = data.errors[field][0];
+                        errorElement.style.display = 'block';
+                    }
+                    if (inputElement) {
+                        inputElement.classList.add('border-red-500');
+                    }
+                }
+            }
+            showNotification('error', 'Erro', data.message || 'Erro ao atualizar a despesa.');
+        }
+    } catch (error) {
+        console.error('Erro na requisição:', error);
+        showNotification('error', 'Erro de Conexão', 'Não foi possível conectar ao servidor.');
+    } finally {
+        hideLoading();
+    }
+};
+
+// Atualizar a função handleEditarDespesa
+window.handleEditarDespesa = function(saidaId) {
+    console.log('Editando despesa ID:', saidaId);
+    abrirModalEdicaoDespesa(saidaId);
+};
+
+
+  // ====== INICIALIZAÇÃO ======
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('=== INICIALIZANDO SISTEMA DE DESPESAS ===');
+    
+    // Inicializa o campo de valor principal
+    const valorInput = document.getElementById('id_valor');
+    if (valorInput) {
+        inicializarFormatacaoMoeda(valorInput);
+    }
+    
+    // Inicializa o campo de valor da parcela (se existir)
+    const valorParcelaInput = document.getElementById('id_valor_parcela');
+    if (valorParcelaInput) {
+        inicializarFormatacaoMoeda(valorParcelaInput);
+    }
+    
+    // Configurar os event listeners
+    setupEventListeners();
+    
+    console.log('=== SISTEMA INICIALIZADO ===');
+});
+
+// ====== SETUP EVENT LISTENERS CORRIGIDO ======
+function setupEventListeners() {
+    console.log('=== CONFIGURANDO EVENT LISTENERS ===');
+    
+    // Event Listeners do Modal
+    const openModalBtn = document.getElementById('openSaidaModalBtn');
+    const closeModalBtn = document.getElementById('closeSaidaModalBtn');
+    const cancelBtn = document.getElementById('cancelSaidaBtn');
+    const saidaModal = document.getElementById('saidaModal');
+    const saidaForm = document.getElementById('saidaFormModal');
+    
+    console.log('Elementos encontrados:', {
+        openModalBtn: !!openModalBtn,
+        closeModalBtn: !!closeModalBtn,
+        cancelBtn: !!cancelBtn,
+        saidaModal: !!saidaModal,
+        saidaForm: !!saidaForm
+    });
+    
+    // Botão para abrir modal
+    if (openModalBtn) {
+        openModalBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Botão Nova Despesa clicado');
+            abrirModalDespesa();
+        });
+    } else {
+        console.error('Botão openSaidaModalBtn não encontrado!');
+    }
+    
+    // Botão para fechar modal (X)
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Fechando modal via botão X');
+            hideModal('saidaModal');
+        });
+    }
+    
+    // Botão cancelar
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Fechando modal via botão Cancelar');
+            hideModal('saidaModal');
+        });
+    }
+    
+    // Fechar modal clicando fora
+    if (saidaModal) {
+        saidaModal.addEventListener('click', function(e) {
+            if (e.target === saidaModal) {
+                console.log('Fechando modal via clique fora');
+                hideModal('saidaModal');
+            }
+        });
+    }
+    
+    // Submit do formulário
+    if (saidaForm) {
+        saidaForm.addEventListener('submit', function(e) {
+            salvarDespesa(e);
+        });
+    }
+    
+    // Event Listeners para formatação e validações
+    const valorInput = document.getElementById('id_valor');
+    const categoriaSelect = document.getElementById('id_categoria');
+    const tipoPagamentoSelect = document.getElementById('id_tipo_pagamento_detalhe');
+    const formaPagamentoSelect = document.getElementById('id_forma_pagamento');
+    const recorrenteSelect = document.getElementById('id_recorrente');
+    const qtdParcelasInput = document.getElementById('id_quantidade_parcelas');
+    const situacaoCheckbox = document.getElementById('id_situacao_checkbox');
+    
+    // Formatação monetária
+    if (valorInput) {
+        valorInput.addEventListener('input', function() {
+            formatarMoeda(this);
+            if (tipoPagamentoSelect && tipoPagamentoSelect.value === 'parcelado') {
+                calcularParcelamento();
+            }
+        });
+        
+        valorInput.addEventListener('blur', function() {
+            validarMoeda(this);
+        });
+    }
+    
+    // Categorias e subcategorias
+    if (categoriaSelect) {
+        categoriaSelect.addEventListener('change', function() {
+            carregarSubcategorias(this.value);
+        });
+    }
+    
+    // Validações de parcelamento e recorrência
+    if (tipoPagamentoSelect) {
+        tipoPagamentoSelect.addEventListener('change', function() {
+            toggleParcelamentoFields();
+            validarRecorrencia();
+        });
+    }
+    
+    if (formaPagamentoSelect) {
+        formaPagamentoSelect.addEventListener('change', validarParcelamento);
+    }
+    
+    if (recorrenteSelect) {
+        recorrenteSelect.addEventListener('change', validarRecorrencia);
+    }
+    
+    // Cálculo de parcelamento
+    if (qtdParcelasInput) {
+        qtdParcelasInput.addEventListener('input', calcularParcelamento);
+    }
+    
+    // Situação (pago/pendente)
+    if (situacaoCheckbox) {
+        situacaoCheckbox.addEventListener('change', function() {
+            const situacaoHidden = document.getElementById('id_situacao');
+            if (situacaoHidden) {
+                situacaoHidden.value = this.checked ? 'pago' : 'pendente';
+            }
+        });
+    }
+    
+    // Event Listeners para botões da tabela (delegação de eventos)
+    document.addEventListener('click', function(e) {
+        console.log('Clique detectado no documento:', e.target);
+        
+        // Verificar se é um botão de edição
+        if (e.target.closest('.edit-saida-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const button = e.target.closest('.edit-saida-btn');
+            const saidaId = button.dataset.saidaId;
+            console.log('Botão editar clicado, ID:', saidaId);
+            handleEditarDespesa(saidaId);
+            return;
+        }
+        
+        // Verificar se é um botão de marcar como pago
+        if (e.target.closest('.mark-as-paid-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const button = e.target.closest('.mark-as-paid-btn');
+            const saidaId = button.dataset.saidaId;
+            const saidaNome = button.dataset.saidaNome;
+            console.log('Botão marcar como pago clicado:', saidaNome);
+            handleMarcarComoPago(saidaId, saidaNome);
+            return;
+        }
+        
+        // Verificar se é um botão de excluir
+        if (e.target.closest('.delete-saida-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const button = e.target.closest('.delete-saida-btn');
+            const saidaId = button.dataset.saidaId;
+            const saidaNome = button.dataset.saidaNome;
+            console.log('Botão excluir clicado:', saidaNome);
+            handleExcluirDespesa(saidaId, saidaNome);
+            return;
+        }
+    });
+    
+    console.log('=== EVENT LISTENERS CONFIGURADOS ===');
+}
+
+// ====== FUNÇÕES DE MODAL CORRIGIDAS ======
+function showModal(modalId) {
+    console.log('Tentando abrir modal:', modalId);
+    const modal = document.getElementById(modalId);
+    if (!modal) {
+        console.error('Modal não encontrado:', modalId);
+        return;
+    }
+    
+    modal.classList.remove('hidden');
+    // Pequeno delay para garantir que a classe hidden foi removida
+    setTimeout(() => {
+        modal.classList.add('active');
+        console.log('Modal aberto com sucesso:', modalId);
+    }, 50);
+    document.body.style.overflow = 'hidden';
+}
+
+function hideModal(modalId) {
+    console.log('Fechando modal:', modalId);
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        console.log('Modal fechado:', modalId);
+    }, 300);
+}
+
+// ====== FUNÇÃO PARA ABRIR MODAL ======
+window.abrirModalDespesa = function(saidaId = null) {
+    console.log('Abrindo modal de despesa, ID:', saidaId);
+    
+    limparErrosFormulario();
+    const form = document.getElementById('saidaFormModal');
+    if (form) {
+        form.reset();
+        console.log('Formulário resetado');
+    }
+    
+    // CORREÇÃO: Formatar valor inicial como zero
+    const valorInput = document.getElementById('id_valor');
+    if (valorInput) {
+        if (!valorInput.value || valorInput.value === '') {
+            valorInput.value = '0,00';
+            console.log('Valor inicial definido como 0,00');
+        }
+    }
+    
+    // CORREÇÃO: Definir valor padrão para recorrente
+    const recorrenteSelect = document.getElementById('id_recorrente');
+    if (recorrenteSelect) {
+        recorrenteSelect.value = 'unica';
+        console.log('Recorrência definida como única');
+    }
+    
+    if (saidaId) {
+        document.getElementById('modalTitle').textContent = 'Editar Despesa';
+        document.getElementById('saida_id').value = saidaId;
+        console.log('Editando despesa ID:', saidaId);
+        carregarDadosEdicao(saidaId);
+    } else {
+        document.getElementById('modalTitle').textContent = 'Nova Despesa';
+        document.getElementById('saida_id').value = '';
+        console.log('Criando nova despesa');
+        
+        // Definir data de lançamento como hoje
+        const dataLancamento = document.getElementById('id_data_lancamento');
+        if (dataLancamento) {
+            dataLancamento.value = TODAY_DATE;
+            console.log('Data lançamento definida como:', TODAY_DATE);
+        }
+        
+        // Definir vencimento para 7 dias à frente
+        const vencto = new Date();
+        vencto.setDate(vencto.getDate() + 7);
+        const venctoFormatted = vencto.toISOString().split('T')[0];
+        
+        const dataVencimento = document.getElementById('id_data_vencimento');
+        if (dataVencimento) {
+            dataVencimento.value = venctoFormatted;
+            console.log('Data vencimento definida como:', venctoFormatted);
+        }
+        
+        // Resetar categorias
+        const categoriaSelect = document.getElementById('id_categoria');
+        if (categoriaSelect) {
+            categoriaSelect.value = '';
+            console.log('Categoria resetada');
+        }
+        
+        const subcategoriaSelect = document.getElementById('id_subcategoria');
+        if (subcategoriaSelect) {
+            subcategoriaSelect.innerHTML = '<option value="">Selecione uma categoria primeiro</option>';
+            console.log('Subcategoria resetada');
+        }
+    }
+    
+    toggleParcelamentoFields();
+    showModal('saidaModal');
+};
+</script>
+{% endblock %}

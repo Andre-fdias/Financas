@@ -1,0 +1,442 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load currency_filters %}
+
+{% block title %}Visão Geral - Sistema Financeiro{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        @supports not (backdrop-filter: blur(12px)) {
+            .glass-panel {
+                background: rgba(255, 255, 255, 0.95);
+            }
+        }
+        
+        .feature-card {
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+        
+        .stats-card {
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .quick-action-btn {
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+        
+        .quick-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+        
+        .section-title {
+            position: relative;
+            padding-bottom: 0.5rem;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            border-radius: 2px;
+        }
+        
+        .icon-wrapper {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            margin-bottom: 1rem;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Header Section -->
+    <div class="glass-panel p-8 mb-8 text-center">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+                Bem-vindo(a), <span class="gradient-text">{% if user.first_name %}{{ user.first_name }}{% else %}{{ user.username }}{% endif %}</span>
+            </h1>
+            <p class="text-xl text-gray-600 dark:text-gray-300 mb-6">
+                Seu centro de controle financeiro completo. Tudo que você precisa para gerenciar seu dinheiro em um só lugar.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="{% url 'core:dashboard' %}" class="quick-action-btn px-6 py-3 text-white rounded-lg font-semibold flex items-center gap-2">
+                    <i class="fas fa-chart-line"></i>
+                    Acessar Dashboard
+                </a>
+                <a href="{% url 'core:oraculo_financeiro' %}" class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 border border-indigo-200 hover:bg-indigo-50 transition-all">
+                    <i class="fas fa-crystal-ball"></i>
+                    Oráculo Financeiro
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <!-- Total de Contas -->
+        <div class="glass-panel p-6 stats-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-300">Contas Ativas</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white">
+                        {{ contas_ativas|default:"0" }}
+                    </p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                    <i class="fas fa-landmark text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saldo Total -->
+        <div class="glass-panel p-6 stats-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-300">Saldo Total</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white">
+                        {{ saldo_total|br_currency|default:"R$ 0,00" }}
+                    </p>
+                </div>
+                <div class="bg-green-100 p-3 rounded-full text-green-600 dark:bg-green-900 dark:text-green-200">
+                    <i class="fas fa-wallet text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lembretes Pendentes -->
+        <div class="glass-panel p-6 stats-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-300">Lembretes</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white">
+                        {{ lembretes_pendentes|default:"0" }}
+                    </p>
+                </div>
+                <div class="bg-orange-100 p-3 rounded-full text-orange-600 dark:bg-orange-900 dark:text-orange-200">
+                    <i class="fas fa-bell text-xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transações Recentes -->
+        <div class="glass-panel p-6 stats-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-300">Transações Hoje</p>
+                    <p class="text-2xl font-bold text-gray-800 dark:text-white">
+                        {{ transacoes_hoje|default:"0" }}
+                    </p>
+                </div>
+                <div class="bg-purple-100 p-3 rounded-full text-purple-600 dark:bg-purple-900 dark:text-purple-200">
+                    <i class="fas fa-exchange-alt text-xl"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Features Grid -->
+    <div class="mb-12">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 section-title">Funcionalidades Principais</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Dashboard -->
+            <a href="{% url 'core:dashboard' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-blue-500 text-white">
+                    <i class="fas fa-chart-pie text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Dashboard Analítico</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Visualize gráficos interativos, métricas de desempenho e insights sobre suas finanças com análise completa de receitas e despesas.
+                </p>
+                <div class="flex items-center text-blue-600 dark:text-blue-400 font-semibold">
+                    <span>Acessar Dashboard</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <!-- Gestão de Contas -->
+            <a href="{% url 'core:conta_list' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-green-500 text-white">
+                    <i class="fas fa-landmark text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Gestão de Contas</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Gerencie contas bancárias, cartões de crédito, investimentos e acompanhe saldos em tempo real com atualizações automáticas.
+                </p>
+                <div class="flex items-center text-green-600 dark:text-green-400 font-semibold">
+                    <span>Gerenciar Contas</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <!-- Transações -->
+            <a href="{% url 'core:entrada_list' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-purple-500 text-white">
+                    <i class="fas fa-exchange-alt text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Transações</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Registre e categorize receitas, despesas, parcelamentos e transações recorrentes com controle total sobre seu fluxo de caixa.
+                </p>
+                <div class="flex items-center text-purple-600 dark:text-purple-400 font-semibold">
+                    <span>Ver Transações</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <!-- Transferências -->
+            <a href="{% url 'core:transferencia_list' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-yellow-500 text-white">
+                    <i class="fas fa-money-bill-transfer text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Transferências</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Transfira valores entre contas, consolide extratos e acompanhe o movimento financeiro entre suas diferentes contas bancárias.
+                </p>
+                <div class="flex items-center text-yellow-600 dark:text-yellow-400 font-semibold">
+                    <span>Fazer Transferência</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <!-- Lembretes -->
+            <a href="{% url 'core:lembrete_list' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-red-500 text-white">
+                    <i class="fas fa-bell text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Lembretes</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Crie lembretes inteligentes para pagamentos, vencimentos e tarefas financeiras com notificações e calendário integrado.
+                </p>
+                <div class="flex items-center text-red-600 dark:text-red-400 font-semibold">
+                    <span>Configurar Lembretes</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+
+            <!-- Oráculo Financeiro -->
+            <a href="{% url 'core:oraculo_financeiro' %}" class="feature-card glass-panel p-6 block">
+                <div class="icon-wrapper bg-indigo-500 text-white">
+                    <i class="fas fa-crystal-ball text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-3">Oráculo Financeiro</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">
+                    Análise preditiva, projeções futuras, insights inteligentes e recomendações personalizadas para otimizar suas finanças.
+                </p>
+                <div class="flex items-center text-indigo-600 dark:text-indigo-400 font-semibold">
+                    <span>Consultar Oráculo</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Advanced Tools Section -->
+    <div class="mb-12">
+        <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 section-title">Ferramentas Avançadas</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Extrato Completo -->
+            <div class="glass-panel p-6">
+                <div class="flex items-start mb-4">
+                    <div class="bg-blue-100 p-3 rounded-lg text-blue-600 dark:bg-blue-900 dark:text-blue-200 mr-4">
+                        <i class="fas fa-file-invoice text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Extrato Completo</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">
+                            Acesso a extrato detalhado com filtros avançados, exportação em PDF e análise consolidada de todas as transações.
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'core:extrato_completo' %}" class="inline-flex items-center text-blue-600 dark:text-blue-400 font-semibold">
+                    <span>Gerar Extrato</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <!-- Saldo e Patrimônio -->
+            <div class="glass-panel p-6">
+                <div class="flex items-start mb-4">
+                    <div class="bg-green-100 p-3 rounded-lg text-green-600 dark:bg-green-900 dark:text-green-200 mr-4">
+                        <i class="fas fa-chart-line text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Saldo e Patrimônio</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">
+                            Acompanhe a evolução do seu patrimônio, saldos por tipo de conta e indicadores de saúde financeira.
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'core:saldo_atual' %}" class="inline-flex items-center text-green-600 dark:text-green-400 font-semibold">
+                    <span>Ver Patrimônio</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <!-- Operações de Saque -->
+            <div class="glass-panel p-6">
+                <div class="flex items-start mb-4">
+                    <div class="bg-purple-100 p-3 rounded-lg text-purple-600 dark:bg-purple-900 dark:text-purple-200 mr-4">
+                        <i class="fas fa-hand-holding-usd text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Operações de Saque</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">
+                            Controle de saques, empréstimos e financiamentos com cálculo automático de parcelas e taxas.
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'core:operacao_saque_list' %}" class="inline-flex items-center text-purple-600 dark:text-purple-400 font-semibold">
+                    <span>Gerenciar Saques</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+
+            <!-- Perfil e Configurações -->
+            <div class="glass-panel p-6">
+                <div class="flex items-start mb-4">
+                    <div class="bg-orange-100 p-3 rounded-lg text-orange-600 dark:bg-orange-900 dark:text-orange-200 mr-4">
+                        <i class="fas fa-user-cog text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Perfil e Configurações</h3>
+                        <p class="text-gray-600 dark:text-gray-300 mb-4">
+                            Personalize sua experiência, gerencie preferências e configure notificações do sistema.
+                        </p>
+                    </div>
+                </div>
+                <a href="{% url 'core:profile' %}" class="inline-flex items-center text-orange-600 dark:text-orange-400 font-semibold">
+                    <span>Configurar Perfil</span>
+                    <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Footer
+    <div class="glass-panel p-8 text-center">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">Comece Agora</h2>
+        <p class="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+            Escolha uma ação rápida para começar a gerenciar suas finanças ou explore todas as funcionalidades disponíveis.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4">
+            <a href="{% url 'core:entrada_create' %}" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all">
+                <i class="fas fa-plus-circle"></i>
+                Nova Receita
+            </a>
+            <a href="{% url 'core:saida_create' %}" class="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all">
+                <i class="fas fa-minus-circle"></i>
+                Nova Despesa
+            </a>
+            <a href="{% url 'core:conta_create' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all">
+                <i class="fas fa-landmark"></i>
+                Nova Conta
+            </a>
+            <a href="{% url 'core:lembrete_create' %}" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all">
+                <i class="fas fa-bell"></i>
+                Novo Lembrete
+            </a>
+        </div>
+    </div> -->
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Adiciona animação suave ao scroll para os links internos
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Adiciona efeito de parallax suave no header
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const parallax = document.querySelector('.glass-panel');
+            if (parallax) {
+                parallax.style.transform = `translateY(${scrolled * 0.05}px)`;
+            }
+        });
+
+        // Animação de entrada para os cards
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Aplica animação aos cards de features
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
+        });
+    });
+</script>
+{% endblock %}
