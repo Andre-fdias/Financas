@@ -14,6 +14,25 @@ R: A projeção de saldo futuro requer um mínimo de 3 meses de dados de receita
 
 R: Sim. O projeto usa `dj_database_url` para configurar o banco de dados a partir de uma URL. Para usar PostgreSQL, por exemplo, instale o driver (`psycopg2-binary`) e configure a variável `DATABASE_URL` no seu arquivo `.env` para `postgres://USER:PASSWORD@HOST:PORT/NAME`.
 
+**P: Como eu rodo o projeto localmente?**
+
+R: As instruções completas estão na seção [Como Executar o Projeto Localmente](https://github.com/Andre-fdias/Financas#como-executar-o-projeto-localmente) do arquivo `README.md`. Você precisará do Python, Node.js e PostgreSQL instalados.
+
+**P: Posso usar a API para minha própria aplicação?**
+
+R: Sim! A API foi projetada para isso. A autenticação é feita via tokens JWT. Para começar, consulte o [Guia da API RESTful](./apis.md) para ver exemplos de como se autenticar e interagir com os endpoints.
+
+**P: O deploy da documentação no GitHub Pages falhou com um erro de `permissão negada` ou `rejected`. O que fazer?**
+
+R: Este erro geralmente acontece por dois motivos: 1) seu ambiente não tem as chaves SSH para se autenticar no GitHub, ou 2) a branch `gh-pages` remota está em um estado inconsistente. A solução mais robusta é deletar a branch remota e recriá-la. Execute os seguintes comandos:
+```bash
+# 1. Delete a branch remota (se existir)
+git push origin --delete gh-pages
+
+# 2. Faça o deploy novamente
+mkdocs gh-deploy
+```
+
 ### Solução de Problemas (Troubleshooting)
 
 **Erro: `SECRET_KEY` não definida.**

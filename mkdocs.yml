@@ -32,7 +32,11 @@ nav:
   - Instalação: instalacao.md
   - Uso: uso.md
   - Funcionalidades: funcionalidades.md
+  - Desenvolvimento:
+    - Arquitetura: arquitetura.md
+    - Modelagem de Dados: dados.md
+    - APIs: apis.md
+    - Testes: testes.md
   - Tecnologias: tecnologias.md
-  - APIs: apis.md
   - FAQ: faq.md
   - Créditos: creditos.md

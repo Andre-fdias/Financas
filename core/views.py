@@ -254,6 +254,18 @@ def custom_logout(request):
 @login_required
 def dashboard(request):
     user = request.user
+    print(f"=== DEBUG DASHBOARD ===")
+    print(f"Usuário logado: {user.username}")
+    print(f"Entradas totais: {Entrada.objects.filter(usuario=user).count()}")
+    print(f"Saídas totais: {Saida.objects.filter(usuario=user).count()}")
+    print(f"Contas: {ContaBancaria.objects.filter(proprietario=user).count()}")
+    
+    # Testar consultas básicas
+    entradas_test = Entrada.objects.filter(usuario=user)
+    saidas_test = Saida.objects.filter(usuario=user)
+    
+    print(f"Primeira entrada: {entradas_test.first()}")
+    print(f"Primeira saída: {saidas_test.first()}")
     hoje = dj_timezone.now().date()
     
     # ================================================================
@@ -297,14 +309,14 @@ def dashboard(request):
             data_inicio_filtro = hoje - timedelta(days=30)
 
     # ================================================================
-    # FILTRAGEM DOS DADOS
+    # FILTRAGEM DOS DADOS - CORREÇÕES APLICADAS
     # ================================================================
 
-    # Base querysets
-    entradas_base = Entrada.objects.filter(conta_bancaria__proprietario=user)
-    saidas_base = Saida.objects.filter(conta_bancaria__proprietario=user)
+    # Base querysets - CORRIGIDO: usando usuario em vez de conta_bancaria__proprietario
+    entradas_base = Entrada.objects.filter(usuario=user)
+    saidas_base = Saida.objects.filter(usuario=user)
 
-    # Aplicar filtros de data
+    # Aplicar filtros de data - CORRIGIDO: campos de data corretos
     entradas_filtradas = entradas_base.filter(data__range=(data_inicio_filtro, data_fim_filtro))
     saidas_filtradas = saidas_base.filter(data_lancamento__range=(data_inicio_filtro, data_fim_filtro))
 
@@ -337,23 +349,27 @@ def dashboard(request):
 
     # Filtro por valor mínimo
     if valor_minimo:
-        valor_min = converter_moeda_para_decimal(valor_minimo)
-        if valor_min:
+        try:
+            valor_min = Decimal(valor_minimo.replace('.', '').replace(',', '.'))
             entradas_filtradas = entradas_filtradas.filter(valor__gte=valor_min)
             saidas_filtradas = saidas_filtradas.filter(valor__gte=valor_min)
+        except (InvalidOperation, ValueError):
+            pass
 
     # Filtro por valor máximo
     if valor_maximo:
-        valor_max = converter_moeda_para_decimal(valor_maximo)
-        if valor_max:
+        try:
+            valor_max = Decimal(valor_maximo.replace('.', '').replace(',', '.'))
             entradas_filtradas = entradas_filtradas.filter(valor__lte=valor_max)
             saidas_filtradas = saidas_filtradas.filter(valor__lte=valor_max)
+        except (InvalidOperation, ValueError):
+            pass
 
     # ================================================================
-    # DADOS PRINCIPAIS (COM FILTROS APLICADOS)
+    # DADOS PRINCIPAIS (COM FILTROS APLICADOS) - CORREÇÕES APLICADAS
     # ================================================================
 
-    # Saldo total (não filtrado por data)
+    # Saldo total (não filtrado por data) - CORRIGIDO: usando proprietario correto
     saldo_total = ContaBancaria.objects.filter(proprietario=user).aggregate(
         Sum('saldo_atual')
     )['saldo_atual__sum'] or Decimal('0.00')
@@ -378,14 +394,14 @@ def dashboard(request):
     variacao_receitas = calculate_percentage_change(float(entradas_periodo), float(entradas_periodo_anterior))
     variacao_despesas = calculate_percentage_change(float(saidas_periodo), float(saidas_periodo_anterior))
 
-    # Reserva de Emergência
+    # Reserva de Emergência - CORRIGIDO: usando proprietario correto
     saldo_poupancas = ContaBancaria.objects.filter(
         proprietario=user,
         tipo='poupanca',
         ativa=True
     ).aggregate(Sum('saldo_atual'))['saldo_atual__sum'] or Decimal('0.00')
 
-    # Despesa mensal média (últimos 6 meses)
+    # Despesa mensal média (últimos 6 meses) - CORRIGIDO: usando usuario
     data_seis_meses_atras = hoje - relativedelta(months=6)
     despesas_ultimos_6_meses = saidas_base.filter(
         data_lancamento__gte=data_seis_meses_atras,
@@ -395,7 +411,7 @@ def dashboard(request):
     despesa_mensal_media = float(despesas_ultimos_6_meses) / 6 if despesas_ultimos_6_meses else 0
 
     # ================================================================
-    # DADOS PARA GRÁFICOS (Últimos 12 meses)
+    # DADOS PARA GRÁFICOS (Últimos 12 meses) - CORREÇÕES APLICADAS
     # ================================================================
     num_meses_historico = 12
     meses_labels = []
@@ -403,7 +419,7 @@ def dashboard(request):
     saidas_por_mes_data = []
     saldo_acumulado_data = []
     
-    temp_saldo_acumulado_base = float(saldo_total)
+    saldo_acumulado = float(saldo_total)  # Começa com o saldo atual
 
     for i in range(num_meses_historico - 1, -1, -1):
         data_mes = hoje - relativedelta(months=i)
@@ -421,12 +437,14 @@ def dashboard(request):
         entradas_por_mes_data.append(float(entradas_mes))
         saidas_por_mes_data.append(float(saidas_mes))
 
-        if i == 0:
-            saldo_acumulado_data.append(float(saldo_total))
+        # Cálculo do saldo acumulado (mais preciso)
+        if i == num_meses_historico - 1:
+            # Primeiro mês: saldo atual - (entradas - saídas) dos meses seguintes
+            saldo_acumulado_data.append(saldo_acumulado - (float(entradas_mes) - float(saidas_mes)))
         else:
-            saldo_para_este_mes = temp_saldo_acumulado_base - (float(entradas_mes) - float(saidas_mes))
-            saldo_acumulado_data.append(saldo_para_este_mes)
-            temp_saldo_acumulado_base = saldo_para_este_mes
+            # Meses subsequentes: saldo do mês anterior - (entradas - saídas) do mês atual
+            saldo_acumulado = saldo_acumulado_data[-1] - (float(entradas_mes) - float(saidas_mes))
+            saldo_acumulado_data.append(saldo_acumulado)
     
     # Ajustar ordem cronológica
     meses_labels.reverse()
@@ -446,32 +464,21 @@ def dashboard(request):
     num_meses_projecao = 6
     projecao_labels = meses_labels.copy()
     projecao_saldo_data = saldo_acumulado_data.copy()
-    projecao_receitas_data = entradas_por_mes_data.copy()
-    projecao_despesas_data = saidas_por_mes_data.copy()
 
     if len(saldo_acumulado_data) >= 3:
         try:
             X_hist = np.array(range(len(saldo_acumulado_data))).reshape(-1, 1)
             y_hist_saldo = np.array(saldo_acumulado_data)
-            y_hist_receitas = np.array(entradas_por_mes_data)
-            y_hist_despesas = np.array(saidas_por_mes_data)
 
             model_saldo = LinearRegression().fit(X_hist, y_hist_saldo)
-            model_receitas = LinearRegression().fit(X_hist, y_hist_receitas)
-            model_despesas = LinearRegression().fit(X_hist, y_hist_despesas)
 
             X_fut = np.array(range(len(saldo_acumulado_data), len(saldo_acumulado_data) + num_meses_projecao)).reshape(-1, 1)
-            
             projecao_saldo_futuro = model_saldo.predict(X_fut)
-            projecao_receitas_futuro = model_receitas.predict(X_fut)
-            projecao_despesas_futuro = model_despesas.predict(X_fut)
 
             for i in range(num_meses_projecao):
                 next_month = hoje + relativedelta(months=i+1)
                 projecao_labels.append(next_month.strftime('%b/%y'))
                 projecao_saldo_data.append(float(projecao_saldo_futuro[i]))
-                projecao_receitas_data.append(float(projecao_receitas_futuro[i]))
-                projecao_despesas_data.append(float(projecao_despesas_futuro[i]))
         except Exception as e:
             print(f"Erro na projeção: {e}")
 
@@ -480,7 +487,7 @@ def dashboard(request):
     # ================================================================
     saidas_por_categoria = saidas_filtradas.values('categoria').annotate(
         total=Sum('valor')
-    ).order_by('categoria')
+    ).order_by('-total')
 
     mapa_categorias_saida_display = {c[0]: c[1] for c in CATEGORIA_CHOICES}
     categorias_despesas_labels = [
@@ -513,22 +520,15 @@ def dashboard(request):
         categorias_receitas_values = categorias_receitas_values[:MAX_CATEGORIAS_RECEITAS]
 
     # ================================================================
-    # SALDOS POR CONTA BANCÁRIA
+    # SALDOS POR CONTA BANCÁRIA - CORREÇÕES APLICADAS
     # ================================================================
     contas_ativas = ContaBancaria.objects.filter(proprietario=user, ativa=True)
     saldo_contas_labels = []
     saldo_contas_values = []
     
     for conta in contas_ativas:
-        if conta.tipo == 'credito':
-            saidas_na_conta = saidas_filtradas.filter(conta_bancaria=conta).aggregate(
-                Sum('valor')
-            )['valor__sum'] or Decimal('0.00')
-            saldo_contas_values.append(float(conta.limite_cartao - saidas_na_conta) if conta.limite_cartao else float(-saidas_na_conta))
-        else:
-            saldo_contas_values.append(float(conta.saldo_atual or Decimal('0.00')))
-        
         saldo_contas_labels.append(f"{conta.get_nome_banco_display()} ({conta.get_tipo_display()})")
+        saldo_contas_values.append(float(conta.saldo_atual or Decimal('0.00')))
 
     # ================================================================
     # DESPESAS FIXAS VS VARIÁVEIS (período filtrado)
@@ -553,7 +553,7 @@ def dashboard(request):
     )['valor__sum'] or Decimal('0.00')
 
     # ================================================================
-    # ANÁLISE COMPORTAMENTAL
+    # ANÁLISE COMPORTAMENTAL - CORREÇÕES APLICADAS
     # ================================================================
     gastos_por_dia_semana_raw = {
         'Seg': Decimal('0.00'), 'Ter': Decimal('0.00'), 'Qua': Decimal('0.00'), 
@@ -579,24 +579,31 @@ def dashboard(request):
         if isinstance(saida.data_lancamento, datetime):
             hora = saida.data_lancamento.hour
         else:
-            hora = saida.data_lancamento.day % 24
+            hora = 12  # Hora padrão se não for datetime
         gastos_por_hora_dia_raw[str(hora)] += saida.valor
 
     gastos_por_hora_dia = {k: float(v) for k,v in gastos_por_hora_dia_raw.items()}
 
-    # Categorias comportamentais
+    # Categorias comportamentais (simplificado)
     total_despesas_periodo = float(saidas_periodo)
-    categorias_comportamento_data = {
-        'Essenciais': total_despesas_periodo * 0.6,
-        'Supérfluos': total_despesas_periodo * 0.3,
-        'Investimentos': total_despesas_periodo * 0.1
-    }
+    if total_despesas_periodo > 0:
+        categorias_comportamento_data = {
+            'Essenciais': total_despesas_periodo * 0.6,
+            'Supérfluos': total_despesas_periodo * 0.3,
+            'Investimentos': total_despesas_periodo * 0.1
+        }
+    else:
+        categorias_comportamento_data = {
+            'Essenciais': 0,
+            'Supérfluos': 0,
+            'Investimentos': 0
+        }
 
     # ================================================================
-    # INDICADORES DE SAÚDE FINANCEIRA
+    # INDICADORES DE SAÚDE FINANCEIRA - CORREÇÕES APLICADAS
     # ================================================================
-    liquidez_corrente = (float(saldo_total) / float(saidas_periodo) * 100) if saidas_periodo else 0
-    margem_seguranca = ((float(entradas_periodo) - float(saidas_periodo)) / float(entradas_periodo) * 100) if entradas_periodo else 0
+    liquidez_corrente = (float(saldo_total) / float(saidas_periodo) * 100) if saidas_periodo and saidas_periodo > 0 else 0
+    margem_seguranca = ((float(entradas_periodo) - float(saidas_periodo)) / float(entradas_periodo) * 100) if entradas_periodo and entradas_periodo > 0 else 0
     
     # Endividamento
     gastos_cartao_periodo = saidas_filtradas.filter(
@@ -607,7 +614,7 @@ def dashboard(request):
         proprietario=user, tipo='credito'
     ).aggregate(Sum('limite_cartao'))['limite_cartao__sum'] or Decimal('0.00')
 
-    endividamento = (float(gastos_cartao_periodo) / float(limite_total_credito) * 100) if limite_total_credito > 0 else 0
+    endividamento = (float(gastos_cartao_periodo) / float(limite_total_credito) * 100) if limite_total_credito and limite_total_credito > 0 else 0
     
     poupanca_mensal_estimada = float(entradas_periodo) - float(saidas_periodo)
     reserva_emergencia_ideal_indicador = despesa_mensal_media * meses_meta
@@ -643,7 +650,7 @@ def dashboard(request):
         sugestao_investimentos = "Sua reserva está completa! Considere diversificar seus investimentos."
 
     # ================================================================
-    # ÚLTIMAS TRANSAÇÕES (período filtrado)
+    # ÚLTIMAS TRANSAÇÕES (período filtrado) - CORREÇÕES APLICADAS
     # ================================================================
     ultimas_entradas = entradas_filtradas.select_related('conta_bancaria').order_by('-data')[:5]
     ultimas_saidas = saidas_filtradas.select_related('conta_bancaria').order_by('-data_lancamento')[:5]
@@ -665,7 +672,7 @@ def dashboard(request):
             'descricao': saida.nome,
             'valor': float(-saida.valor),
             'tipo': 'Saída',
-            'categoria': saida.categoria if saida.categoria else 'Sem Categoria',
+            'categoria': saida.get_categoria_display() if saida.categoria else 'Sem Categoria',
             'conta': saida.conta_bancaria.get_nome_banco_display() if saida.conta_bancaria else 'N/A'
         })
 
@@ -676,14 +683,14 @@ def dashboard(request):
     # CONSTRUÇÃO DO CONTEXTO JSON
     # ================================================================
     context_data = {
-        'saldo_geral': saldo_total,
-        'entradas_mes': entradas_periodo,
-        'saidas_mes': saidas_periodo,
+        'saldo_geral': float(saldo_total),
+        'entradas_mes': float(entradas_periodo),
+        'saidas_mes': float(saidas_periodo),
         'variacao_receitas': variacao_receitas,
         'variacao_despesas': variacao_despesas,
         
         'despesa_mensal_media': despesa_mensal_media,
-        'saldo_poupancas': saldo_poupancas,
+        'saldo_poupancas': float(saldo_poupancas),
         'meses_meta': meses_meta,
 
         'indicadores': {
@@ -730,8 +737,6 @@ def dashboard(request):
         'sazonalidade_values': sazonalidade_values,
         
         'projecao_labels': projecao_labels,
-        'projecao_receitas': projecao_receitas_data,
-        'projecao_despesas': projecao_despesas_data,
         'projecao_saldo': projecao_saldo_data,
 
         'categorias_despesas_labels': categorias_despesas_labels,
@@ -742,11 +747,11 @@ def dashboard(request):
         'saldo_contas_labels': saldo_contas_labels,
         'saldo_contas_values': saldo_contas_values,
         
-        'despesas_fixas': despesas_fixas,
-        'despesas_variaveis': despesas_variaveis,
+        'despesas_fixas': float(despesas_fixas),
+        'despesas_variaveis': float(despesas_variaveis),
 
-        'pagos_total': pagos_total,
-        'pendentes_total': pendentes_total,
+        'pagos_total': float(pagos_total),
+        'pendentes_total': float(pendentes_total),
     }
 
     # Serializar para JSON
@@ -781,6 +786,7 @@ def dashboard(request):
     }
     
     return render(request, 'core/dashboard.html', context)
+    
 # ===== FUNÇÕES ADICIONAIS =====
 def get_contas_bancarias_data(usuario):
     """Retorna dados das contas bancárias para gráficos"""
