@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../versionamento/">
+        <link rel="prev" href="../arquitetura/">
       
       
-        <link rel="next" href="../tecnologias/">
+        <link rel="next" href="../apis/">
       
       
       <link rel="icon" href="../assets/logo.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>APIs - FinanceFlow</title>
+        <title>Versionamento e Commits - FinanceFlow</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#apis-e-integracao-ajax" class="md-skip">
+        <a href="#guia-de-versionamento-e-conventional-commits" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              APIs
+              Versionamento e Commits
             
           </span>
         </div>
@@ -578,27 +578,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../versionamento/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Versionamento e Commits
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -615,7 +594,7 @@
           
   
   <span class="md-ellipsis">
-    APIs
+    Versionamento e Commits
   </span>
   
 
@@ -626,7 +605,7 @@
         
   
   <span class="md-ellipsis">
-    APIs
+    Versionamento e Commits
   </span>
   
 
@@ -648,38 +627,179 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#padrao-de-views-de-api" class="md-nav__link">
+  <a href="#catalogo-completo-de-tipos-de-commit" class="md-nav__link">
     <span class="md-ellipsis">
-      Padrão de Views de API
+      CATÁLOGO COMPLETO DE TIPOS DE COMMIT
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CATÁLOGO COMPLETO DE TIPOS DE COMMIT">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-feat-nova-funcionalidade" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. feat: Nova Funcionalidade
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-fix-correcao-de-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. fix: Correção de Bug
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-docs-documentacao" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. docs: Documentação
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-style-formatacao" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. style: Formatação
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-refactor-refatoracao" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. refactor: Refatoração
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-perf-performance" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. perf: Performance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-test-testes" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. test: Testes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-chore-tarefas-de-manutencao" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. chore: Tarefas de Manutenção
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commits-especiais" class="md-nav__link">
+    <span class="md-ellipsis">
+      🚨 Commits Especiais
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🚨 Commits Especiais">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#9-breaking-change-mudancas-que-quebram-compatibilidade" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. BREAKING CHANGE: Mudanças que Quebram Compatibilidade
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fluxos-de-trabalho-praticos" class="md-nav__link">
+    <span class="md-ellipsis">
+      🔄 Fluxos de Trabalho Práticos
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="🔄 Fluxos de Trabalho Práticos">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cenario-1-nova-funcionalidade-completa" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cenário 1: Nova Funcionalidade Completa
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cenario-2-correcao-de-bug-complexo" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cenário 2: Correção de Bug Complexo
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#escopos-recomendados-para-financeflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      🎨 Escopos Recomendados para FinanceFlow
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#exemplo-de-resposta-de-sucesso" class="md-nav__link">
+  <a href="#checklist-antes-do-commit" class="md-nav__link">
     <span class="md-ellipsis">
-      Exemplo de Resposta de Sucesso
+      ⚠️ Checklist Antes do Commit
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="⚠️ Checklist Antes do Commit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#comandos-uteis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comandos Úteis:
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplo-de-resposta-de-erro-de-validacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      Exemplo de Resposta de Erro de Validação
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#endpoints-de-api-notaveis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Endpoints de API Notáveis
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -687,6 +807,27 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../apis/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    APIs
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -795,46 +936,248 @@
                   
 
 
-<h1 id="apis-e-integracao-ajax">APIs e Integração AJAX</h1>
-<p>Uma característica central da arquitetura do sistema é o uso intensivo de AJAX para criar uma interface de usuário dinâmica e reativa, minimizando recarregamentos de página. Isso é alcançado através de uma combinação de views que respondem com JSON e JavaScript/HTMX no frontend.</p>
-<h3 id="padrao-de-views-de-api">Padrão de Views de API</h3>
-<p>A maioria das views que interagem com AJAX segue um padrão:</p>
-<ol>
-<li>Verifica se a requisição é do tipo AJAX checando o cabeçalho <code>X-Requested-With</code>.
-    <code>python
-    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        # Lógica para AJAX</code></li>
-<li>Processa os dados do formulário (<code>request.POST</code>).</li>
-<li>Se o formulário for válido, executa a ação e retorna um <code>JsonResponse</code> com <code>success: True</code>.</li>
-<li>Se o formulário for inválido, retorna um <code>JsonResponse</code> com <code>success: False</code> e um dicionário de <code>errors</code>.</li>
-</ol>
-<h3 id="exemplo-de-resposta-de-sucesso">Exemplo de Resposta de Sucesso</h3>
-<p>Usado para notificar o frontend que a operação foi concluída.</p>
-<p><code>POST /entradas/nova/</code></p>
-<pre><code class="language-json">{
-  &quot;success&quot;: true,
-  &quot;message&quot;: &quot;Entrada criada com sucesso!&quot;
-}
-</code></pre>
-<h3 id="exemplo-de-resposta-de-erro-de-validacao">Exemplo de Resposta de Erro de Validação</h3>
-<p>Usado para que o frontend possa exibir os erros de validação de formulário perto dos campos correspondentes.</p>
-<p><code>POST /saidas/nova/</code></p>
-<pre><code class="language-json">{
-  &quot;success&quot;: false,
-  &quot;errors&quot;: {
-    &quot;valor&quot;: [&quot;Este campo é obrigatório.&quot;],
-    &quot;data_vencimento&quot;: [&quot;Insira uma data válida.&quot;]
-  }
-}
-</code></pre>
-<h3 id="endpoints-de-api-notaveis">Endpoints de API Notáveis</h3>
-<p>Além das views de CRUD que respondem a AJAX, existem endpoints que funcionam puramente como APIs de dados:</p>
+<h1 id="guia-de-versionamento-e-conventional-commits">📋 Guia de Versionamento e Conventional Commits</h1>
+<p>Este documento detalha o padrão de commits utilizado no projeto FinanceFlow, que alimenta nosso sistema de versionamento e changelog automáticos.</p>
+<hr />
+<h2 id="catalogo-completo-de-tipos-de-commit">CATÁLOGO COMPLETO DE TIPOS DE COMMIT</h2>
+<h3 id="1-feat-nova-funcionalidade">1. <code>feat</code>: Nova Funcionalidade</h3>
 <ul>
-<li><strong><code>GET /api/transacao/&lt;int:pk&gt;/detalhes/</code></strong>: Retorna o HTML de um modal com os detalhes de uma transação específica (<code>Entrada</code> ou <code>Saida</code>).</li>
-<li><strong><code>GET /api/profile/statistics/</code></strong>: Fornece dados numéricos e textuais sobre a atividade do usuário para popular um painel de estatísticas.</li>
-<li><strong><code>GET /get-account-balance/&lt;int:pk&gt;/</code></strong>: Retorna o saldo atual de uma conta, útil para atualizar valores na interface após uma operação.</li>
-<li><strong><code>POST /saidas/&lt;int:saida_id&gt;/marcar-pago/</code></strong>: Endpoint de ação que altera o status de uma despesa para "pago".</li>
+<li><strong>Quando usar:</strong> Adicionar novas features ao sistema.</li>
+<li><strong>Impacto na versão:</strong> ⬆️ <strong>MINOR</strong> (1.0.0 → 1.1.0)</li>
 </ul>
+<p><strong>📝 Exemplos Práticos:</strong></p>
+<ul>
+<li><strong>Para Dashboard:</strong>
+  <code>bash
+  git commit -m "feat(dashboard): adiciona gráfico de evolução patrimonial"
+  git commit -m "feat(dashboard): implementa cards de métricas rápidas"</code></li>
+<li><strong>Para Transferências:</strong>
+  <code>bash
+  git commit -m "feat(transferencias): implementa agendamento de transferências"
+  git commit -m "feat(transferencias): adiciona confirmação por email para valores altos"</code></li>
+<li><strong>Para Relatórios:</strong>
+  <code>bash
+  git commit -m "feat(relatorios): adiciona exportação em PDF"
+  git commit -m "feat(relatorios): implementa relatório comparativo mensal"</code></li>
+<li><strong>Para Sistema de Categorias:</strong>
+  <code>bash
+  git commit -m "feat(categorias): permite criação de categorias personalizadas"
+  git commit -m "feat(categorias): implementa herança de subcategorias"</code></li>
+</ul>
+<h3 id="2-fix-correcao-de-bug">2. <code>fix</code>: Correção de Bug</h3>
+<ul>
+<li><strong>Quando usar:</strong> Corrigir comportamentos inesperados.</li>
+<li><strong>Impacto na versão:</strong> ⬆️ <strong>PATCH</strong> (1.0.0 → 1.0.1)</li>
+</ul>
+<p><strong>🐛 Exemplos de Bugs Comuns:</strong></p>
+<ul>
+<li><strong>Cálculos Financeiros:</strong>
+  <code>bash
+  git commit -m "fix: corrige cálculo de saldo residual no extrato"
+  git commit -m "fix(calculos): corrige fórmula de juros compostos"</code></li>
+<li><strong>Problemas de Interface:</strong>
+  <code>bash
+  git commit -m "fix(ui): corrige sobreposição de modais no mobile"
+  git commit -m "fix(ui): resolve alinhamento de tabelas responsivas"</code></li>
+<li><strong>Problemas de Dados:</strong>
+  <code>bash
+  git commit -m "fix: corrige duplicação de transações na importação"
+  git commit -m "fix: corrige timezone em datas do extrato"</code></li>
+<li><strong>Validações:</strong>
+  <code>bash
+  git commit -m "fix(validacao): corrige validação de CPF/CNPJ"
+  git commit -m "fix(validacao): corrige máscara de campos monetários"</code></li>
+</ul>
+<h3 id="3-docs-documentacao">3. <code>docs</code>: Documentação</h3>
+<ul>
+<li><strong>Quando usar:</strong> Atualizar ou adicionar documentação.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>📚 Exemplos:</strong></p>
+<ul>
+<li><strong>Documentação Técnica:</strong>
+  <code>bash
+  git commit -m "docs: atualiza README com instruções de deploy"
+  git commit -m "docs: cria documentação da API REST"</code></li>
+<li><strong>Comentários de Código:</strong>
+  <code>bash
+  git commit -m "docs: adiciona docstrings nos models Django"
+  git commit -m "docs: comenta funções complexas de cálculo"</code></li>
+</ul>
+<h3 id="4-style-formatacao">4. <code>style</code>: Formatação</h3>
+<ul>
+<li><strong>Quando usar:</strong> Ajustes de formatação que não alteram lógica.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>🎨 Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;style: aplica formatação black no código Python&quot;
+git commit -m &quot;style: corrige indentação nos templates HTML&quot;
+git commit -m &quot;style: ajusta espaçamento entre componentes&quot;
+</code></pre>
+<h3 id="5-refactor-refatoracao">5. <code>refactor</code>: Refatoração</h3>
+<ul>
+<li><strong>Quando usar:</strong> Melhorar código sem alterar funcionalidade.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>🔧 Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;refactor: extrai lógica de cálculo para service layer&quot;
+git commit -m &quot;refactor: remove código duplicado em views similares&quot;
+git commit -m &quot;refactor: implementa repository pattern para queries&quot;
+</code></pre>
+<h3 id="6-perf-performance">6. <code>perf</code>: Performance</h3>
+<ul>
+<li><strong>Quando usar:</strong> Otimizações de velocidade/memória.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>⚡ Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;perf: adiciona índices para consultas frequentes&quot;
+git commit -m &quot;perf: otimiza queries do dashboard com select_related&quot;
+git commit -m &quot;perf: implementa cache em métricas do dashboard&quot;
+</code></pre>
+<h3 id="7-test-testes">7. <code>test</code>: Testes</h3>
+<ul>
+<li><strong>Quando usar:</strong> Adicionar ou modificar testes.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>✅ Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;test: adiciona testes unitários para cálculos financeiros&quot;
+git commit -m &quot;test: cria testes de integração para transferências&quot;
+git commit -m &quot;test: refatora fixtures para serem mais realistas&quot;
+</code></pre>
+<h3 id="8-chore-tarefas-de-manutencao">8. <code>chore</code>: Tarefas de Manutenção</h3>
+<ul>
+<li><strong>Quando usar:</strong> Atualizações de configuração, dependências, etc.</li>
+<li><strong>Impacto na versão:</strong> 🔄 NENHUM</li>
+</ul>
+<p><strong>🔩 Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;chore: atualiza Django para versão 4.2.8&quot;
+git commit -m &quot;chore: atualiza configurações do Docker&quot;
+git commit -m &quot;chore: remove dependências não utilizadas&quot;
+</code></pre>
+<hr />
+<h2 id="commits-especiais">🚨 Commits Especiais</h2>
+<h3 id="9-breaking-change-mudancas-que-quebram-compatibilidade">9. <code>BREAKING CHANGE</code>: Mudanças que Quebram Compatibilidade</h3>
+<ul>
+<li><strong>Quando usar:</strong> Alterações que exigem ação do usuário/desenvolvedor.</li>
+<li><strong>Impacto na versão:</strong> ⬆️ <strong>MAJOR</strong> (1.0.0 → 2.0.0)</li>
+</ul>
+<p><strong>💥 Exemplos:</strong></p>
+<pre><code class="language-bash">git commit -m &quot;feat: altera estrutura do modelo de categorias
+
+BREAKING CHANGE: Remove campo 'tipo_antigo' do modelo Categoria, use 'novo_tipo'&quot;
+</code></pre>
+<pre><code class="language-bash">git commit -m &quot;refactor: migra para novo schema de transações
+
+BREAKING CHANGE: Modifica estrutura da tabela 'transacoes', requer migração manual&quot;
+</code></pre>
+<hr />
+<h2 id="fluxos-de-trabalho-praticos">🔄 Fluxos de Trabalho Práticos</h2>
+<h3 id="cenario-1-nova-funcionalidade-completa">Cenário 1: Nova Funcionalidade Completa</h3>
+<p><strong>Branch:</strong> <code>feat/novo-dashboard</code></p>
+<pre><code class="language-bash"># 1. Desenvolvimento inicial
+git commit -m &quot;feat(dashboard): adiciona estrutura básica do componente&quot;
+# 2. Integração com backend
+git commit -m &quot;feat(dashboard): conecta com API de métricas&quot;
+# 3. Estilização
+git commit -m &quot;style(dashboard): aplica design responsivo&quot;
+# 4. Testes
+git commit -m &quot;test(dashboard): adiciona testes de renderização&quot;
+# 5. Documentação
+git commit -m &quot;docs(dashboard): cria documentação do componente&quot;
+</code></pre>
+<h3 id="cenario-2-correcao-de-bug-complexo">Cenário 2: Correção de Bug Complexo</h3>
+<p><strong>Branch:</strong> <code>fix/calculos-financeiros</code></p>
+<pre><code class="language-bash"># 1. Identificar problema
+git commit -m &quot;fix: corrige cálculo de juros em parcelamentos&quot;
+# 2. Refatorar para prevenir futuros erros
+git commit -m &quot;refactor: extrai lógica de cálculo para classe dedicada&quot;
+# 3. Adicionar testes específicos
+git commit -m &quot;test: adiciona casos de borda para cálculos&quot;
+</code></pre>
+<hr />
+<h2 id="escopos-recomendados-para-financeflow">🎨 Escopos Recomendados para FinanceFlow</h2>
+<table>
+<thead>
+<tr>
+<th>Escopo</th>
+<th>Descrição</th>
+<th>Exemplos</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dashboard</code></td>
+<td>Painel principal</td>
+<td><code>feat(dashboard):</code>, <code>fix(dashboard):</code></td>
+</tr>
+<tr>
+<td><code>transferencias</code></td>
+<td>Sistema de transferências</td>
+<td><code>feat(transferencias):</code>, <code>fix(transferencias):</code></td>
+</tr>
+<tr>
+<td><code>entradas</code></td>
+<td>Sistema de receitas</td>
+<td><code>feat(entradas):</code>, <code>fix(entradas):</code></td>
+</tr>
+<tr>
+<td><code>saidas</code></td>
+<td>Sistema de despesas</td>
+<td><code>feat(saidas):</code>, <code>fix(saidas):</code></td>
+</tr>
+<tr>
+<td><code>categorias</code></td>
+<td>Gestão de categorias</td>
+<td><code>feat(categorias):</code>, <code>fix(categorias):</code></td>
+</tr>
+<tr>
+<td><code>relatorios</code></td>
+<td>Sistema de relatórios</td>
+<td><code>feat(relatorios):</code>, <code>fix(relatorios):</code></td>
+</tr>
+<tr>
+<td><code>auth</code></td>
+<td>Autenticação e usuários</td>
+<td><code>feat(auth):</code>, <code>fix(auth):</code></td>
+</tr>
+<tr>
+<td><code>ui</code></td>
+<td>Interface do usuário</td>
+<td><code>style(ui):</code>, <code>fix(ui):</code></td>
+</tr>
+<tr>
+<td><code>api</code></td>
+<td>API REST</td>
+<td><code>feat(api):</code>, <code>fix(api):</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="checklist-antes-do-commit">⚠️ Checklist Antes do Commit</h2>
+<ul>
+<li>[ ] Mensagem segue padrão <code>conventional commits</code>.</li>
+<li>[ ] Tipo correto para o tipo de mudança.</li>
+<li>[ ] Escopo aplicável quando relevante.</li>
+<li>[ ] Descrição clara e objetiva.</li>
+<li>[ ] Corpo explicativo para mudanças complexas (opcional).</li>
+<li>[ ] Rodapé <code>BREAKING CHANGE:</code> quando necessário.</li>
+</ul>
+<h3 id="comandos-uteis">Comandos Úteis:</h3>
+<pre><code class="language-bash"># Verificar status antes do commit
+git status
+
+# Ver diferenças
+git diff
+
+# Adicionar arquivos específicos
+git add caminho/do/arquivo.py
+
+# Commit com mensagem
+git commit -m &quot;tipo(escopo): descrição clara&quot;
+
+# Corrigir último commit (antes de fazer push)
+git commit --amend -m &quot;nova mensagem correta&quot;
+</code></pre>
 
 
 
