@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../versionamento/">
+        <link rel="prev" href="../arquitetura/">
       
       
-        <link rel="next" href="../testes/">
+        <link rel="next" href="../dados/">
       
       
       <link rel="icon" href="../assets/logo.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>APIs - FinanceFlow</title>
+        <title>Diagramas de Arquitetura - FinanceFlow</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#apis-e-integracao-ajax" class="md-skip">
+        <a href="#exemplos-de-diagramas-de-fluxo-para-documentacao" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              APIs
+              Diagramas de Arquitetura
             
           </span>
         </div>
@@ -557,10 +557,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../diagramas/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Diagramas de Arquitetura
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -569,6 +589,161 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-diagrama-de-arquitetura-do-sistema" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. DIAGRAMA DE ARQUITETURA DO SISTEMA
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-fluxo-de-autenticacao" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. FLUXO DE AUTENTICAÇÃO
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-fluxo-de-uma-transferencia" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. FLUXO DE UMA TRANSFERÊNCIA
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-fluxo-do-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. FLUXO DO DASHBOARD
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-sistema-de-categorias-e-subcategorias" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. SISTEMA DE CATEGORIAS E SUBCATEGORIAS
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-fluxo-de-deploy-no-render" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. FLUXO DE DEPLOY NO RENDER
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-sistema-de-parcelamento" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. SISTEMA DE PARCELAMENTO
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-fluxo-de-geracao-de-relatorios" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. FLUXO DE GERACAO DE RELATÓRIOS
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-arquitetura-de-banco-de-dados-simplificada" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. ARQUITETURA DE BANCO DE DADOS (SIMPLIFICADA)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-fluxo-de-recuperacao-de-senha" class="md-nav__link">
+    <span class="md-ellipsis">
+      10. FLUXO DE RECUPERAÇÃO DE SENHA
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-sistema-de-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      11. SISTEMA DE CACHE
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-fluxo-de-code-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      12. FLUXO DE CODE REVIEW
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-estrutura-de-pastas-do-projeto" class="md-nav__link">
+    <span class="md-ellipsis">
+      13. ESTRUTURA DE PASTAS DO PROJETO
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-fluxo-de-notificacoes" class="md-nav__link">
+    <span class="md-ellipsis">
+      14. FLUXO DE NOTIFICAÇÕES
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-diagrama-de-componentes-frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      15. DIAGRAMA DE COMPONENTES FRONTEND
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -620,30 +795,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    APIs
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../apis/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -652,62 +807,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#padrao-de-views-de-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      Padrão de Views de API
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplo-de-resposta-de-sucesso" class="md-nav__link">
-    <span class="md-ellipsis">
-      Exemplo de Resposta de Sucesso
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplo-de-resposta-de-erro-de-validacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      Exemplo de Resposta de Erro de Validação
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#endpoints-de-api-notaveis" class="md-nav__link">
-    <span class="md-ellipsis">
-      Endpoints de API Notáveis
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -816,46 +915,371 @@
                   
 
 
-<h1 id="apis-e-integracao-ajax">APIs e Integração AJAX</h1>
-<p>Uma característica central da arquitetura do sistema é o uso intensivo de AJAX para criar uma interface de usuário dinâmica e reativa, minimizando recarregamentos de página. Isso é alcançado através de uma combinação de views que respondem com JSON e JavaScript/HTMX no frontend.</p>
-<h3 id="padrao-de-views-de-api">Padrão de Views de API</h3>
-<p>A maioria das views que interagem com AJAX segue um padrão:</p>
-<ol>
-<li>Verifica se a requisição é do tipo AJAX checando o cabeçalho <code>X-Requested-With</code>.
-    <div class="highlight"><pre><span></span><code><span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;x-requested-with&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;XMLHttpRequest&#39;</span><span class="p">:</span>
-    <span class="c1"># Lógica para AJAX</span>
-</code></pre></div></li>
-<li>Processa os dados do formulário (<code>request.POST</code>).</li>
-<li>Se o formulário for válido, executa a ação e retorna um <code>JsonResponse</code> com <code>success: True</code>.</li>
-<li>Se o formulário for inválido, retorna um <code>JsonResponse</code> com <code>success: False</code> e um dicionário de <code>errors</code>.</li>
-</ol>
-<h3 id="exemplo-de-resposta-de-sucesso">Exemplo de Resposta de Sucesso</h3>
-<p>Usado para notificar o frontend que a operação foi concluída.</p>
-<p><code>POST /entradas/nova/</code>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Entrada criada com sucesso!&quot;</span>
-<span class="p">}</span>
-</code></pre></div></p>
-<h3 id="exemplo-de-resposta-de-erro-de-validacao">Exemplo de Resposta de Erro de Validação</h3>
-<p>Usado para que o frontend possa exibir os erros de validação de formulário perto dos campos correspondentes.</p>
-<p><code>POST /saidas/nova/</code>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-<span class="w">  </span><span class="nt">&quot;success&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span>
-<span class="w">  </span><span class="nt">&quot;errors&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="nt">&quot;valor&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Este campo é obrigatório.&quot;</span><span class="p">],</span>
-<span class="w">    </span><span class="nt">&quot;data_vencimento&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;Insira uma data válida.&quot;</span><span class="p">]</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">}</span>
-</code></pre></div></p>
-<h3 id="endpoints-de-api-notaveis">Endpoints de API Notáveis</h3>
-<p>Além das views de CRUD que respondem a AJAX, existem endpoints que funcionam puramente como APIs de dados:</p>
-<ul>
-<li><strong><code>GET /api/transacao/&lt;int:pk&gt;/detalhes/</code></strong>: Retorna o HTML de um modal com os detalhes de uma transação específica (<code>Entrada</code> ou <code>Saida</code>).</li>
-<li><strong><code>GET /api/profile/statistics/</code></strong>: Fornece dados numéricos e textuais sobre a atividade do usuário para popular um painel de estatísticas.</li>
-<li><strong><code>GET /get-account-balance/&lt;int:pk&gt;/</code></strong>: Retorna o saldo atual de uma conta, útil para atualizar valores na interface após uma operação.</li>
-<li><strong><code>POST /saidas/&lt;int:saida_id&gt;/marcar-pago/</code></strong>: Endpoint de ação que altera o status de uma despesa para "pago".</li>
-</ul>
+<h1 id="exemplos-de-diagramas-de-fluxo-para-documentacao">📊 Exemplos de Diagramas de Fluxo para Documentação</h1>
+<h2 id="1-diagrama-de-arquitetura-do-sistema">1. DIAGRAMA DE ARQUITETURA DO SISTEMA</h2>
+<pre class="mermaid"><code>graph TB
+    subgraph "Frontend"
+        A[🌐 Browser] --&gt; B[📱 React/Vue.js]
+        B --&gt; C[🎨 Tailwind CSS]
+    end
+
+    subgraph "Backend"
+        D[🐍 Django] --&gt; E[🛡️ Django REST Framework]
+        E --&gt; F[🗄️ PostgreSQL]
+        E --&gt; G[📊 Redis Cache]
+    end
+
+    subgraph "Serviços Externos"
+        H[📧 Email Service]
+        I[🔐 Auth Service]
+        J[📄 PDF Generator]
+    end
+
+    B --&gt; E
+    E --&gt; H
+    E --&gt; I
+    E --&gt; J
+
+    style A fill:#e1f5fe
+    style D fill:#f3e5f5
+    style F fill:#e8f5e8</code></pre>
+<h2 id="2-fluxo-de-autenticacao">2. FLUXO DE AUTENTICAÇÃO</h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant B as Backend
+    participant D as Database
+
+    U-&gt;&gt;F: Acessa /login
+    F-&gt;&gt;B: GET /api/auth/login
+    B-&gt;&gt;F: Formulário de login
+    U-&gt;&gt;F: Preencre credenciais
+    F-&gt;&gt;B: POST /api/auth/login
+    B-&gt;&gt;D: Verifica usuário/senha
+    D-&gt;&gt;B: Dados do usuário
+    B-&gt;&gt;B: Gera JWT Token
+    B-&gt;&gt;F: Retorna token + user data
+    F-&gt;&gt;U: Redireciona para dashboard
+    U-&gt;&gt;F: Acessa recursos protegidos
+    F-&gt;&gt;B: Request com JWT token
+    B-&gt;&gt;B: Valida token
+    B-&gt;&gt;F: Dados solicitados</code></pre>
+<h2 id="3-fluxo-de-uma-transferencia">3. FLUXO DE UMA TRANSFERÊNCIA</h2>
+<pre class="mermaid"><code>flowchart TD
+    A[🚀 Iniciar Transferência] --&gt; B{Validar Dados}
+    B --&gt;|Dados Inválidos| C[❌ Retornar Erro]
+    B --&gt;|Dados Válidos| D{Saldo Suficiente?}
+
+    D --&gt;|Não| E[❌ Saldo Insuficiente]
+    D --&gt;|Sim| F[💾 Registrar Transferência]
+
+    F --&gt; G[📉 Debitar Conta Origem]
+    G --&gt; H[📈 Creditar Conta Destino]
+    H --&gt; I[📧 Notificar Usuário]
+    I --&gt; J[✅ Transferência Concluída]
+
+    style A fill:#4caf50,color:white
+    style J fill:#4caf50,color:white
+    style C fill:#f44336,color:white
+    style E fill:#f44336,color:white</code></pre>
+<h2 id="4-fluxo-do-dashboard">4. FLUXO DO DASHBOARD</h2>
+<pre class="mermaid"><code>graph LR
+    subgraph "Data Collection"
+        A[📥 Entradas] --&gt; D[Dashboard Service]
+        B[📤 Saídas] --&gt; D
+        C[🔄 Transferências] --&gt; D
+    end
+
+    subgraph "Data Processing"
+        D --&gt; E[🔢 Cálculo de Métricas]
+        E --&gt; F[📊 Agregação por Período]
+        F --&gt; G[📈 Análise de Tendências]
+    end
+
+    subgraph "Data Presentation"
+        G --&gt; H[🎯 Cards de Resumo]
+        G --&gt; I[📉 Gráficos Mensais]
+        G --&gt; J[🗂️ Relatórios Detalhados]
+    end
+
+    H --&gt; K[👤 Usuário]
+    I --&gt; K
+    J --&gt; K</code></pre>
+<h2 id="5-sistema-de-categorias-e-subcategorias">5. SISTEMA DE CATEGORIAS E SUBCATEGORIAS</h2>
+<pre class="mermaid"><code>classDiagram
+    class Categoria {
+        +String nome
+        +String descricao
+        +String cor
+        +String icone
+        +Boolean ativa
+        +DateTime criado_em
+        +addSubcategoria()
+        +getSubcategorias()
+    }
+
+    class Subcategoria {
+        +String nome
+        +String descricao
+        +Categoria categoria
+        +Decimal orcamento_mensal
+        +Boolean ativa
+    }
+
+    class Transacao {
+        +Decimal valor
+        +Date data
+        +String descricao
+        +Subcategoria subcategoria
+        +ContaBancaria conta
+    }
+
+    Categoria "1" --&gt; "*" Subcategoria
+    Subcategoria "1" --&gt; "*" Transacao</code></pre>
+<h2 id="6-fluxo-de-deploy-no-render">6. FLUXO DE DEPLOY NO RENDER</h2>
+<pre class="mermaid"><code>timeline
+    title Fluxo de Deploy Automático
+    section Git Push
+        Commit no main : Desenvolvedor faz push&lt;br&gt;para o repositório
+    section GitHub
+        Webhook Trigger : GitHub notifica o Render
+    section Render Build
+        Build Process : Executa build.sh&lt;br&gt;Instala dependências
+        Versioning : Gera versão automática
+        Database Migrations : Aplica migrações
+        Static Files : Coleta arquivos estáticos
+    section Deploy
+        Health Check : Verifica se aplicação&lt;br&gt;está respondendo
+        Traffic Routing : Direciona tráfego&lt;br&gt;para nova versão
+    section Monitoring
+        Logs &amp; Metrics : Monitora performance&lt;br&gt;e errors</code></pre>
+<h2 id="7-sistema-de-parcelamento">7. SISTEMA DE PARCELAMENTO</h2>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; NovaDespesa
+    NovaDespesa --&gt; AnaliseParcelamento: Usuário cria despesa
+
+    state AnaliseParcelamento {
+        [*] --&gt; VerificarTipo
+        VerificarTipo --&gt; Avista : Tipo = À Vista
+        VerificarTipo --&gt; Parcelado : Tipo = Parcelado
+
+        state Parcelado {
+            [*] --&gt; CalcularParcelas
+            CalcularParcelas --&gt; CriarParcela1
+            CriarParcela1 --&gt; AgendarProximas
+            AgendarProximas --&gt; [*]
+        }
+
+        state Avista {
+            [*] --&gt; CriarDespesaUnica
+            CriarDespesaUnica --&gt; [*]
+        }
+    }
+
+    AnaliseParcelamento --&gt; [*]</code></pre>
+<h2 id="8-fluxo-de-geracao-de-relatorios">8. FLUXO DE GERACAO DE RELATÓRIOS</h2>
+<pre class="mermaid"><code>flowchart TD
+    A[ Solicitar Relatório] --&gt; B{Parâmetros Válidos?}
+    B --&gt;|Não| C[❌ Retornar Erro de Validação]
+    B --&gt;|Sim| D[🔍 Buscar Dados no Banco]
+
+    D --&gt; E{Quantidade de Dados}
+    E --&gt;|Poucos| F[⚡ Processamento Síncrono]
+    E --&gt;|Muitos| G[🔄 Processamento Assíncrono]
+
+    F --&gt; H[📄 Gerar Relatório]
+    G --&gt; I[🎯 Agendar Task Celery]
+    I --&gt; J[📧 Notificar Conclusão]
+    J --&gt; H
+
+    H --&gt; K{Formato}
+    K --&gt;|PDF| L[📋 Gerar PDF]
+    K --&gt;|Excel| M[📊 Gerar Excel]
+    K --&gt;|HTML| N[🌐 Gerar HTML]
+
+    L --&gt; O[⬇️ Download]
+    M --&gt; O
+    N --&gt; O</code></pre>
+<h2 id="9-arquitetura-de-banco-de-dados-simplificada">9. ARQUITETURA DE BANCO DE DADOS (SIMPLIFICADA)</h2>
+<pre class="mermaid"><code>erDiagram
+    USUARIO ||--o{ CONTA_BANCARIA : possui
+    USUARIO ||--o{ CATEGORIA : cria
+    USUARIO ||--o{ TRANSACAO : realiza
+
+    CONTA_BANCARIA ||--o{ TRANSACAO : contém
+    CATEGORIA ||--o{ SUBCATEGORIA : contém
+    SUBCATEGORIA ||--o{ TRANSACAO : classifica
+
+    TRANSACAO ||--o{ PARCELA : gera
+    TRANSACAO {
+        string descricao
+        decimal valor
+        date data
+        string tipo
+    }
+
+    CONTA_BANCARIA {
+        string nome
+        string banco
+        decimal saldo
+        string tipo
+    }
+
+    CATEGORIA {
+        string nome
+        string cor
+        string icone
+    }</code></pre>
+<h2 id="10-fluxo-de-recuperacao-de-senha">10. FLUXO DE RECUPERAÇÃO DE SENHA</h2>
+<pre class="mermaid"><code>sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant B as Backend
+    participant E as Email Service
+    participant D as Database
+
+    U-&gt;&gt;F: Clica 'Esqueci senha'
+    F-&gt;&gt;B: POST /api/auth/forgot-password
+    B-&gt;&gt;D: Verifica email existe
+    D-&gt;&gt;B: Retorna usuário
+    B-&gt;&gt;B: Gera token de reset
+    B-&gt;&gt;D: Salva token com expiração
+    B-&gt;&gt;E: Envia email com link
+    E-&gt;&gt;U: Email com link de reset
+
+    U-&gt;&gt;F: Clica no link do email
+    F-&gt;&gt;B: GET /api/auth/reset-password/{token}
+    B-&gt;&gt;D: Valida token
+    D-&gt;&gt;B: Token válido
+    B-&gt;&gt;F: Formulário de nova senha
+
+    U-&gt;&gt;F: Digita nova senha
+    F-&gt;&gt;B: POST /api/auth/reset-password
+    B-&gt;&gt;D: Atualiza senha + invalida token
+    B-&gt;&gt;F: Confirmação de sucesso
+    F-&gt;&gt;U: Redireciona para login</code></pre>
+<h2 id="11-sistema-de-cache">11. SISTEMA DE CACHE</h2>
+<pre class="mermaid"><code>flowchart TD
+    A[📡 Request] --&gt; B{Cache Hit?}
+    B --&gt;|Sim| C[⚡ Retornar do Cache]
+    B --&gt;|Não| D[🗄️ Buscar no Banco]
+
+    D --&gt; E[💾 Processar Dados]
+    E --&gt; F[📦 Armazenar no Cache]
+    F --&gt; G[🔄 Retornar Dados]
+    C --&gt; G
+
+    subgraph "Cache Strategy"
+        H[🎯 Dashboard Metrics - 5min]
+        I[📊 Relatórios - 1h]
+        J[👤 User Profile - 30min]
+        K[📈 Charts Data - 15min]
+    end
+
+    F --&gt; H
+    F --&gt; I
+    F --&gt; J
+    F --&gt; K</code></pre>
+<h2 id="12-fluxo-de-code-review">12. FLUXO DE CODE REVIEW</h2>
+<pre class="mermaid"><code>graph TB
+    A[💻 Desenvolvedor] --&gt; B[🌿 Cria Feature Branch]
+    B --&gt; C[🔧 Desenvolve Feature]
+    C --&gt; D[📝 Faz Commits Conventionais]
+    D --&gt; E[📤 Push para Remote]
+    E --&gt; F[🔄 Abre Pull Request]
+
+    F --&gt; G[🤖 CI/CD Pipeline]
+    G --&gt; H[✅ Tests Pass]
+    H --&gt; I[👀 Code Review]
+
+    I --&gt; J{Approved?}
+    J --&gt;|Não| K[🔧 Request Changes]
+    K --&gt; C
+    J --&gt;|Sim| L[🎯 Merge to Main]
+
+    L --&gt; M[🚀 Auto Deploy]
+    M --&gt; N[📊 Health Check]
+    N --&gt; O[✅ Deploy Successful]</code></pre>
+<h2 id="13-estrutura-de-pastas-do-projeto">13. ESTRUTURA DE PASTAS DO PROJETO</h2>
+<pre class="mermaid"><code>graph TD
+    A[financeflow/] --&gt; B[📁 core/]
+    A --&gt; C[📁 scripts/]
+    A --&gt; D[📁 docs/]
+    A --&gt; E[📁 .github/]
+
+    B --&gt; F[🗃️ models/]
+    B --&gt; G[🎯 views/]
+    B --&gt; H[📄 templates/]
+    B --&gt; I[🎨 static/]
+    B --&gt; J[🔧 utils/]
+
+    F --&gt; K[💰 finance_models.py]
+    F --&gt; L[👤 user_models.py]
+
+    C --&gt; M[🔄 auto_version.py]
+    C --&gt; N[🔧 deployment.py]
+
+    E --&gt; O[⚙️ workflows/]
+    O --&gt; P[🚀 deploy.yml]
+    O --&gt; Q[✅ tests.yml]</code></pre>
+<h2 id="14-fluxo-de-notificacoes">14. FLUXO DE NOTIFICAÇÕES</h2>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Monitoring
+    Monitoring --&gt; AlertTriggered: Condição Atendida
+
+    state AlertTriggered {
+        [*] --&gt; EvaluateSeverity
+        EvaluateSeverity --&gt; LowPriority : Baixa
+        EvaluateSeverity --&gt; MediumPriority : Média
+        EvaluateSeverity --&gt; HighPriority : Alta
+
+        state HighPriority {
+            [*] --&gt; SendEmail
+            SendEmail --&gt; SendSMS
+            SendSMS --&gt; LogIncident
+            LogIncident --&gt; [*]
+        }
+
+        state MediumPriority {
+            [*] --&gt; SendEmail
+            SendEmail --&gt; LogIncident
+            LogIncident --&gt; [*]
+        }
+
+        state LowPriority {
+            [*] --&gt; SendEmail
+            SendEmail --&gt; [*]
+        }
+    }
+
+    AlertTriggered --&gt; [*]</code></pre>
+<h2 id="15-diagrama-de-componentes-frontend">15. DIAGRAMA DE COMPONENTES FRONTEND</h2>
+<pre class="mermaid"><code>graph TB
+    subgraph "Layout Components"
+        A[🖼️ AppLayout] --&gt; B[📱 Sidebar]
+        A --&gt; C[🔝 Header]
+        A --&gt; D[📊 MainContent]
+    end
+
+    subgraph "Page Components"
+        D --&gt; E[🏠 DashboardPage]
+        D --&gt; F[💳 ContasPage]
+        D --&gt; G[📥 EntradasPage]
+        D --&gt; H[📤 SaidasPage]
+    end
+
+    subgraph "Shared Components"
+        I[📋 DataTable] --&gt; J[🔍 Filters]
+        I --&gt; K[📄 Pagination]
+        L[💬 Modal] --&gt; M[✅ ConfirmDialog]
+        L --&gt; N[📝 FormModal]
+    end
+
+    E --&gt; I
+    F --&gt; I
+    F --&gt; L
+    G --&gt; I
+    G --&gt; L</code></pre>
 
 
 

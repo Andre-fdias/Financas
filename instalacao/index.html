@@ -497,6 +497,30 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#configuracao-de-variaveis-de-ambiente" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuração de Variáveis de Ambiente
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuração de Variáveis de Ambiente">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#variaveis-principais" class="md-nav__link">
+    <span class="md-ellipsis">
+      Variáveis Principais
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -613,7 +637,28 @@
   
   
     <li class="md-nav__item">
-      <a href="../dados.md" class="md-nav__link">
+      <a href="../diagramas/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Diagramas de Arquitetura
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dados/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -676,7 +721,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testes.md" class="md-nav__link">
+      <a href="../testes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -786,50 +831,50 @@
 <ol>
 <li>
 <p><strong>Clone o repositório:</strong>
-    <code>bash
-    git clone https://github.com/seu-usuario/financas-pessoais.git
-    cd financas-pessoais</code></p>
+    <div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/seu-usuario/financas-pessoais.git
+<span class="nb">cd</span><span class="w"> </span>financas-pessoais
+</code></pre></div></p>
 </li>
 <li>
 <p><strong>Crie e ative o ambiente virtual:</strong>
-    ```bash
-    # Para Linux/macOS
-    python3 -m venv venv
-    source venv/bin/activate</p>
-<h1 id="para-windows">Para Windows</h1>
-<p>python -m venv venv
-.\venv\Scripts\activate
-```</p>
+    <div class="highlight"><pre><span></span><code><span class="c1"># Para Linux/macOS</span>
+python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+<span class="nb">source</span><span class="w"> </span>venv/bin/activate
+
+<span class="c1"># Para Windows</span>
+python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
+.<span class="se">\v</span>env<span class="se">\S</span>cripts<span class="se">\a</span>ctivate
+</code></pre></div></p>
 </li>
 <li>
 <p><strong>Instale as dependências do projeto:</strong>
-    <code>bash
-    pip install -r requirements.txt</code></p>
+    <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</code></pre></div></p>
 </li>
 <li>
 <p><strong>Configure as variáveis de ambiente:</strong>
     Copie o arquivo de exemplo <code>.env.example</code> para um novo arquivo chamado <code>.env</code>.
-    <code>bash
-    cp .env.example .env</code>
+    <div class="highlight"><pre><span></span><code>cp<span class="w"> </span>.env.example<span class="w"> </span>.env
+</code></pre></div>
     Abra o arquivo <code>.env</code> e preencha as variáveis necessárias. Veja a seção "Variáveis de Ambiente" para mais detalhes.</p>
 </li>
 <li>
 <p><strong>Aplique as migrações do banco de dados:</strong>
     Este comando criará as tabelas no banco de dados com base nos modelos do Django.
-    <code>bash
-    python manage.py migrate</code></p>
+    <div class="highlight"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>migrate
+</code></pre></div></p>
 </li>
 <li>
 <p><strong>Crie um superusuário:</strong>
     Você precisará de um usuário administrador para acessar o painel de administração do Django.
-    <code>bash
-    python manage.py createsuperuser</code>
+    <div class="highlight"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>createsuperuser
+</code></pre></div>
     Siga as instruções no terminal para definir o nome de usuário, e-mail e senha.</p>
 </li>
 <li>
 <p><strong>Inicie o servidor de desenvolvimento:</strong>
-    <code>bash
-    python manage.py runserver</code></p>
+    <div class="highlight"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>runserver
+</code></pre></div></p>
 </li>
 </ol>
 <p>Por padrão, a aplicação estará acessível em <code>http://127.0.0.1:8000/</code>.</p>

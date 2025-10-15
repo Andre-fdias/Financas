@@ -925,7 +925,28 @@
   
   
     <li class="md-nav__item">
-      <a href="../dados.md" class="md-nav__link">
+      <a href="../diagramas/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Diagramas de Arquitetura
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dados/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -988,7 +1009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../testes.md" class="md-nav__link">
+      <a href="../testes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1168,18 +1189,18 @@
 </ul>
 <h3 id="logica-de-negocio">Lógica de Negócio</h3>
 <p>O método <code>save()</code> do modelo contém uma lógica para calcular automaticamente a data de término do parcelamento se a data de início e a quantidade de parcelas forem fornecidas, utilizando a biblioteca <code>dateutil</code>.</p>
-<pre><code class="language-python"># Em core/models.py
-from dateutil.relativedelta import relativedelta
+<div class="highlight"><pre><span></span><code><span class="c1"># Em core/models.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dateutil.relativedelta</span><span class="w"> </span><span class="kn">import</span> <span class="n">relativedelta</span>
 
-class OperacaoSaque(models.Model):
-    # ...
-    def save(self, *args, **kwargs):
-        # ...
-        if self.data_inicio_parcelas and self.quantidade_parcelas:
-            self.data_termino_parcelas = self.data_inicio_parcelas + relativedelta(months=self.quantidade_parcelas)
+<span class="k">class</span><span class="w"> </span><span class="nc">OperacaoSaque</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Model</span><span class="p">):</span>
+    <span class="c1"># ...</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># ...</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_inicio_parcelas</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">quantidade_parcelas</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">data_termino_parcelas</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data_inicio_parcelas</span> <span class="o">+</span> <span class="n">relativedelta</span><span class="p">(</span><span class="n">months</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">quantidade_parcelas</span><span class="p">)</span>
 
-        super().save(*args, **kwargs)
-</code></pre>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="interface-de-gerenciamento">Interface de Gerenciamento</h3>
 <p>A página <code>/operacoes-saque/</code> (<code>operacao_saque_list</code>) permite ao usuário visualizar e gerenciar todas as suas operações de saque.</p>
 <ul>
@@ -1315,32 +1336,32 @@ class OperacaoSaque(models.Model):
 <h3 id="garantia-de-atomicidade">Garantia de Atomicidade</h3>
 <p>Uma transferência envolve duas operações de atualização no banco de dados: subtrair o saldo da conta de origem e adicionar o saldo à conta de destino. Se uma dessas operações falhar, a outra não pode ser concluída, pois isso deixaria os dados em um estado inconsistente (dinheiro "desapareceria" ou seria "criado" do nada).</p>
 <p>Para resolver isso, todas as views que manipulam transferências (<code>transferencia_create</code>, <code>transferencia_update</code>, <code>transferencia_delete</code>) são decoradas com <code>@transaction.atomic</code>.</p>
-<pre><code class="language-python">from django.db import transaction
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">transaction</span>
 
-@login_required
-@transaction.atomic
-def transferencia_create(request):
-    # ... lógica da view ...
-</code></pre>
+<span class="nd">@login_required</span>
+<span class="nd">@transaction</span><span class="o">.</span><span class="n">atomic</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">transferencia_create</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="c1"># ... lógica da view ...</span>
+</code></pre></div>
 <p>Este decorador garante que todas as operações de banco de dados dentro da view sejam executadas em uma única transação. Se qualquer erro ocorrer, a transação inteira sofre um <em>rollback</em>, e nenhuma alteração é salva no banco de dados.</p>
 <h3 id="logica-de-atualizacao-de-saldo">Lógica de Atualização de Saldo</h3>
 <p>A lógica de negócio para atualizar os saldos reside no método <code>save()</code> do modelo <code>Transferencia</code>.</p>
-<pre><code class="language-python"># Em core/models.py
-class Transferencia(BaseModel):
-    # ... campos ...
+<div class="highlight"><pre><span></span><code><span class="c1"># Em core/models.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Transferencia</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="c1"># ... campos ...</span>
 
-    def save(self, *args, **kwargs):
-        # A lógica só é aplicada para novas transferências
-        if not self.pk:
-            # Atualiza os saldos das contas
-            self.conta_origem.saldo_atual -= self.valor
-            self.conta_destino.saldo_atual += self.valor
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="c1"># A lógica só é aplicada para novas transferências</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pk</span><span class="p">:</span>
+            <span class="c1"># Atualiza os saldos das contas</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conta_origem</span><span class="o">.</span><span class="n">saldo_atual</span> <span class="o">-=</span> <span class="bp">self</span><span class="o">.</span><span class="n">valor</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conta_destino</span><span class="o">.</span><span class="n">saldo_atual</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">valor</span>
 
-            self.conta_origem.save()
-            self.conta_destino.save()
+            <span class="bp">self</span><span class="o">.</span><span class="n">conta_origem</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conta_destino</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
 
-        super().save(*args, **kwargs)
-</code></pre>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
 <ul>
 <li>Ao <strong>criar</strong> uma transferência, o saldo é debitado da origem e creditado no destino.</li>
 <li>Ao <strong>excluir</strong>, a view <code>transferencia_delete</code> executa a lógica inversa: o valor é devolvido à conta de origem e removido da conta de destino antes de a transferência ser apagada.</li>

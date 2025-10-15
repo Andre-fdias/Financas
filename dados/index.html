@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../tecnologias/">
+        <link rel="prev" href="../diagramas/">
       
       
-        <link rel="next" href="../creditos/">
+        <link rel="next" href="../versionamento/">
       
       
       <link rel="icon" href="../assets/logo.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>FAQ - FinanceFlow</title>
+        <title>Modelagem de Dados - FinanceFlow</title>
       
     
     
@@ -72,7 +72,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#faq-e-troubleshooting" class="md-skip">
+        <a href="#modelagem-de-dados" class="md-skip">
           Skip to content
         </a>
       
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              FAQ
+              Modelagem de Dados
             
           </span>
         </div>
@@ -285,10 +285,12 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="../arquitetura/" class="md-tabs__link">
           
   
@@ -320,11 +322,9 @@
         
   
   
-    
   
-  
-    <li class="md-tabs__item md-tabs__item--active">
-      <a href="./" class="md-tabs__link">
+    <li class="md-tabs__item">
+      <a href="../faq/" class="md-tabs__link">
         
   
     
@@ -491,25 +491,30 @@
       
   
   
+    
   
   
+  
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   <span class="md-ellipsis">
@@ -520,7 +525,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             Desenvolvimento
@@ -573,10 +578,19 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../dados/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -585,6 +599,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -684,30 +699,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    FAQ
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -716,44 +711,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#perguntas-frequentes-faq" class="md-nav__link">
-    <span class="md-ellipsis">
-      Perguntas Frequentes (FAQ)
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#solucao-de-problemas-troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      Solução de Problemas (Troubleshooting)
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -793,51 +750,9 @@
                   
 
 
-<h1 id="faq-e-troubleshooting">FAQ e Troubleshooting</h1>
-<h3 id="perguntas-frequentes-faq">Perguntas Frequentes (FAQ)</h3>
-<p><strong>P: Como adiciono um novo banco à lista de opções?</strong></p>
-<p>R: Edite o arquivo <code>core/choices.py</code> e adicione uma nova tupla à lista <code>BANCO_CHOICES</code>. O sistema o refletirá automaticamente nos formulários.</p>
-<p><strong>P: Por que a projeção no dashboard não aparece?</strong></p>
-<p>R: A projeção de saldo futuro requer um mínimo de 3 meses de dados de receitas e despesas para que o modelo de regressão linear possa ser treinado. Continue usando o sistema e ela aparecerá quando houver dados suficientes.</p>
-<p><strong>P: Posso usar o sistema com outro banco de dados, como PostgreSQL ou MySQL?</strong></p>
-<p>R: Sim. O projeto usa <code>dj_database_url</code> para configurar o banco de dados a partir de uma URL. Para usar PostgreSQL, por exemplo, instale o driver (<code>psycopg2-binary</code>) e configure a variável <code>DATABASE_URL</code> no seu arquivo <code>.env</code> para <code>postgres://USER:PASSWORD@HOST:PORT/NAME</code>.</p>
-<p><strong>P: Como eu rodo o projeto localmente?</strong></p>
-<p>R: As instruções completas estão na seção <a href="https://github.com/Andre-fdias/Financas#como-executar-o-projeto-localmente">Como Executar o Projeto Localmente</a> do arquivo <code>README.md</code>. Você precisará do Python, Node.js e PostgreSQL instalados.</p>
-<p><strong>P: Posso usar a API para minha própria aplicação?</strong></p>
-<p>R: Sim! A API foi projetada para isso. A autenticação é feita via tokens JWT. Para começar, consulte o <a href="../apis/">Guia da API RESTful</a> para ver exemplos de como se autenticar e interagir com os endpoints.</p>
-<p><strong>P: O deploy da documentação no GitHub Pages falhou com um erro de <code>permissão negada</code> ou <code>rejected</code>. O que fazer?</strong></p>
-<p>R: Este erro geralmente acontece por dois motivos: 1) seu ambiente não tem as chaves SSH para se autenticar no GitHub, ou 2) a branch <code>gh-pages</code> remota está em um estado inconsistente. A solução mais robusta é deletar a branch remota e recriá-la. Execute os seguintes comandos:
-<div class="highlight"><pre><span></span><code><span class="c1"># 1. Delete a branch remota (se existir)</span>
-git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>--delete<span class="w"> </span>gh-pages
-
-<span class="c1"># 2. Faça o deploy novamente</span>
-mkdocs<span class="w"> </span>gh-deploy
-</code></pre></div></p>
-<h3 id="solucao-de-problemas-troubleshooting">Solução de Problemas (Troubleshooting)</h3>
-<p><strong>Erro: <code>SECRET_KEY</code> não definida.</strong></p>
-<ul>
-<li><strong>Causa:</strong> Você não criou ou não preencheu o arquivo <code>.env</code>.</li>
-<li><strong>Solução:</strong> Copie o arquivo <code>.env.example</code> para <code>.env</code> (<code>cp .env.example .env</code>) e gere uma nova chave secreta para a variável <code>SECRET_KEY</code>.</li>
-</ul>
-<p><strong>Erro: Imagens não aparecem ou quebram após o upload.</strong></p>
-<ul>
-<li><strong>Causa:</strong> A configuração para servir arquivos de mídia em desenvolvimento pode estar faltando.</li>
-<li><strong>Solução:</strong> Garanta que o <code>financas/urls.py</code> principal contenha a configuração para servir arquivos de mídia em modo <code>DEBUG</code>, e que as variáveis <code>MEDIA_URL</code> e <code>MEDIA_ROOT</code> em <code>settings.py</code> estejam corretas.
-  <div class="highlight"><pre><span></span><code><span class="c1"># Em financas/urls.py</span>
-<span class="k">if</span> <span class="n">settings</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">:</span>
-    <span class="n">urlpatterns</span> <span class="o">+=</span> <span class="n">static</span><span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">MEDIA_URL</span><span class="p">,</span> <span class="n">document_root</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">MEDIA_ROOT</span><span class="p">)</span>
-</code></pre></div></li>
-</ul>
-<p><strong>Erro: Estilos (CSS) não são aplicados.</strong></p>
-<ul>
-<li><strong>Causa:</strong> O processo de compilação do Tailwind CSS pode não ter sido executado ou falhou.</li>
-<li><strong>Solução:</strong> Rode o comando de compilação do Tailwind, que geralmente é gerenciado pelo <code>django-tailwind</code>.
-  <div class="highlight"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>tailwind<span class="w"> </span>build
-</code></pre></div>
-  Para desenvolvimento, você pode rodar o processo em modo de observação:
-  <div class="highlight"><pre><span></span><code>python<span class="w"> </span>manage.py<span class="w"> </span>tailwind<span class="w"> </span>start
-</code></pre></div></li>
-</ul>
+<h1 id="modelagem-de-dados">Modelagem de Dados</h1>
+<p>Esta seção detalha a estrutura do banco de dados, os modelos do Django e os relacionamentos entre as entidades do sistema FinanceFlow.</p>
+<p><em>Esta página foi criada automaticamente. Adicione aqui os detalhes sobre os modelos <code>Conta</code>, <code>Transacao</code>, <code>Categoria</code>, etc.</em></p>
 
 
 
