@@ -239,6 +239,28 @@
             max-width: 500px;
             width: 90%;
         }
+        /* Estilo específico para campos monetários */
+.direction-rtl {
+    direction: rtl;
+    text-align: left;
+}
+
+.monetary-input {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Remove as setas dos inputs number em alguns navegadores */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
     </style>
 {% endblock %}
 
@@ -606,7 +628,7 @@
 
                     <!-- Coluna 2 -->
                     <div class="space-y-6">
-                        <!-- Valor -->
+                    <!-- Valor -->
                         <div class="input-group">
                             <label for="id_valor" class="form-label flex items-center">
                                 <i class="fas fa-money-bill-wave mr-2 text-purple-500"></i>
@@ -616,7 +638,15 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-gray-500 sm:text-sm">R$</span>
                                 </div>
-                                <input type="text" name="valor" id="id_valor" class="form-input pl-10" required placeholder="0,00">
+                                <input 
+                                    type="text" 
+                                    name="valor" 
+                                    id="id_valor" 
+                                    class="form-input pl-10 text-right direction-rtl" 
+                                    required 
+                                    placeholder="0,00"
+                                    inputmode="decimal"
+                                >
                             </div>
                             <p class="form-error" id="valor_error"></p>
                         </div>
@@ -792,34 +822,163 @@
         setTimeout(() => modalElement.classList.add('hidden'), 300);
         document.body.style.overflow = '';
     }
-
-    function formatarMoeda(input) {
-        let value = input.value.replace(/\D/g, '');
-        
-        if (value === '') {
-            input.value = '0,00';
-            return;
-        }
-        
-        value = value.padStart(3, '0');
-        const reais = value.slice(0, -2) || '0';
-        const centavos = value.slice(-2);
-        const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        
-        input.value = formattedReais + ',' + centavos;
+// Função para formatar moeda brasileira CORRIGIDA
+function formatarMoeda(input) {
+    // Remove tudo que não é número
+    let value = input.value.replace(/\D/g, '');
+    
+    // Se estiver vazio, define como 0,00
+    if (value === '' || value === '00') {
+        input.value = '0,00';
+        return;
     }
-
-    function converterParaDecimal(valor) {
-        if (typeof valor !== 'string') return parseFloat(valor).toFixed(2);
-        
-        let decimalValue = valor.replace(/\./g, '').replace(',', '.');
-        
-        if (decimalValue === '' || isNaN(parseFloat(decimalValue))) {
-            return '0.00';
-        }
-        
-        return parseFloat(decimalValue).toFixed(2);
+    
+    // Remove zeros à esquerda, mas mantém pelo menos um zero se necessário
+    value = value.replace(/^0+/, '');
+    if (value === '') value = '0';
+    
+    // Garante que tenha pelo menos 3 dígitos (para centavos)
+    value = value.padStart(3, '0');
+    
+    // Separa reais e centavos
+    const reais = value.slice(0, -2);
+    const centavos = value.slice(-2);
+    
+    // Formata os reais com separadores de milhar (apenas se tiver mais de 3 dígitos)
+    let formattedReais = reais;
+    if (reais.length > 3) {
+        formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
+    
+    // Remove "0" desnecessário no início
+    if (formattedReais === '0') {
+        formattedReais = '0';
+    } else {
+        formattedReais = formattedReais.replace(/^0+/, '');
+    }
+    
+    // Define o valor formatado no input
+    input.value = formattedReais + ',' + centavos;
+}
+
+// Função melhorada para lidar com a entrada de dados
+function handleValorInput(e) {
+    const input = e.target;
+    const cursorPosition = input.selectionStart;
+    const originalValue = input.value;
+    
+    // Formata o valor
+    formatarMoeda(input);
+    
+    // Tenta manter a posição do cursor de forma inteligente
+    setTimeout(() => {
+        const newLength = input.value.length;
+        
+        // Se o usuário está apagando no final, mantém no final
+        if (cursorPosition === originalValue.length && e.inputType === 'deleteContentBackward') {
+            input.setSelectionRange(newLength, newLength);
+        } 
+        // Se está digitando no final, mantém no final
+        else if (cursorPosition === originalValue.length) {
+            input.setSelectionRange(newLength, newLength);
+        }
+        // Caso contrário, tenta ajustar a posição
+        else {
+            // Lógica simplificada: vai para o final após formatação
+            input.setSelectionRange(newLength, newLength);
+        }
+    }, 0);
+}
+
+// Versão alternativa MAIS SIMPLES (recomendada)
+function formatarMoedaSimples(input) {
+    let value = input.value.replace(/\D/g, '');
+    
+    // Se vazio ou só zeros
+    if (!value || parseInt(value) === 0) {
+        input.value = '0,00';
+        return;
+    }
+    
+    // Remove zeros à esquerda
+    value = value.replace(/^0+/, '');
+    if (value === '') {
+        input.value = '0,00';
+        return;
+    }
+    
+    // Garante pelo menos 3 dígitos para centavos
+    value = value.padStart(3, '0');
+    
+    const reais = value.slice(0, -2);
+    const centavos = value.slice(-2);
+    
+    // Formata reais com separadores de milhar
+    const formattedReais = reais.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    input.value = formattedReais + ',' + centavos;
+}
+
+// Adicione este código ao seu event listener do DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    const valorInput = document.getElementById('id_valor');
+    
+    if (valorInput) {
+        // Use a versão simples
+        valorInput.addEventListener('input', function(e) {
+            formatarMoedaSimples(this);
+            // Sempre vai para o final
+            setTimeout(() => {
+                this.setSelectionRange(this.value.length, this.value.length);
+            }, 0);
+        });
+        
+        valorInput.addEventListener('blur', function() {
+            formatarMoedaSimples(this);
+        });
+        
+        // Foca no final quando clicar
+        valorInput.addEventListener('focus', function() {
+            setTimeout(() => {
+                this.setSelectionRange(this.value.length, this.value.length);
+            }, 0);
+        });
+        
+        // Permite apenas números e teclas de controle
+        valorInput.addEventListener('keydown', function(e) {
+            const allowedKeys = [8, 9, 13, 37, 38, 39, 40, 46]; // backspace, tab, enter, arrows, delete
+            
+            if (!((e.key >= '0' && e.key <= '9') || allowedKeys.includes(e.keyCode))) {
+                e.preventDefault();
+            }
+        });
+        
+        // Formata o valor inicial se existir
+        if (valorInput.value) {
+            formatarMoedaSimples(valorInput);
+        } else {
+            valorInput.value = '0,00';
+        }
+    }
+});
+
+// Função para converter para decimal (mantida igual)
+function converterParaDecimal(valorFormatado) {
+    if (typeof valorFormatado !== 'string') {
+        return parseFloat(valorFormatado).toFixed(2);
+    }
+    
+    let decimalValue = valorFormatado.replace(/\./g, '').replace(',', '.');
+    
+    if (decimalValue === '' || isNaN(parseFloat(decimalValue))) {
+        return '0.00';
+    }
+    
+    return parseFloat(decimalValue).toFixed(2);
+}
+
+// Exemplo de uso ao enviar o formulário:
+// const valorDecimal = converterParaDecimal(document.getElementById('id_valor').value);
 
     function displayFormErrors(formElement, errors) {
         formElement.querySelectorAll('.form-error').forEach(el => {

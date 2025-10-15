@@ -1,0 +1,49 @@
+name: Auto Versioning
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  versioning:
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.message, '[release]')
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Run Versioning Script
+      run: |
+        python scripts/versioning.py patch
+        git push origin main --tags
+    
+    - name: Get Version
+      id: version
+      run: |
+        echo "VERSION=$(cat version.txt)" >> $GITHUB_OUTPUT
+    
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.VERSION }}
+        release_name: Release v${{ steps.version.outputs.VERSION }}
+        body: |
+          🚀 Auto-generated release
+          
+          - Version: ${{ steps.version.outputs.VERSION }}
+          - Build Date: ${{ steps.version.outputs.DATE }}
+          - Commit: ${{ github.sha }}
+        draft: false
+        prerelease: false
