@@ -5,14 +5,14 @@ theme:
   favicon: assets/logo.png
   palette:
     - scheme: default
-      primary: 'blue'
-      accent: 'green'
+      primary: 'purple'
+      accent: 'orange'
       toggle:
         icon: material/lightbulb-outline
         name: Switch to dark mode
     - scheme: slate
-      primary: 'blue'
-      accent: 'green'
+      primary: 'purple'
+      accent: 'orange'
       toggle:
         icon: material/lightbulb
         name: Switch to light mode
@@ -26,6 +26,17 @@ theme:
     - content.tabs.link
     - content.code.annotation
     - content.code.copy
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+extra_css:
+  - overrides/custom.css
+
 nav:
   - Introdução: index.md
   - Visão Geral: visao_geral.md
@@ -34,7 +45,9 @@ nav:
   - Funcionalidades: funcionalidades.md
   - Desenvolvimento:
     - Arquitetura: arquitetura.md
+    - Diagramas de Arquitetura: diagramas.md
     - Modelagem de Dados: dados.md
+    - Versionamento e Commits: versionamento.md
     - APIs: apis.md
     - Testes: testes.md
   - Tecnologias: tecnologias.md

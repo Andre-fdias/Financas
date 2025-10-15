@@ -2091,29 +2091,34 @@ def saida_info(request, pk):
 
 @login_required
 def saida_update(request, pk):
+    from decimal import Decimal, InvalidOperation
+    from django.db import transaction
+    from dateutil.relativedelta import relativedelta
+
     saida = get_object_or_404(Saida, pk=pk, usuario=request.user)
-    
+
     if request.method == 'POST':
-        # Verificar se é uma requisição AJAX para obter o formulário
+        print("=== DEBUG VALORES ===")
+        print("Valor recebido:", request.POST.get('valor'))
+        print("Valor parcela recebido:", request.POST.get('valor_parcela'))
+
+        # Se for requisição AJAX para carregar o formulário
         if request.headers.get('x-requested-with') == 'XMLHttpRequest' and request.POST.get('action') == 'get_form':
             try:
-                # Inicializar o formulário com a instância existente
                 form = SaidaForm(instance=saida, user=request.user)
-                
-                # Calcular valor total para edição completa
+
                 valor_total = saida.valor
-                if saida.tipo_pagamento_detalhe == 'parcelado' and saida.quantidade_parcelas > 1:
-                    valor_total = saida.valor_parcela * saida.quantidade_parcelas
-                
-                # Renderizar o template do formulário de edição
+                if saida.tipo_pagamento_detalhe == 'parcelado' and saida.quantidade_parcelas and saida.quantidade_parcelas > 1:
+                    # valor armazenado por item pode representar parcela ou total no seu modelo; você já lidava com isso
+                    valor_total = saida.valor_parcela * saida.quantidade_parcelas if saida.valor_parcela else saida.valor
+
                 form_html = render_to_string('core/includes/saida_edit_modal.html', {
                     'form': form,
                     'saida': saida,
                     'contas_bancarias': ContaBancaria.objects.filter(proprietario=request.user, ativa=True),
                     'categorias_choices': CATEGORIA_CHOICES,
                     'subcategorias_choices': SUBCATEGORIA_CHOICES,
-                    'subcategoria_mapping': {
-                        # Moradia
+                    'subcategoria_mapping': {  # mantém seu mapeamento
                         'moradia_aluguel': 'moradia',
                         'moradia_financiamento': 'moradia',
                         'moradia_condominio': 'moradia',
@@ -2123,69 +2128,47 @@ def saida_update(request, pk):
                         'moradia_gas': 'moradia',
                         'moradia_internet': 'moradia',
                         'moradia_manutencao': 'moradia',
-                        
-                        # Alimentação
                         'alimentacao_supermercado': 'alimentacao',
                         'alimentacao_hortifruti': 'alimentacao',
                         'alimentacao_padaria': 'alimentacao',
                         'alimentacao_restaurante': 'alimentacao',
                         'alimentacao_lanches': 'alimentacao',
-                        
-                        # Transporte
                         'transporte_combustivel': 'transporte',
                         'transporte_manutencao': 'transporte',
                         'transporte_seguro': 'transporte',
                         'transporte_estacionamento': 'transporte',
                         'transporte_publico': 'transporte',
                         'transporte_app': 'transporte',
-                        
-                        # Saúde
                         'saude_plano': 'saude',
                         'saude_medicamentos': 'saude',
                         'saude_consultas': 'saude',
                         'saude_exames': 'saude',
                         'saude_odontologia': 'saude',
-                        
-                        # Educação
                         'educacao_mensalidade': 'educacao',
                         'educacao_cursos': 'educacao',
                         'educacao_materiais': 'educacao',
-                        
-                        # Lazer
                         'lazer_cinema': 'lazer',
                         'lazer_shows': 'lazer',
                         'lazer_viagens': 'lazer',
                         'lazer_entretenimento': 'lazer',
-
-                        # Seguros
                         'seguros_vida': 'seguros',
                         'seguros_residencial': 'seguros',
                         'seguros_viagem': 'seguros',
-
-                        # Despesas Pessoais
                         'pessoais_academia': 'pessoais',
                         'pessoais_estetica': 'pessoais',
                         'pessoais_vestuario': 'pessoais',
                         'pessoais_calcados': 'pessoais',
                         'pessoais_acessorios': 'pessoais',
-
-                        # Família
                         'familia_mesada': 'familia',
                         'familia_presentes': 'familia',
                         'familia_pets': 'familia',
-
-                        # Contas e Serviços
                         'contas_telefone': 'contas',
                         'contas_assinaturas': 'contas',
                         'contas_tv': 'contas',
-
-                        # Investimentos
                         'investimentos_poupanca': 'investimentos',
                         'investimentos_fundos': 'investimentos',
                         'investimentos_acoes': 'investimentos',
                         'investimentos_cripto': 'investimentos',
-
-                        # Impostos
                         'impostos_irpf': 'impostos',
                         'impostos_inss': 'impostos',
                         'impostos_taxas': 'impostos',
@@ -2193,220 +2176,263 @@ def saida_update(request, pk):
                     'today_date': date.today().isoformat(),
                     'valor_total': valor_total,
                 }, request=request)
-                
-                return JsonResponse({
-                    'success': True,
-                    'form_html': form_html
-                })
+
+                return JsonResponse({'success': True, 'form_html': form_html})
             except Exception as e:
                 print(f"Erro ao carregar formulário de edição: {e}")
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Erro ao carregar formulário: {str(e)}'
-                }, status=500)
-        
-        # Processar o formulário de edição normal
+                return JsonResponse({'success': False, 'message': f'Erro ao carregar formulário: {str(e)}'}, status=500)
+
+        # Processamento normal do POST (edição)
         print("=== PROCESSANDO EDIÇÃO DE DESPESA ===")
         print("Dados recebidos:", dict(request.POST))
-        
-        # Criar cópia dos dados POST para manipulação
+
         post_data = request.POST.copy()
-        
-        # Determinar tipo de edição
         tipo_edicao = post_data.get('tipo_edicao', 'parcela')
         aplicar_todas = post_data.get('aplicar_todas', 'false') == 'true'
-        
+
         print(f"Tipo de edição: {tipo_edicao}")
         print(f"Aplicar para todas: {aplicar_todas}")
-        
-        # Processar valor monetário
+
+        # Conversão segura de valores para Decimal (aceita formatos '1.234,56' ou '1234.56')
+        def parse_decimal(valor_raw):
+            if valor_raw is None or valor_raw == '':
+                return None
+            v = str(valor_raw).strip()
+            v = v.replace('R$', '').strip()
+            # Sevirá tanto "1.234,56" quanto "1234.56"
+            v = v.replace('.', '').replace(',', '.') if ',' in v else v
+            try:
+                return Decimal(v)
+            except (InvalidOperation, ValueError):
+                return None
+
         if 'valor' in post_data and post_data['valor']:
-            try:
-                valor_str = post_data['valor'].replace("R$", "").replace(".", "").replace(",", ".").strip()
-                post_data['valor'] = Decimal(valor_str)
-                print("Valor convertido:", post_data['valor'])
-            except (ValueError, InvalidOperation) as e:
-                print("Erro na conversão do valor:", e)
-                return JsonResponse({
-                    'success': False,
-                    'errors': {'valor': ['Valor inválido. Use o formato: 1234,56']},
-                    'message': 'Erro na formatação do valor'
-                }, status=400)
-        
-        # Processar valor_parcela se existir
+            parsed = parse_decimal(post_data['valor'])
+            if parsed is None:
+                return JsonResponse({'success': False, 'errors': {'valor': ['Valor inválido. Use 1234,56']}, 'message': 'Erro na formatação do valor'}, status=400)
+            post_data['valor'] = parsed
+
         if 'valor_parcela' in post_data and post_data['valor_parcela']:
-            try:
-                valor_parcela_str = post_data['valor_parcela'].replace('R$', '').replace('.', '').replace(',', '.').strip()
-                post_data['valor_parcela'] = Decimal(valor_parcela_str) if valor_parcela_str else None
-                print("Valor parcela convertido:", post_data['valor_parcela'])
-            except (ValueError, InvalidOperation):
-                post_data['valor_parcela'] = None
-        
-        # LÓGICA DE EDIÇÃO POR TIPO
-        if tipo_edicao == 'parcela':
-            # EDIÇÃO APENAS ESTA PARCELA
-            if not aplicar_todas:
-                # Manter apenas campos permitidos para edição de parcela individual
-                campos_permitidos = [
-                    'conta_bancaria', 'nome', 'local', 'forma_pagamento', 
-                    'valor', 'categoria', 'subcategoria', 'observacao', 
-                    'data_vencimento', 'situacao'
-                ]
-                
-                # Para outros campos, manter os valores originais
-                campos_originais = {
-                    'tipo_pagamento_detalhe': saida.tipo_pagamento_detalhe,
-                    'recorrente': saida.recorrente,
-                    'quantidade_parcelas': saida.quantidade_parcelas,
-                    'valor_parcela': saida.valor_parcela,
-                    'data_lancamento': saida.data_lancamento,  # Mantém data original
-                }
-                
-                for campo, valor in campos_originais.items():
-                    if campo not in post_data:
-                        post_data[campo] = valor
-            
-            # EDIÇÃO APLICAR PARA TODAS AS PARCELAS
-            else:
-                # Manter todos os campos exceto data_lancamento
-                campos_originais = {
-                    'data_lancamento': saida.data_lancamento,  # Mantém data original
-                }
-                
-                for campo, valor in campos_originais.items():
-                    if campo not in post_data:
-                        post_data[campo] = valor
-                
-                # Para edição aplicando a todas, usar valor da parcela salvo no banco
-                if 'valor' in post_data and saida.valor_parcela:
-                    # Se estiver editando o valor, calcular novo valor da parcela
-                    if post_data['valor'] != saida.valor:
-                        novo_valor_total = post_data['valor']
-                        quantidade_parcelas = saida.quantidade_parcelas
-                        post_data['valor_parcela'] = novo_valor_total / quantidade_parcelas
-                    else:
-                        post_data['valor_parcela'] = saida.valor_parcela
-        
-        # EDIÇÃO TODAS AS PARCELAS
-        elif tipo_edicao == 'todas':
-            # Manter data_lancamento original
-            campos_originais = {
-                'data_lancamento': saida.data_lancamento,  # Mantém data original
-            }
-            
-            for campo, valor in campos_originais.items():
-                if campo not in post_data:
-                    post_data[campo] = valor
-            
-            # Para edição completa, calcular valor da parcela baseado no valor total
-            if 'valor' in post_data and 'quantidade_parcelas' in post_data:
-                try:
-                    valor_total = post_data['valor']
-                    quantidade_parcelas = int(post_data['quantidade_parcelas'])
-                    if quantidade_parcelas > 0:
-                        post_data['valor_parcela'] = valor_total / quantidade_parcelas
-                        print(f"Valor parcela calculado: {post_data['valor_parcela']}")
-                except (ValueError, ZeroDivisionError) as e:
-                    print(f"Erro ao calcular valor parcela: {e}")
-        
-        # Garantir que campos obrigatórios tenham valores padrão se não enviados
-        if 'tipo_pagamento_detalhe' not in post_data or not post_data['tipo_pagamento_detalhe']:
+            parsed_parc = parse_decimal(post_data['valor_parcela'])
+            post_data['valor_parcela'] = parsed_parc
+
+        # Garantir campos padrão se ausentes
+        if 'tipo_pagamento_detalhe' not in post_data or not post_data.get('tipo_pagamento_detalhe'):
             post_data['tipo_pagamento_detalhe'] = 'avista'
-        
-        if 'recorrente' not in post_data or not post_data['recorrente']:
+        if 'recorrente' not in post_data or not post_data.get('recorrente'):
             post_data['recorrente'] = 'unica'
-        
-        if 'quantidade_parcelas' not in post_data or not post_data['quantidade_parcelas']:
-            post_data['quantidade_parcelas'] = 1
-        
-        if 'valor_parcela' not in post_data or not post_data['valor_parcela']:
-            post_data['valor_parcela'] = post_data.get('valor', 0)
-        
-        # Se for à vista, garantir quantidade_parcelas = 1
+        if 'quantidade_parcelas' not in post_data or not post_data.get('quantidade_parcelas'):
+            post_data['quantidade_parcelas'] = saida.quantidade_parcelas or 1
+        else:
+            try:
+                post_data['quantidade_parcelas'] = int(post_data['quantidade_parcelas'])
+            except Exception:
+                post_data['quantidade_parcelas'] = saida.quantidade_parcelas or 1
+
+        # Se à vista, forçar 1 parcela
         if post_data.get('tipo_pagamento_detalhe') == 'avista':
             post_data['quantidade_parcelas'] = 1
-            post_data['valor_parcela'] = post_data.get('valor', 0)
-        
-        print("Dados processados para validação:", {k: v for k, v in post_data.items()})
-        
-        # Criar e validar formulário
+            if 'valor' in post_data:
+                post_data['valor_parcela'] = post_data['valor']
+
+        # Construir form com os dados processados
         form = SaidaForm(post_data, instance=saida, user=request.user)
-        
-        if form.is_valid():
-            try:
-                saida_salva = form.save(commit=False)
-                
-                # Aplicar para todas as parcelas se solicitado
-                if aplicar_todas and saida.tipo_pagamento_detalhe == 'parcelado' and saida.despesa_original:
-                    print("Aplicando alterações para todas as parcelas...")
-                    # Encontrar todas as parcelas
-                    parcelas = Saida.objects.filter(
-                        Q(despesa_original=saida.despesa_original) | Q(pk=saida.despesa_original.pk)
-                    )
-                    
-                    for parcela in parcelas:
-                        # Atualizar campos comuns
-                        parcela.conta_bancaria = form.cleaned_data['conta_bancaria']
-                        parcela.nome = form.cleaned_data['nome']
-                        parcela.local = form.cleaned_data['local']
-                        parcela.categoria = form.cleaned_data['categoria']
-                        parcela.subcategoria = form.cleaned_data['subcategoria']
-                        parcela.observacao = form.cleaned_data['observacao']
-                        parcela.forma_pagamento = form.cleaned_data['forma_pagamento']
-                        parcela.situacao = form.cleaned_data['situacao']
-                        parcela.tipo_pagamento_detalhe = form.cleaned_data['tipo_pagamento_detalhe']
-                        parcela.recorrente = form.cleaned_data['recorrente']
-                        parcela.quantidade_parcelas = form.cleaned_data['quantidade_parcelas']
-                        parcela.valor_parcela = form.cleaned_data['valor_parcela']
-                        
-                        # Para valor, só atualizar se for a primeira parcela
-                        if parcela.parcela_atual == 1:
-                            parcela.valor = form.cleaned_data['valor_parcela']  # Usar valor da parcela
-                            parcela.data_vencimento = form.cleaned_data['data_vencimento']
-                        else:
-                            # Para parcelas futuras, manter o valor da parcela calculado
-                            parcela.valor = form.cleaned_data['valor_parcela']
-                            # Ajustar data de vencimento baseado na diferença da primeira parcela
-                            if saida.parcela_atual == 1:
-                                diferenca_meses = parcela.parcela_atual - 1
-                                nova_data_vencimento = form.cleaned_data['data_vencimento'] + relativedelta(months=diferenca_meses)
-                                parcela.data_vencimento = nova_data_vencimento
-                        
-                        parcela.save()
-                        print(f"Parcela {parcela.parcela_atual} atualizada")
-                
-                else:
-                    # Salvar apenas a despesa atual
-                    saida_salva.save()
-                
-                print("Despesa atualizada com sucesso!")
-                
-                return JsonResponse({
-                    'success': True, 
-                    'message': 'Despesa atualizada com sucesso!'
-                })
-                    
-            except Exception as e:
-                print(f"Erro ao salvar despesa: {e}")
-                import traceback
-                traceback.print_exc()
-                
-                return JsonResponse({
-                    'success': False, 
-                    'message': f'Erro ao atualizar despesa: {str(e)}',
-                    'error_details': str(e)
-                }, status=400)
-        else:
+
+        if not form.is_valid():
             print("=== ERROS DE VALIDAÇÃO ===")
             print(form.errors)
-            return JsonResponse({
-                'success': False, 
-                'errors': form.errors,
-                'message': 'Erro de validação. Verifique os campos.'
-            }, status=400)
-    
-    return redirect('core:saida_list')
+            return JsonResponse({'success': False, 'errors': form.errors, 'message': 'Erro de validação. Verifique os campos.'}, status=400)
 
+        # Tudo validado — agora salvar conforme o tipo de edição
+        try:
+            with transaction.atomic():
+                # ----- EDIÇÃO DE UMA ÚNICA PARCELA (sem aplicar nas demais) -----
+                if tipo_edicao == 'parcela' and not aplicar_todas:
+                    saida_atual = form.save(commit=False)
+                    # mantém data_lancamento original se não foi enviada
+                    if 'data_lancamento' not in post_data or not post_data.get('data_lancamento'):
+                        saida_atual.data_lancamento = saida.data_lancamento
+                    # Se o form trouxe valor_parcela específico, atualiza
+                    if post_data.get('valor_parcela') is not None:
+                        saida_atual.valor_parcela = post_data['valor_parcela']
+                        saida_atual.valor = post_data.get('valor', saida_atual.valor)
+                    saida_atual.save()
+                    print("Parcela individual atualizada (sem aplicar nas demais).")
+
+                # ----- APLICAR ALTERAÇÃO PARA TODAS AS PARCELAS -----
+                elif tipo_edicao == 'parcela' and aplicar_todas:
+                    # Pegar a "despesa base" (a original que vincula parcelas) — mantém sua lógica
+                    despesa_base = saida.despesa_original if saida.despesa_original else saida
+                    parcelas = Saida.objects.filter(Q(despesa_original=despesa_base) | Q(pk=despesa_base.pk)).order_by('parcela_atual')
+                    if not parcelas.exists():
+                        # fallback: atualiza apenas a atual
+                        saida_salva = form.save()
+                        print("Nenhuma parcela encontrada vinculada — atualizei apenas a atual.")
+                    else:
+                        # Determinar novo valor_parcela a aplicar a todas
+                        novo_valor_parcela = None
+                        if post_data.get('valor_parcela') is not None:
+                            novo_valor_parcela = post_data['valor_parcela']
+                        elif post_data.get('valor') is not None:
+                            qtd = post_data.get('quantidade_parcelas') or parcelas.count()
+                            novo_valor_parcela = (Decimal(post_data['valor']) / Decimal(qtd)).quantize(Decimal('0.01'))
+                        else:
+                            novo_valor_parcela = parcelas.first().valor_parcela or parcelas.first().valor
+
+                        qtd_parcelas = post_data.get('quantidade_parcelas') or parcelas.count()
+                        # Atualiza cada parcela
+                        primeira_venc = post_data.get('data_vencimento') or parcelas.first().data_vencimento
+                        if isinstance(primeira_venc, str):
+                            primeira_venc = datetime.strptime(primeira_venc, "%Y-%m-%d").date()
+                        for parcela in parcelas:
+                            parcela.conta_bancaria = form.cleaned_data['conta_bancaria']
+                            parcela.nome = form.cleaned_data['nome']
+                            parcela.local = form.cleaned_data['local']
+                            parcela.categoria = form.cleaned_data['categoria']
+                            parcela.subcategoria = form.cleaned_data['subcategoria']
+                            parcela.observacao = form.cleaned_data['observacao']
+                            parcela.forma_pagamento = form.cleaned_data['forma_pagamento']
+                            parcela.tipo_pagamento_detalhe = form.cleaned_data['tipo_pagamento_detalhe']
+                            parcela.recorrente = form.cleaned_data['recorrente']
+                            parcela.quantidade_parcelas = qtd_parcelas
+                            parcela.valor_parcela = novo_valor_parcela
+                            parcela.valor = novo_valor_parcela
+                            parcela.situacao = form.cleaned_data['situacao']
+
+                            # Ajusta vencimento relativo à primeira parcela
+                            meses_diff = parcela.parcela_atual - 1
+                            parcela.data_vencimento = (primeira_venc + relativedelta(months=meses_diff)) if primeira_venc else parcela.data_vencimento
+                            parcela.save()
+                        print(f"Aplicadas alterações a todas as {parcelas.count()} parcelas.")
+
+                # ----- EDIÇÃO COMPLETA (todas) => redivide/ajusta número de parcelas -----
+                elif tipo_edicao == 'todas':
+                    # Base para parcelamento (despesa original)
+                    despesa_base = saida.despesa_original if saida.despesa_original else saida
+                    parcelas = list(Saida.objects.filter(Q(despesa_original=despesa_base) | Q(pk=despesa_base.pk)).order_by('parcela_atual'))
+
+                    valor_total = post_data.get('valor') if post_data.get('valor') is not None else sum((p.valor for p in parcelas)) if parcelas else Decimal('0.00')
+                    nova_qtd = int(post_data.get('quantidade_parcelas') or len(parcelas) or 1)
+                    if nova_qtd < 1:
+                        nova_qtd = 1
+
+                    # calcular valores por parcela distribuindo centavos no final
+                    base_amount = (Decimal(valor_total) / Decimal(nova_qtd)).quantize(Decimal('0.01'))
+                    amounts = [base_amount] * nova_qtd
+                    soma = sum(amounts)
+                    diferenca = Decimal(valor_total) - soma
+                    # adiciona a diferença (pode ser centavos) na última parcela
+                    if diferenca != 0:
+                        amounts[-1] = (amounts[-1] + diferenca).quantize(Decimal('0.01'))
+
+                    # Ajustar número de registros: criar ou apagar conforme necessário
+                    atual_qtd = len(parcelas)
+                    primeira_venc = post_data.get('data_vencimento') or (parcelas[0].data_vencimento if parcelas else None)
+                    if isinstance(primeira_venc, str):
+                        primeira_venc = datetime.strptime(primeira_venc, "%Y-%m-%d").date()
+
+                    # Se precisar criar parcelas novas
+                    if nova_qtd > atual_qtd:
+                        # garante que exista um 'base' que será despesa_original
+                        base_obj = despesa_base
+                        for idx in range(atual_qtd + 1, nova_qtd + 1):
+                            new = Saida.objects.create(
+                                usuario=request.user,
+                                conta_bancaria=parcelas[0].conta_bancaria if parcelas else form.cleaned_data['conta_bancaria'],
+                                nome=form.cleaned_data.get('nome') or (parcelas[0].nome if parcelas else ''),
+                                local=form.cleaned_data.get('local') or (parcelas[0].local if parcelas else ''),
+                                categoria=form.cleaned_data.get('categoria') or (parcelas[0].categoria if parcelas else None),
+                                subcategoria=form.cleaned_data.get('subcategoria') or (parcelas[0].subcategoria if parcelas else None),
+                                observacao=form.cleaned_data.get('observacao') or '',
+                                forma_pagamento=form.cleaned_data.get('forma_pagamento') or (parcelas[0].forma_pagamento if parcelas else 'dinheiro'),
+                                tipo_pagamento_detalhe='parcelado',
+                                recorrente=form.cleaned_data.get('recorrente') or 'unica',
+                                quantidade_parcelas=nova_qtd,
+                                valor=amounts[idx - 1],
+                                valor_parcela=amounts[idx - 1],
+                                situacao=form.cleaned_data.get('situacao') or 'pendente',
+                                parcela_atual=idx,
+                                despesa_original=None,  # será ajustado corretamente logo abaixo
+
+                                data_lancamento=parcelas[0].data_lancamento if parcelas else date.today(),
+                                data_vencimento=(primeira_venc + relativedelta(months=idx - 1)) if primeira_venc else None
+                            )
+                            # após criar, vincula despesa_original adequadamente
+                            # (vamos corrigir todos os despesa_original logo abaixo)
+                            parcelas.append(new)
+
+                    # Se precisar remover parcelas
+                    elif nova_qtd < atual_qtd:
+                        # apagar as últimas parcelas (atenção: pode haver regras específicas no seu app)
+                        to_delete = parcelas[nova_qtd:]
+                        for p in to_delete:
+                            p.delete()
+                        parcelas = parcelas[:nova_qtd]
+
+                    # Recarregar parcelas ordenadas novamente
+                    parcelas = list(Saida.objects.filter(Q(despesa_original=despesa_base) | Q(pk=despesa_base.pk)).order_by('parcela_atual')[:nova_qtd])
+
+                    # Se não existiam parcelas, talvez despesa_base seja a própria saida — garanta que exista ao menos uma
+                    if not parcelas:
+                        # salva a saida atual como primeira parcela
+                        primeira = form.save(commit=False)
+                        primeira.quantidade_parcelas = nova_qtd
+                        primeira.valor = amounts[0]
+                        primeira.valor_parcela = amounts[0]
+                        if primeira_venc:
+                            primeira.data_vencimento = primeira_venc
+                        primeira.save()
+                        parcelas = [primeira]
+
+                    # agora atualizar todas (reajusta parcela_atual consecutivo, valores, vencimentos e despesa_original)
+                    base_obj = parcelas[0]  # manter referência ao primeiro como base
+                    for idx, parcela in enumerate(parcelas, start=1):
+                        parcela.parcela_atual = idx
+                        parcela.quantidade_parcelas = nova_qtd
+                        parcela.valor = amounts[idx - 1]
+                        parcela.valor_parcela = amounts[idx - 1]
+                        parcela.conta_bancaria = form.cleaned_data.get('conta_bancaria') or parcela.conta_bancaria
+                        parcela.nome = form.cleaned_data.get('nome') or parcela.nome
+                        parcela.local = form.cleaned_data.get('local') or parcela.local
+                        parcela.categoria = form.cleaned_data.get('categoria') or parcela.categoria
+                        parcela.subcategoria = form.cleaned_data.get('subcategoria') or parcela.subcategoria
+                        parcela.observacao = form.cleaned_data.get('observacao') or parcela.observacao
+                        parcela.forma_pagamento = form.cleaned_data.get('forma_pagamento') or parcela.forma_pagamento
+                        parcela.tipo_pagamento_detalhe = 'parcelado'
+                        parcela.recorrente = form.cleaned_data.get('recorrente') or parcela.recorrente
+                        parcela.situacao = form.cleaned_data.get('situacao') or parcela.situacao
+                        parcela.data_vencimento = (primeira_venc + relativedelta(months=idx - 1)) if primeira_venc else parcela.data_vencimento
+                        # garantir despesa_original aponta para o primeiro (exceto o próprio primeiro)
+                        if idx == 1:
+                            # primeira parcela fica como "principal" (não aponta para outra)
+                            parcela.despesa_original = None
+                        else:
+                            parcela.despesa_original = parcelas[0]
+                        parcela.save()
+
+                    # se primeira parcela foi atualizada via form, salva seus campos finais também
+                    print(f"Reconfiguradas {len(parcelas)} parcelas com novo total {valor_total} e {nova_qtd} parcelas.")
+
+                else:
+                    # caso genérico: salvar o form na instância atual
+                    saida_salva = form.save(commit=False)
+                    # Garantir campos essenciais
+                    if 'data_lancamento' not in post_data or not post_data.get('data_lancamento'):
+                        saida_salva.data_lancamento = saida.data_lancamento
+                    saida_salva.save()
+                    print("Alteração genérica aplicada na saída atual.")
+
+            # fim do transaction.atomic
+            print("Despesa atualizada com sucesso!")
+            return JsonResponse({'success': True, 'message': 'Despesa atualizada com sucesso!'})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"Erro ao salvar despesa: {e}")
+            return JsonResponse({'success': False, 'message': f'Erro ao atualizar despesa: {str(e)}', 'error_details': str(e)}, status=500)
+
+    return redirect('core:saida_list')
 
 
 

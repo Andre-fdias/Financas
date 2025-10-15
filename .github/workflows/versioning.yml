@@ -1,49 +1,34 @@
-name: Auto Versioning
+name: Release & Changelog
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
 
 jobs:
-  versioning:
+  release:
     runs-on: ubuntu-latest
-    if: contains(github.event.head_commit.message, '[release]')
-    
     steps:
-    - uses: actions/checkout@v3
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 0
-    
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    
-    - name: Run Versioning Script
-      run: |
-        python scripts/versioning.py patch
-        git push origin main --tags
-    
-    - name: Get Version
-      id: version
-      run: |
-        echo "VERSION=$(cat version.txt)" >> $GITHUB_OUTPUT
-    
-    - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ steps.version.outputs.VERSION }}
-        release_name: Release v${{ steps.version.outputs.VERSION }}
-        body: |
-          🚀 Auto-generated release
-          
-          - Version: ${{ steps.version.outputs.VERSION }}
-          - Build Date: ${{ steps.version.outputs.DATE }}
-          - Commit: ${{ github.sha }}
-        draft: false
-        prerelease: false
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessário para o semantic-release analisar todo o histórico
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Semantic Release
+        run: semantic-release publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
