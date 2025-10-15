@@ -590,6 +590,17 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Modelagem de Dados
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -599,6 +610,34 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#diagrama-de-classes-principal" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagrama de Classes Principal
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -752,7 +791,84 @@
 
 <h1 id="modelagem-de-dados">Modelagem de Dados</h1>
 <p>Esta seção detalha a estrutura do banco de dados, os modelos do Django e os relacionamentos entre as entidades do sistema FinanceFlow.</p>
-<p><em>Esta página foi criada automaticamente. Adicione aqui os detalhes sobre os modelos <code>Conta</code>, <code>Transacao</code>, <code>Categoria</code>, etc.</em></p>
+<h2 id="diagrama-de-classes-principal">Diagrama de Classes Principal</h2>
+<p>O diagrama a seguir ilustra as principais entidades do sistema e como elas se interconectam. Ele foi gerado a partir dos modelos definidos em <code>core/models.py</code>.</p>
+<pre class="mermaid"><code>classDiagram
+    direction LR
+
+    class User {
+        +username
+        +email
+    }
+
+    class Profile {
+        +foto_perfil
+        +theme
+    }
+
+    class ContaBancaria {
+        +nome_banco
+        +tipo
+        +saldo_atual
+        +limite_cartao
+    }
+
+    class Categoria {
+        +nome
+    }
+
+    class Subcategoria {
+        +nome
+    }
+
+    class Entrada {
+        +nome
+        -valor
+        +data
+    }
+
+    class Saida {
+        +nome
+        -valor
+        +data_vencimento
+        +quantidade_parcelas
+    }
+
+    class Transferencia {
+        -valor
+        +data
+    }
+
+    class Lembrete {
+        +titulo
+        +data_limite
+        +concluido
+    }
+
+    class OperacaoSaque {
+        +tipo_operacao
+        +valor_saque
+    }
+
+    %% Relacionamentos
+    User "1" -- "1" Profile : possui
+    User "1" -- "0..*" ContaBancaria : é proprietário de
+    User "1" -- "0..*" Categoria : cria
+    User "1" -- "0..*" Subcategoria : cria
+    User "1" -- "0..*" Entrada : realiza
+    User "1" -- "0..*" Saida : realiza
+    User "1" -- "0..*" Transferencia : realiza
+    User "1" -- "0..*" Lembrete : cria
+    User "1" -- "0..*" OperacaoSaque : realiza
+
+    Categoria "1" -- "0..*" Subcategoria : contém
+
+    ContaBancaria "1" -- "0..*" Entrada : recebe em
+    ContaBancaria "1" -- "0..*" Saida : sai de
+    Transferencia -- "1" ContaBancaria : tem origem em
+    Transferencia -- "1" ContaBancaria : tem destino em
+
+    Saida "1" -- "0..*" Saida : é parcela de</code></pre>
 
 
 
