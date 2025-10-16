@@ -357,112 +357,201 @@ class ProfileUpdateForm(forms.ModelForm):
     
 
 
-
-
-# forms.py
 from django import forms
 from decimal import Decimal, InvalidOperation
-from .models import OperacaoSaque
-from .choices import INSTITUICOES_FINANCEIRAS, TIPO_OPERACAO_CHOICES  # Importe as choices
-from decimal import Decimal, InvalidOperation
-from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from .models import OperacaoSaque
-from .choices import INSTITUICOES_FINANCEIRAS, TIPO_OPERACAO_CHOICES
 
 class OperacaoSaqueForm(forms.ModelForm):
-    # Campos numéricos agora são CharField para aceitar vírgula
-    valor_saque = forms.CharField(max_length=20, required=False)
-    valor_financiado = forms.CharField(max_length=20, required=False)
-    valor_iof = forms.CharField(max_length=20, required=False)
-    valor_liberado_cliente = forms.CharField(max_length=20, required=False)
-    valor_parcela = forms.CharField(max_length=20, required=False)
-    quantidade_parcelas = forms.IntegerField(required=False)
+    # Campos monetários tratados como texto (aceita R$, vírgula, ponto etc.)
+    valor_saque = forms.CharField(
+        max_length=20,
+        required=True,
+        label="Valor do Saque",
+        widget=forms.TextInput(attrs={
+            'class': 'form-input monetary-input',
+            'placeholder': 'Ex: 10.000,00',
+            'required': 'required'
+        })
+    )
+
+    valor_liberado_cliente = forms.CharField(
+        max_length=20,
+        required=True,
+        label="Valor Liberado ao Cliente",
+        widget=forms.TextInput(attrs={
+            'class': 'form-input monetary-input',
+            'placeholder': 'Ex: 10.000,00',
+            'required': 'required'
+        })
+    )
+
+    valor_parcela = forms.CharField(
+        max_length=20,
+        required=False,
+        label="Valor da Parcela",
+        widget=forms.TextInput(attrs={
+            'class': 'form-input monetary-input',
+            'placeholder': 'Ex: 1.000,00'
+        })
+    )
+
+    quantidade_parcelas = forms.IntegerField(
+        required=False,
+        min_value=1,
+        label="Quantidade de Parcelas",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-input',
+            'placeholder': 'Ex: 12',
+            'min': '1'
+        })
+    )
 
     class Meta:
         model = OperacaoSaque
         fields = [
-            'nome_banco', 'tipo_operacao', 'data_contratacao', 
-            'valor_saque', 'valor_financiado', 'valor_iof', 'valor_liberado_cliente',
-            'quantidade_parcelas', 'valor_parcela', 'data_inicio_parcelas', 'data_termino_parcelas'
+            'nome_banco',
+            'tipo_operacao',
+            'data_contratacao',
+            'valor_saque',
+            'valor_liberado_cliente',
+            'quantidade_parcelas',
+            'valor_parcela',
+            'data_inicio_parcelas',
+            'data_termino_parcelas'
         ]
         widgets = {
-            'data_contratacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
+            'nome_banco': forms.Select(attrs={'class': 'form-input', 'required': 'required'}),
+            'tipo_operacao': forms.Select(attrs={'class': 'form-input', 'required': 'required'}),
+            'data_contratacao': forms.DateInput(attrs={'type': 'date', 'class': 'form-input', 'required': 'required'}),
             'data_inicio_parcelas': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
-            'data_termino_parcelas': forms.DateInput(attrs={'type': 'date', 'class': 'form-input', 'readonly': 'readonly'}),
-            'nome_banco': forms.Select(attrs={'class': 'form-input'}),
-            'tipo_operacao': forms.Select(attrs={'class': 'form-input'}),
+            'data_termino_parcelas': forms.DateInput(attrs={'type': 'date', 'class': 'form-input'}),
         }
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        # Adiciona choices dinamicamente, se necessário
-        self.fields['nome_banco'].choices = INSTITUICOES_FINANCEIRAS
-        self.fields['tipo_operacao'].choices = TIPO_OPERACAO_CHOICES
 
-        # Adicionar classes CSS aos campos não definidos nos widgets
-        for field_name, field in self.fields.items():
-            if field_name not in ['data_contratacao', 'data_inicio_parcelas', 'data_termino_parcelas', 'nome_banco', 'tipo_operacao', 'quantidade_parcelas']:
-                 field.widget.attrs['class'] = 'form-input monetary-input'
-            if field_name == 'quantidade_parcelas':
-                field.widget.attrs['class'] = 'form-input'
-
-        # Configurar placeholder para campos monetários
-        monetary_fields = ['valor_saque', 'valor_financiado', 'valor_iof', 'valor_liberado_cliente', 'valor_parcela']
-        for field in monetary_fields:
-            self.fields[field].widget.attrs['placeholder'] = '0,00'
-    
-    def _clean_decimal_field(self, field_name, value):
-        """Método auxiliar para limpar e validar campos decimais."""
+    # -------------------------
+    # 🔹 Funções auxiliares
+    # -------------------------
+    def _parse_currency_value(self, value):
+        """
+        Converte string de valor monetário brasileiro para Decimal.
+        Ex:
+          "R$ 1.234,56" -> Decimal("1234.56")
+          "10000" -> Decimal("10000.00")
+          "10.000,50" -> Decimal("10000.50")
+        """
         if not value:
             return None
-        
-        try:
-            # Remove R$, pontos e converte vírgula para ponto
-            value_str = str(value).replace('R$', '').replace('.', '').replace(',', '.').strip()
-            return Decimal(value_str)
-        except (InvalidOperation, ValueError):
-            self.add_error(field_name, f'Por favor, insira um valor válido para {field_name.replace("_", " ")}.')
+
+        value = str(value).strip()
+        # Remove símbolos, espaços e letras
+        cleaned = ''.join(ch for ch in value if ch.isdigit() or ch in ',.-')
+
+        if cleaned == '':
             return None
 
+        # Substitui vírgula decimal e remove pontos de milhar
+        if ',' in cleaned:
+            cleaned = cleaned.replace('.', '').replace(',', '.')
+        else:
+            # se vier apenas número inteiro (ex: 15000)
+            if '.' not in cleaned:
+                cleaned += '.00'
+
+        try:
+            return Decimal(cleaned)
+        except (InvalidOperation, ValueError):
+            return None
+
+    # -------------------------
+    # 🔹 Validações individuais
+    # -------------------------
+    def clean_valor_saque(self):
+        valor = self.cleaned_data.get('valor_saque')
+        parsed_value = self._parse_currency_value(valor)
+        if parsed_value is None:
+            raise ValidationError('Por favor, insira um valor válido. Ex: 10000 ou 10.000,50')
+        if parsed_value <= 0:
+            raise ValidationError('O valor do saque deve ser maior que zero.')
+        return parsed_value
+
+    def clean_valor_liberado_cliente(self):
+        valor = self.cleaned_data.get('valor_liberado_cliente')
+        parsed_value = self._parse_currency_value(valor)
+        if parsed_value is None:
+            raise ValidationError('Por favor, insira um valor válido. Ex: 10000 ou 10.000,50')
+        if parsed_value <= 0:
+            raise ValidationError('O valor liberado deve ser maior que zero.')
+        return parsed_value
+
+    def clean_valor_parcela(self):
+        valor = self.cleaned_data.get('valor_parcela')
+        if not valor:
+            return None
+        parsed_value = self._parse_currency_value(valor)
+        if parsed_value is None:
+            raise ValidationError('Por favor, insira um valor válido. Ex: 1000 ou 1.000,50')
+        return parsed_value
+
+    def clean_quantidade_parcelas(self):
+        quantidade = self.cleaned_data.get('quantidade_parcelas')
+        if quantidade and quantidade < 1:
+            raise ValidationError('A quantidade de parcelas deve ser pelo menos 1.')
+        return quantidade
+
+    def clean_data_contratacao(self):
+        data = self.cleaned_data.get('data_contratacao')
+        if data and data > timezone.now().date():
+            raise ValidationError('A data de contratação não pode ser futura.')
+        return data
+
+    # -------------------------
+    # 🔹 Validação cruzada
+    # -------------------------
     def clean(self):
         cleaned_data = super().clean()
-        
-        # Limpa os campos decimais manualmente
-        valor_saque = self._clean_decimal_field('valor_saque', cleaned_data.get('valor_saque'))
-        valor_financiado = self._clean_decimal_field('valor_financiado', cleaned_data.get('valor_financiado'))
-        valor_iof = self._clean_decimal_field('valor_iof', cleaned_data.get('valor_iof'))
-        valor_liberado_cliente = self._clean_decimal_field('valor_liberado_cliente', cleaned_data.get('valor_liberado_cliente'))
-        valor_parcela = self._clean_decimal_field('valor_parcela', cleaned_data.get('valor_parcela'))
-        
-        # Atualiza o cleaned_data com os valores limpos
-        cleaned_data['valor_saque'] = valor_saque
-        cleaned_data['valor_financiado'] = valor_financiado
-        cleaned_data['valor_iof'] = valor_iof
-        cleaned_data['valor_liberado_cliente'] = valor_liberado_cliente
-        cleaned_data['valor_parcela'] = valor_parcela
 
-        # Validações de negócio
-        data_inicio = cleaned_data.get('data_inicio_parcelas')
-        data_termino = cleaned_data.get('data_termino_parcelas')
+        valor_saque = cleaned_data.get('valor_saque')
+        valor_liberado_cliente = cleaned_data.get('valor_liberado_cliente')
         quantidade_parcelas = cleaned_data.get('quantidade_parcelas')
-        
-        if valor_saque and valor_liberado_cliente and valor_liberado_cliente > valor_saque:
-            self.add_error('valor_liberado_cliente', 'O valor liberado não pode ser maior que o valor do saque.')
-        
-        if quantidade_parcelas and not valor_parcela:
-            self.add_error('valor_parcela', 'Se informar a quantidade de parcelas, deve informar o valor da parcela.')
-        
-        if valor_parcela and not quantidade_parcelas:
-            self.add_error('quantidade_parcelas', 'Se informar o valor da parcela, deve informar a quantidade de parcelas.')
+        valor_parcela = cleaned_data.get('valor_parcela')
 
-        if data_inicio and data_termino and data_termino < data_inicio:
-            self.add_error('data_termino_parcelas', 'A data de término das parcelas não pode ser anterior à data de início.')
+        # Valor liberado não pode ser maior que o saque
+        if valor_saque and valor_liberado_cliente and valor_liberado_cliente > valor_saque:
+            self.add_error('valor_liberado_cliente',
+                'O valor liberado ao cliente não pode ser maior que o valor do saque.')
+
+        # Parcelamento
+        if quantidade_parcelas and not valor_parcela:
+            self.add_error('valor_parcela', 'Informe o valor da parcela.')
+        if valor_parcela and not quantidade_parcelas:
+            self.add_error('quantidade_parcelas', 'Informe a quantidade de parcelas.')
+
+        # Validação do total de parcelas
+        if valor_saque and valor_parcela and quantidade_parcelas:
+            total = valor_parcela * quantidade_parcelas
+            if abs(total - valor_saque) > Decimal('0.01'):
+                self.add_error('valor_parcela',
+                    f'O total das parcelas (R$ {total:,.2f}) não corresponde ao valor do saque (R$ {valor_saque:,.2f}).')
 
         return cleaned_data
-    
+
+    # -------------------------
+    # 🔹 Salvamento ajustado
+    # -------------------------
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+
+        # Calcula data final automaticamente
+        data_inicio = self.cleaned_data.get('data_inicio_parcelas')
+        quantidade_parcelas = self.cleaned_data.get('quantidade_parcelas')
+        if data_inicio and quantidade_parcelas:
+            from dateutil.relativedelta import relativedelta
+            instance.data_termino_parcelas = data_inicio + relativedelta(months=quantidade_parcelas)
+
+        if commit:
+            instance.save()
+        return instance
 
 class LembreteForm(forms.ModelForm):
     class Meta:
